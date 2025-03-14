@@ -13,8 +13,6 @@ new_writexlsx_block(...)
 \item{sheet, range}{See \code{\link[readxl:read_excel]{readxl::read_excel()}}}
 
 \item{...}{Forwarded to \code{\link[=new_block]{new_block()}}}
-
-\item{file}{File name}
 }
 \description{
 This block allows to make avaliable a table from an Excel file to a blockr
