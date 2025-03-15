@@ -12,4 +12,6 @@ Imports:
     readxl,
     writexl,
     shiny,
-    blockr.core
+    blockr.core,
+    haven,
+    readr

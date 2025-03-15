@@ -3,20 +3,17 @@
 #' This block allows to make avaliable a table from an Excel file to a blockr
 #' pipeline.
 #'
-#' @param file File name
 #' @param sheet,range See [readxl::read_excel()]
 #' @param ... Forwarded to [new_block()]
 #'
 #' @rdname xlsx
 #' @export
 new_readxlsx_block <- function(sheet = NULL, range = NULL, ...) {
-
   new_data_block(
     function(id) {
       moduleServer(
         id,
         function(input, output, session) {
-
           sht <- reactiveVal(sheet)
           rng <- reactiveVal(range)
 
@@ -70,13 +67,11 @@ new_readxlsx_block <- function(sheet = NULL, range = NULL, ...) {
 #' @rdname xlsx
 #' @export
 new_writexlsx_block <- function(...) {
-
   new_transform_block(
     function(id, data) {
       moduleServer(
         id,
         function(input, output, session) {
-
           output$dl <- downloadHandler(
             xlsx_download_filename,
             xlsx_download_content(data)
