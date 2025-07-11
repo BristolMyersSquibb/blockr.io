@@ -4,12 +4,12 @@
 \name{blockr.io-package}
 \alias{blockr.io}
 \alias{blockr.io-package}
-\title{blockr.io: What the Package Does (One Line, Title Case)}
+\title{blockr.io: Reading and writing for blockr}
 \description{
-What the package does (one paragraph).
+Adds blocks for reading and writing various data file types.
 }
 \author{
-\strong{Maintainer}: First Last \email{first.last@example.com}
+\strong{Maintainer}: Nicolas Bennett \email{nicolas@cynkra.com}
 
 }
 \keyword{internal}
