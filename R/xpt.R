@@ -26,6 +26,25 @@ new_readxpt_block <- function(col_select = NULL, skip = 0, n_max = Inf, ...) {
           list(
             expr = reactive({
               req(nchar(input$upload$datapath) > 0)
+
+              # Handle col_select properly
+              col_select_value <- col_sel()
+              if (is.null(col_select_value) ||
+                  (is.character(col_select_value) &&
+                   nchar(col_select_value) == 0)) {
+                col_select_value <- NULL
+              } else if (is.character(col_select_value) &&
+                         grepl(",", col_select_value)) {
+                # Parse comma-separated column names
+                col_select_value <- trimws(strsplit(col_select_value, ",")[[1]])
+              }
+
+              # Handle n_max properly
+              n_max_value <- max_lines()
+              if (is.na(n_max_value) || is.infinite(n_max_value)) {
+                n_max_value <- NULL
+              }
+
               bquote(
                 haven::read_xpt(
                   file = .(file),
@@ -35,9 +54,9 @@ new_readxpt_block <- function(col_select = NULL, skip = 0, n_max = Inf, ...) {
                 ),
                 list(
                   file = input$upload$datapath,
-                  col_select = col_sel(),
+                  col_select = col_select_value,
                   skip = skip_lines(),
-                  n_max = max_lines()
+                  n_max = n_max_value
                 )
               )
             }),
