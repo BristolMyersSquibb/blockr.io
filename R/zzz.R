@@ -18,8 +18,8 @@ register_io_blocks <- function() {
       "Write csv data",
       "Read xpt data",
       "Write xpt data",
-      "Read SAS7BDAT data",
-      "Write SAS7BDAT data"
+      "Read sas7bdat data",
+      "Write sas7bdat data"
     ),
     description = c(
       "Read tabular data from an Excel file",
@@ -28,8 +28,8 @@ register_io_blocks <- function() {
       "Write tabular data to a csv file",
       "Read tabular data from an xpt file",
       "Write tabular data to an xpt file",
-      "Read tabular data from a SAS7BDAT file",
-      "Write tabular data to a SAS7BDAT file"
+      "Read tabular data from a sas7bdat file",
+      "Write tabular data to a sas7bdat file"
     ),
     category = c(
       "data",
