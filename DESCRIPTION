@@ -21,3 +21,5 @@ Imports:
     readr,
     shinyFiles,
     rio
+Suggests:
+    testthat

@@ -31,6 +31,9 @@ readxl::readxl_example("clippy.xlsx")
 
 Such a file can then be round-tripped as
 
+options(blockr.volumes = c(home = "~"))
+
+
 ``` r
 library(blockr.core)
 library(blockr.io)
@@ -44,4 +47,6 @@ serve(
     links = links(ab = new_link("a", "b"))
   )
 )
+
+pkgload::load_all(); blockr.core::serve(new_read_block())
 ```

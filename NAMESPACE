@@ -2,6 +2,7 @@
 
 S3method(block_output,readmulti_block)
 export(new_pick_block)
+export(new_read_block)
 export(new_readcsv_block)
 export(new_readmulti_block)
 export(new_readxlsx_block)
