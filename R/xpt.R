@@ -4,7 +4,7 @@
 #' pipeline.
 #'
 #' @inheritParams haven::read_xpt
-#' @param ... Forwarded to [new_block()]
+#' @param ... Forwarded to [blockr.core::new_block()]
 #'
 #' @export
 #' @rdname xpt

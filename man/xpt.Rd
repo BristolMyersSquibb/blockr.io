@@ -19,7 +19,7 @@ specified columns will be read from \code{data_file}.}
 
 \item{n_max}{Maximum number of lines to read.}
 
-\item{...}{Forwarded to \code{\link[=new_block]{new_block()}}}
+\item{...}{Forwarded to \code{\link[blockr.core:new_block]{blockr.core::new_block()}}}
 }
 \description{
 This block allows to make avaliable a table from an xpt file to a blockr

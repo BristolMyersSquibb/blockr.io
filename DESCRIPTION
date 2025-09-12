@@ -16,8 +16,10 @@ Imports:
     readxl,
     writexl,
     shiny,
-    blockr.core,
+    blockr.core (>= 0.1.1),
     haven,
     readr,
     shinyFiles,
     rio
+Remotes:
+    BristolMyersSquibb/blockr.core

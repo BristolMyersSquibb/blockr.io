@@ -21,7 +21,7 @@ new_writecsv_block(...)
     for columns read as character, which is all of them unless
     \code{colClasses} is specified.}
 
-\item{...}{Forwarded to \code{\link[=new_block]{new_block()}}}
+\item{...}{Forwarded to \code{\link[blockr.core:new_block]{blockr.core::new_block()}}}
 }
 \description{
 This block allows to make avaliable a table from an csv file to a blockr

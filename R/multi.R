@@ -4,7 +4,7 @@
 #'
 #' @param paths File path(s)
 #' @param volumes Volume path(s)
-#' @param ... Forwarded to [new_block()]
+#' @param ... Forwarded to [blockr.core::new_block()]
 #'
 #' @rdname mutli
 #' @export

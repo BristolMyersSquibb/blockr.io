@@ -14,7 +14,7 @@ new_pick_block(which = character(), ...)
 
 \item{volumes}{Volume path(s)}
 
-\item{...}{Forwarded to \code{\link[=new_block]{new_block()}}}
+\item{...}{Forwarded to \code{\link[blockr.core:new_block]{blockr.core::new_block()}}}
 
 \item{which}{List selection}
 }

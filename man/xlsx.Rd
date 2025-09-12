@@ -12,7 +12,7 @@ new_writexlsx_block(...)
 \arguments{
 \item{sheet, range}{See \code{\link[readxl:read_excel]{readxl::read_excel()}}}
 
-\item{...}{Forwarded to \code{\link[=new_block]{new_block()}}}
+\item{...}{Forwarded to \code{\link[blockr.core:new_block]{blockr.core::new_block()}}}
 }
 \description{
 This block allows to make avaliable a table from an Excel file to a blockr

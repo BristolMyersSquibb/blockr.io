@@ -4,7 +4,7 @@
 #' pipeline.
 #'
 #' @param sheet,range See [readxl::read_excel()]
-#' @param ... Forwarded to [new_block()]
+#' @param ... Forwarded to [blockr.core::new_block()]
 #'
 #' @rdname xlsx
 #' @export

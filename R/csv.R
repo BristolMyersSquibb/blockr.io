@@ -4,7 +4,7 @@
 #' pipeline.
 #'
 #' @inheritParams utils::read.table
-#' @param ... Forwarded to [new_block()]
+#' @param ... Forwarded to [blockr.core::new_block()]
 #'
 #' @rdname csv
 #' @export
