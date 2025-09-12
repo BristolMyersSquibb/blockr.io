@@ -5,11 +5,7 @@
 \alias{new_pick_block}
 \title{Read multiple files}
 \usage{
-new_readmulti_block(
-  paths = character(),
-  volumes = blockr_option("volumes", c(home = path.expand("~"))),
-  ...
-)
+new_readmulti_block(paths = character(), volumes = filebrowser_volumes(), ...)
 
 new_pick_block(which = character(), ...)
 }

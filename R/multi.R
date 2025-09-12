@@ -8,23 +8,9 @@
 #'
 #' @rdname mutli
 #' @export
-new_readmulti_block <- function(
-  paths = character(),
-  volumes = blockr_option("volumes", c(home = path.expand("~"))),
-  ...) {
-
-  if (is_string(volumes) && grepl(":", volumes)) {
-    volumes <- strsplit(volumes, ":", fixed = TRUE)[[1L]]
-  }
-
-  if (is.null(names(volumes))) {
-    if (length(volumes) == 1L) {
-      names(volumes) <- "volume"
-    } else if (length(volumes) > 1L) {
-      names(volumes) <- paste0("volume", seq_along(volumes))
-    }
-  }
-
+new_readmulti_block <- function(paths = character(),
+                                volumes = filebrowser_volumes(),
+                                ...) {
   new_data_block(
     function(id) {
       moduleServer(
