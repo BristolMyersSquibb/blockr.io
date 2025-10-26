@@ -121,10 +121,6 @@ read_expr_csv <- function(path, ...) {
   quote <- if (is.null(params$quote)) "\"" else params$quote
   encoding <- if (is.null(params$encoding)) "UTF-8" else params$encoding
 
-  message("[DEBUG expr-read.R] Building CSV expression for: ", basename(path),
-          "\n  skip=", skip, ", n_max=", n_max, ", col_names=", col_names,
-          ", sep='", sep, "'")
-
   # Remove names from path vector to avoid potential issues
   path <- unname(path)
 
