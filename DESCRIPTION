@@ -9,6 +9,7 @@ Authors@R:
     )
 Description: Adds blocks for reading and writing various data file types.
 License: GPL (>= 3)
+URL: https://bristolmyerssquibb.github.io/blockr.io/
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3

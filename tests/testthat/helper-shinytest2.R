@@ -38,7 +38,7 @@ create_test_app <- function(
       search_dir <- dirname(search_dir)
     }
 
-    return(getwd())
+    getwd()
   }
 
   pkg_root <- find_pkg_root()
