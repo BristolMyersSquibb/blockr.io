@@ -28,12 +28,6 @@ test_that("read_block loads CSV file with default settings", {
 
   result_data <- get_block_result(app)
 
-  # Debug: print structure
-  print("Result data structure:")
-  print(str(result_data))
-  print("Names:")
-  print(names(result_data))
-
   # Verify data loaded correctly
   expect_true(is.data.frame(result_data) || is.list(result_data))
 
