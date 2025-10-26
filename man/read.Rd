@@ -5,31 +5,53 @@
 \title{Unified file reading block}
 \usage{
 new_read_block(
-  paths = character(),
-  source = "upload",
+  path = character(),
+  source = "path",
   combine = "auto",
-  volumes = blockr_option("volumes", c(home = path.expand("~"))),
-  upload_path = blockr_option("upload_path", Sys.getenv("BLOCKR_UPLOAD_PATH",
-    rappdirs::user_data_dir("blockr"))),
+  csv_sep = ",",
+  csv_quote = "\\"",
+  csv_encoding = "UTF-8",
+  csv_skip = 0,
+  csv_n_max = Inf,
+  csv_col_names = TRUE,
+  excel_sheet = NULL,
+  excel_range = NULL,
+  excel_skip = 0,
+  excel_n_max = Inf,
+  excel_col_names = TRUE,
   ...
 )
 }
 \arguments{
-\item{paths}{Character vector of file paths to pre-load. When provided,
+\item{path}{Character vector of file paths to pre-load. When provided,
 automatically switches to "path" mode regardless of the source parameter.}
 
-\item{source}{Either "upload" for file upload widget or "path" for file browser.
-Note: automatically set to "path" when paths parameter is provided.}
+\item{source}{Either "upload" for file upload widget, "path" for file browser,
+or "url" for URL download. Automatically set based on path parameter.}
 
 \item{combine}{Strategy for combining multiple files: "auto", "rbind", "cbind", "first"}
 
-\item{volumes}{Named character vector of volume paths for file browser mode.
-Can be set globally via \code{options(blockr.volumes = c(name = "path"))} or
-environment variable BLOCKR_VOLUMES.}
+\item{csv_sep}{CSV delimiter character (default: ",")}
 
-\item{upload_path}{Directory for storing uploaded files persistently. Can be set
-via \code{options(blockr.upload_path = "/path")} or environment variable
-BLOCKR_UPLOAD_PATH. Default uses rappdirs::user_data_dir("blockr").}
+\item{csv_quote}{CSV quote character (default: '"')}
+
+\item{csv_encoding}{CSV encoding (default: "UTF-8")}
+
+\item{csv_skip}{Number of rows to skip before reading CSV data (default: 0)}
+
+\item{csv_n_max}{Maximum number of rows to read from CSV (default: Inf)}
+
+\item{csv_col_names}{Use first row as column names for CSV (default: TRUE)}
+
+\item{excel_sheet}{Excel sheet name or number (optional)}
+
+\item{excel_range}{Excel cell range (optional, e.g., "A1:C10")}
+
+\item{excel_skip}{Number of rows to skip before reading Excel data (default: 0)}
+
+\item{excel_n_max}{Maximum number of rows to read from Excel (default: Inf)}
+
+\item{excel_col_names}{Use first row as column names for Excel (default: TRUE)}
 
 \item{...}{Forwarded to \code{\link[blockr.core:new_data_block]{blockr.core::new_data_block()}}}
 }
@@ -44,7 +66,7 @@ persistent storage for uploaded files.
 \details{
 \subsection{File Handling Modes}{
 
-The block supports two modes:
+The block supports three modes:
 
 \strong{Upload mode:}
 \itemize{
@@ -62,7 +84,13 @@ The block supports two modes:
 \item No file copying, reads from original location
 }
 
-Both modes store file paths in state for restoration.
+\strong{URL mode:}
+\itemize{
+\item User provides a URL to a data file
+\item File is downloaded to temporary location each time
+\item Always fetches fresh data from URL
+\item State stores the URL (not file path)
+}
 }
 
 \subsection{Smart Adaptive UI}{
@@ -86,6 +114,18 @@ When multiple files are selected:
 }
 }
 }
+\section{Configuration}{
+
+The following settings are retrieved from options and not stored in block state:
+\itemize{
+\item \strong{volumes}: File browser mount points. Set via \code{options(blockr.volumes = c(name = "path"))}
+or environment variable \code{BLOCKR_VOLUMES}. Default: \code{c(home = "~")}
+\item \strong{upload_path}: Directory for persistent file storage. Set via
+\code{options(blockr.upload_path = "/path")} or environment variable \code{BLOCKR_UPLOAD_PATH}.
+Default: \code{rappdirs::user_data_dir("blockr")}
+}
+}
+
 \examples{
 \dontrun{
 # Basic usage with upload
@@ -98,6 +138,11 @@ serve(new_read_block(paths = c("data.csv", "more_data.csv")))
 serve(new_read_block(
   source = "path",
   volumes = c(home = "~", data = "/path/to/data")
+))
+
+# URL mode - fetch remote data
+serve(new_read_block(
+  url = "https://raw.githubusercontent.com/user/repo/main/data.csv"
 ))
 
 # Specify upload storage location

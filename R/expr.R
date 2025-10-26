@@ -192,6 +192,7 @@ read_expr_excel <- function(path, ...) {
 #' @param ... Reading parameters (currently unused)
 #'
 #' @return Expression calling arrow::read_parquet, arrow::read_feather, or arrow::read_ipc_file
+#' @importFrom arrow read_parquet read_feather read_ipc_file
 #' @keywords internal
 read_expr_arrow <- function(path, ...) {
   # Detect arrow format from extension

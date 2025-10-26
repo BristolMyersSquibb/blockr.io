@@ -93,6 +93,9 @@
 #' serve(new_read_block(upload_path = "/my/storage/dir"))
 #' }
 #'
+#' @importFrom rappdirs user_data_dir
+#' @importFrom bslib navset_pill nav_panel
+#' @importFrom shinyjs useShinyjs
 #' @rdname read
 #' @export
 new_read_block <- function(

@@ -11,15 +11,17 @@ Description: Adds blocks for reading and writing various data file types.
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
-Imports: 
+RoxygenNote: 7.3.3
+Imports:
     readxl,
-    writexl,
     shiny,
     blockr.core (>= 0.1.1),
-    haven,
     readr,
     shinyFiles,
-    rio
+    rio,
+    arrow,
+    bslib,
+    rappdirs,
+    shinyjs
 Remotes:
     BristolMyersSquibb/blockr.core

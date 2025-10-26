@@ -45,6 +45,7 @@ is_valid_url <- function(url) {
 #'
 #' @param url Character. URL to download from.
 #' @return Path to temporary file containing downloaded data.
+#' @importFrom utils download.file
 #' @keywords internal
 download_url_to_temp <- function(url) {
   stopifnot(is_string(url), nzchar(url))
