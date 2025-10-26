@@ -108,8 +108,16 @@ create_test_files <- function(dir = tempdir()) {
   # Multiple CSV files for combining
   csv1 <- file.path(dir, "data1.csv")
   csv2 <- file.path(dir, "data2.csv")
-  write.csv(data.frame(id = 1:3, value = c(10, 20, 30)), csv1, row.names = FALSE)
-  write.csv(data.frame(id = 4:6, value = c(40, 50, 60)), csv2, row.names = FALSE)
+  write.csv(
+    data.frame(id = 1:3, value = c(10, 20, 30)),
+    csv1,
+    row.names = FALSE
+  )
+  write.csv(
+    data.frame(id = 4:6, value = c(40, 50, 60)),
+    csv2,
+    row.names = FALSE
+  )
   files$csv_multi <- c(csv1, csv2)
 
   # Excel file (if writexl available)

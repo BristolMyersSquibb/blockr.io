@@ -58,8 +58,16 @@ test_that("read_block handles multiple CSV files with rbind", {
   csv1 <- file.path(test_dir, "data1.csv")
   csv2 <- file.path(test_dir, "data2.csv")
 
-  write.csv(data.frame(id = 1:3, value = c(10, 20, 30)), csv1, row.names = FALSE)
-  write.csv(data.frame(id = 4:6, value = c(40, 50, 60)), csv2, row.names = FALSE)
+  write.csv(
+    data.frame(id = 1:3, value = c(10, 20, 30)),
+    csv1,
+    row.names = FALSE
+  )
+  write.csv(
+    data.frame(id = 4:6, value = c(40, 50, 60)),
+    csv2,
+    row.names = FALSE
+  )
 
   # Create app with multiple files and rbind
   app_dir <- create_test_app(

@@ -32,11 +32,12 @@
 #'
 #' @keywords internal
 #' @export
-read_expr <- function(paths,
-                            file_type = c("csv", "excel", "arrow", "other"),
-                            combine = c("first", "rbind", "cbind", "auto"),
-                            ...) {
-
+read_expr <- function(
+  paths,
+  file_type = c("csv", "excel", "arrow", "other"),
+  combine = c("first", "rbind", "cbind", "auto"),
+  ...
+) {
   file_type <- match.arg(file_type)
   combine <- match.arg(combine)
 
@@ -221,4 +222,3 @@ read_expr_arrow <- function(path, ...) {
 read_expr_rio <- function(path, ...) {
   bquote(rio::import(file = .(path)))
 }
-

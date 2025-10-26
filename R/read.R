@@ -187,7 +187,9 @@ new_read_block <- function(
             initial_file_paths <- tryCatch(
               {
                 temp_file <- download_url_to_temp(path[[1]])
-                url_display <- basename(strsplit(path[[1]], "?", fixed = TRUE)[[1]][1])
+                url_display <- basename(strsplit(path[[1]], "?", fixed = TRUE)[[
+                  1
+                ]][1])
                 set_names(temp_file, url_display)
               },
               error = function(e) {
@@ -201,7 +203,11 @@ new_read_block <- function(
               # Validate that provided paths exist
               missing_files <- path[!file.exists(path)]
               if (length(missing_files) > 0) {
-                stop("File(s) not found: ", paste(missing_files, collapse = ", "), call. = FALSE)
+                stop(
+                  "File(s) not found: ",
+                  paste(missing_files, collapse = ", "),
+                  call. = FALSE
+                )
               }
               initial_path <- set_names(path, basename(path))
             } else {
@@ -214,7 +220,9 @@ new_read_block <- function(
           # Detected file type - detect on initialization from actual file paths
           # Don't call r_file_paths() here - it's a reactive and we're not in a reactive context yet
           # Use the initial values we just set above instead
-          initial_type <- if (source == "url" && length(path) > 0 && nzchar(path[[1]])) {
+          initial_type <- if (
+            source == "url" && length(path) > 0 && nzchar(path[[1]])
+          ) {
             # For URL mode, detect from temp file if download succeeded
             if (length(initial_file_paths) > 0) {
               detect_file_category(initial_file_paths[1])
@@ -240,10 +248,17 @@ new_read_block <- function(
             r_csv_skip(val)
           })
           observeEvent(input$csv_n_max, {
-            val <- if (input$csv_n_max == "") Inf else as.numeric(input$csv_n_max)
+            val <- if (input$csv_n_max == "") {
+              Inf
+            } else {
+              as.numeric(input$csv_n_max)
+            }
             r_csv_n_max(val)
           })
-          observeEvent(input$csv_col_names, r_csv_col_names(input$csv_col_names))
+          observeEvent(
+            input$csv_col_names,
+            r_csv_col_names(input$csv_col_names)
+          )
           observeEvent(input$excel_sheet, {
             # Convert empty string to NULL
             val <- input$excel_sheet
@@ -254,14 +269,25 @@ new_read_block <- function(
             r_excel_range(if (val == "") NULL else val)
           })
           observeEvent(input$excel_skip, {
-            val <- if (input$excel_skip == "") 0 else as.numeric(input$excel_skip)
+            val <- if (input$excel_skip == "") {
+              0
+            } else {
+              as.numeric(input$excel_skip)
+            }
             r_excel_skip(val)
           })
           observeEvent(input$excel_n_max, {
-            val <- if (input$excel_n_max == "") Inf else as.numeric(input$excel_n_max)
+            val <- if (input$excel_n_max == "") {
+              Inf
+            } else {
+              as.numeric(input$excel_n_max)
+            }
             r_excel_n_max(val)
           })
-          observeEvent(input$excel_col_names, r_excel_col_names(input$excel_col_names))
+          observeEvent(
+            input$excel_col_names,
+            r_excel_col_names(input$excel_col_names)
+          )
 
           # Handle URL input - download to temp file and treat like a path
           observeEvent(input$url_input, {
@@ -282,7 +308,9 @@ new_read_block <- function(
                 temp_file <- download_url_to_temp(url_val)
 
                 # Set file path - use URL basename for display
-                url_display <- basename(strsplit(url_val, "?", fixed = TRUE)[[1]][1])
+                url_display <- basename(strsplit(url_val, "?", fixed = TRUE)[[
+                  1
+                ]][1])
                 r_file_paths(set_names(temp_file, url_display))
 
                 # Detect file type from actual file path
@@ -301,7 +329,8 @@ new_read_block <- function(
 
           # Initialize shinyFiles browser
           shinyFiles::shinyFileChoose(
-            input, "file_browser",
+            input,
+            "file_browser",
             roots = volumes,
             session = session,
             filetypes = get_rio_extensions()
@@ -309,7 +338,9 @@ new_read_block <- function(
 
           # Handle file browser selection
           selected_files <- reactive({
-            if (!is.null(input$file_browser) && !identical(input$file_browser, "")) {
+            if (
+              !is.null(input$file_browser) && !identical(input$file_browser, "")
+            ) {
               shinyFiles::parseFilePaths(volumes, input$file_browser)$datapath
             } else {
               character()
@@ -318,7 +349,10 @@ new_read_block <- function(
 
           observeEvent(selected_files(), {
             if (length(selected_files()) > 0) {
-              selected_paths <- set_names(selected_files(), basename(selected_files()))
+              selected_paths <- set_names(
+                selected_files(),
+                basename(selected_files())
+              )
               # For browse mode, r_path and r_file_paths are the same
               r_path(selected_paths)
               r_file_paths(selected_paths)
@@ -410,7 +444,8 @@ new_read_block <- function(
             }
 
             strategy <- r_combine()
-            switch(strategy,
+            switch(
+              strategy,
               "auto" = "Will attempt to row-bind files, fallback to first file",
               "rbind" = "Will row-bind files (requires same columns)",
               "cbind" = "Will column-bind files (requires same row count)",
@@ -435,7 +470,14 @@ new_read_block <- function(
               other = "Other format"
             )
 
-            paste("Detected:", if (is.null(type_labels[type])) "Unknown format" else type_labels[type])
+            paste(
+              "Detected:",
+              if (is.null(type_labels[type])) {
+                "Unknown format"
+              } else {
+                type_labels[type]
+              }
+            )
           })
 
           # Show/hide format-specific options based on file type
@@ -453,7 +495,11 @@ new_read_block <- function(
 
           outputOptions(output, "show_csv_options", suspendWhenHidden = FALSE)
           outputOptions(output, "show_excel_options", suspendWhenHidden = FALSE)
-          outputOptions(output, "show_multi_file_options", suspendWhenHidden = FALSE)
+          outputOptions(
+            output,
+            "show_multi_file_options",
+            suspendWhenHidden = FALSE
+          )
 
           list(
             expr = reactive({
@@ -511,7 +557,8 @@ new_read_block <- function(
             # File Source Button Group (full-width, outside grid)
             div(
               class = "mb-3", # Add spacing below buttons
-              tags$style(HTML("
+              tags$style(HTML(
+                "
                 .nav-pills {
                   display: inline-flex;
                   overflow: hidden;
@@ -539,7 +586,8 @@ new_read_block <- function(
                 .block-input-wrapper {
                   min-height: 120px;
                 }
-              ")),
+              "
+              )),
               bslib::navset_pill(
                 id = NS(id, "source_pills"),
                 selected = source,
@@ -567,7 +615,9 @@ new_read_block <- function(
                     class = "block-input-wrapper mt-3",
                     div(
                       class = "block-help-text mb-3",
-                      HTML("<strong>Drag and drop files</strong> or click to browse. Uploaded files are copied and persist across sessions.")
+                      HTML(
+                        "<strong>Drag and drop files</strong> or click to browse. Uploaded files are copied and persist across sessions."
+                      )
                     ),
                     fileInput(
                       inputId = NS(id, "file_upload"),
@@ -590,7 +640,11 @@ new_read_block <- function(
                       inputId = NS(id, "url_input"),
                       label = NULL,
                       width = "100%",
-                      value = if (source == "url" && length(path) > 0) path[[1]] else "",
+                      value = if (source == "url" && length(path) > 0) {
+                        path[[1]]
+                      } else {
+                        ""
+                      },
                       placeholder = "https://example.com/data.csv"
                     )
                   )
@@ -677,7 +731,12 @@ new_read_block <- function(
                       selectInput(
                         inputId = NS(id, "csv_encoding"),
                         label = "Encoding",
-                        choices = c("UTF-8", "Latin-1", "Windows-1252", "ISO-8859-1"),
+                        choices = c(
+                          "UTF-8",
+                          "Latin-1",
+                          "Windows-1252",
+                          "ISO-8859-1"
+                        ),
                         selected = csv_encoding
                       )
                     ),
@@ -695,7 +754,11 @@ new_read_block <- function(
                       textInput(
                         inputId = NS(id, "csv_n_max"),
                         label = "Max rows to read",
-                        value = if (is.infinite(csv_n_max)) "" else as.character(csv_n_max),
+                        value = if (is.infinite(csv_n_max)) {
+                          ""
+                        } else {
+                          as.character(csv_n_max)
+                        },
                         placeholder = "All rows (leave empty)"
                       )
                     ),
@@ -748,7 +811,11 @@ new_read_block <- function(
                       textInput(
                         inputId = NS(id, "excel_n_max"),
                         label = "Max rows to read",
-                        value = if (is.infinite(excel_n_max)) "" else as.character(excel_n_max),
+                        value = if (is.infinite(excel_n_max)) {
+                          ""
+                        } else {
+                          as.character(excel_n_max)
+                        },
                         placeholder = "All rows (leave empty)"
                       )
                     ),

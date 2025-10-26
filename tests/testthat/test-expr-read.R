@@ -23,7 +23,7 @@ test_that("read_expr generates rbind for multiple CSV files", {
 
   # Check it's rbind(readr::read_csv(...), readr::read_csv(...))
   expect_equal(expr[[1]], quote(rbind))
-  expect_length(expr, 3)  # rbind + 2 file expressions
+  expect_length(expr, 3) # rbind + 2 file expressions
 })
 
 test_that("read_expr actually reads single CSV file", {
@@ -43,7 +43,7 @@ test_that("read_expr actually reads single CSV file", {
   result <- eval(expr)
 
   # Verify it worked
-  expect_s3_class(result, "tbl_df")  # tibble from readr
+  expect_s3_class(result, "tbl_df") # tibble from readr
   expect_equal(nrow(result), 3)
   expect_equal(ncol(result), 2)
   expect_equal(result$x, 1:3)
@@ -90,7 +90,7 @@ test_that("read_expr auto strategy falls back on incompatible files", {
   expr <- read_expr(
     paths = c(temp1, temp2),
     file_type = "csv",
-    combine = "auto"  # Should try rbind, fall back to first
+    combine = "auto" # Should try rbind, fall back to first
   )
 
   # EVALUATE - should return just first file
@@ -105,8 +105,13 @@ test_that("read_expr auto strategy falls back on incompatible files", {
 
 test_that("read_expr handles TSV files", {
   temp_tsv <- tempfile(fileext = ".tsv")
-  write.table(data.frame(a = 1:3, b = 4:6), temp_tsv,
-              sep = "\t", row.names = FALSE, quote = FALSE)
+  write.table(
+    data.frame(a = 1:3, b = 4:6),
+    temp_tsv,
+    sep = "\t",
+    row.names = FALSE,
+    quote = FALSE
+  )
 
   expr <- read_expr(
     paths = temp_tsv,
@@ -127,8 +132,13 @@ test_that("read_expr handles TSV files", {
 
 test_that("read_expr handles custom delimiters", {
   temp_file <- tempfile(fileext = ".txt")
-  write.table(data.frame(x = 1:3), temp_file,
-              sep = ";", row.names = FALSE, quote = FALSE)
+  write.table(
+    data.frame(x = 1:3),
+    temp_file,
+    sep = ";",
+    row.names = FALSE,
+    quote = FALSE
+  )
 
   expr <- read_expr(
     paths = temp_file,
@@ -257,7 +267,7 @@ test_that("read_expr respects CSV parameters", {
     paths = temp_file,
     file_type = "csv",
     skip = 0,
-    n_max = 5  # Read only 5 rows
+    n_max = 5 # Read only 5 rows
   )
 
   result <- eval(expr)

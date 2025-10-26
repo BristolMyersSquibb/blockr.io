@@ -1,5 +1,4 @@
 zchr_to_null <- function(x) {
-
   if (nzchar(x)) {
     return(x)
   }
@@ -33,8 +32,12 @@ set_names <- function(x, nm) {
 #' Validate URL format
 #' @keywords internal
 is_valid_url <- function(url) {
-  if (!is_string(url)) return(FALSE)
-  if (!nzchar(url)) return(FALSE)
+  if (!is_string(url)) {
+    return(FALSE)
+  }
+  if (!nzchar(url)) {
+    return(FALSE)
+  }
   grepl("^https?://[^\\s]+", url, perl = TRUE)
 }
 
@@ -69,12 +72,21 @@ download_url_to_temp <- function(url) {
   temp_file <- tempfile(fileext = ext)
 
   # Download with error handling
-  tryCatch({
-    download.file(url, temp_file, quiet = TRUE, mode = "wb")
-    temp_file
-  }, error = function(e) {
-    stop("Failed to download from URL: ", url, "\n  ", e$message, call. = FALSE)
-  })
+  tryCatch(
+    {
+      download.file(url, temp_file, quiet = TRUE, mode = "wb")
+      temp_file
+    },
+    error = function(e) {
+      stop(
+        "Failed to download from URL: ",
+        url,
+        "\n  ",
+        e$message,
+        call. = FALSE
+      )
+    }
+  )
 }
 
 #' Get list of file extensions supported by rio
@@ -87,33 +99,56 @@ download_url_to_temp <- function(url) {
 get_rio_extensions <- function() {
   c(
     # Tabular text (though we prefer readr for CSV/TSV)
-    "csv", "tsv", "txt", "fwf",
+    "csv",
+    "tsv",
+    "txt",
+    "fwf",
 
     # Excel
-    "xls", "xlsx", "xlsm", "xlsb",
+    "xls",
+    "xlsx",
+    "xlsm",
+    "xlsb",
 
     # Statistical software
-    "sav", "zsav",     # SPSS
-    "dta",             # Stata
-    "sas7bdat", "xpt", # SAS
+    "sav",
+    "zsav", # SPSS
+    "dta", # Stata
+    "sas7bdat",
+    "xpt", # SAS
 
     # Arrow columnar
-    "parquet", "feather", "arrow",
+    "parquet",
+    "feather",
+    "arrow",
 
     # OpenDocument
-    "ods", "fods",
+    "ods",
+    "fods",
 
     # Web and config
-    "json", "xml", "html", "yml", "yaml",
+    "json",
+    "xml",
+    "html",
+    "yml",
+    "yaml",
 
     # Database
-    "dbf", "sqlite", "db",
+    "dbf",
+    "sqlite",
+    "db",
 
     # R formats
-    "rds", "rdata", "rda",
+    "rds",
+    "rdata",
+    "rda",
 
     # Other
-    "csvy", "arff", "rec", "mtp", "syd"
+    "csvy",
+    "arff",
+    "rec",
+    "mtp",
+    "syd"
   )
 }
 

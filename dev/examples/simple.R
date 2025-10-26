@@ -14,7 +14,6 @@ write.csv(mtcars, temp_csv, row.names = FALSE)
 #   dataset = "iris"
 # ))
 
-
 # Serve the read block in a DAG board
 blockr.core::serve(
   blockr.ui::new_dag_board(

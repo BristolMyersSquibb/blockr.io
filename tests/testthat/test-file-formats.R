@@ -154,7 +154,11 @@ test_that("read_expr handles empty file gracefully", {
   temp_file <- tempfile(fileext = ".csv")
 
   # Create empty CSV (only header)
-  write.csv(data.frame(x = integer(), y = character()), temp_file, row.names = FALSE)
+  write.csv(
+    data.frame(x = integer(), y = character()),
+    temp_file,
+    row.names = FALSE
+  )
 
   expr <- read_expr(
     paths = temp_file,

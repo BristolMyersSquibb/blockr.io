@@ -1,5 +1,4 @@
 test_that("read_block expr_server generates correct CSV expression", {
-
   # Create test CSV file
   temp_csv <- tempfile(fileext = ".csv")
   write.csv(mtcars[1:5, ], temp_csv, row.names = FALSE)
@@ -10,7 +9,7 @@ test_that("read_block expr_server generates correct CSV expression", {
   # Test the expr_server module directly
   shiny::testServer(
     blk$expr_server,
-    args = list(),  # Data blocks don't need data argument
+    args = list(), # Data blocks don't need data argument
     {
       session$flushReact()
 
@@ -32,7 +31,6 @@ test_that("read_block expr_server generates correct CSV expression", {
 })
 
 test_that("read_block expr_server handles multiple files with rbind", {
-
   # Create test CSV files
   temp_csv1 <- tempfile(fileext = ".csv")
   temp_csv2 <- tempfile(fileext = ".csv")
@@ -65,11 +63,15 @@ test_that("read_block expr_server handles multiple files with rbind", {
 })
 
 test_that("read_block expr_server respects CSV parameters", {
-
   # Create test file with semicolon delimiter
   temp_csv <- tempfile(fileext = ".csv")
-  write.table(data.frame(a = 1:5, b = 6:10), temp_csv,
-              sep = ";", row.names = FALSE, quote = FALSE)
+  write.table(
+    data.frame(a = 1:5, b = 6:10),
+    temp_csv,
+    sep = ";",
+    row.names = FALSE,
+    quote = FALSE
+  )
 
   # Create block with custom delimiter
   blk <- new_read_block(
@@ -136,7 +138,6 @@ test_that("read_block expr_server handles Excel files", {
 })
 
 test_that("read_block expr_server state returns reactive values", {
-
   temp_csv <- tempfile(fileext = ".csv")
   write.csv(mtcars[1:5, ], temp_csv, row.names = FALSE)
 
@@ -170,7 +171,6 @@ test_that("read_block expr_server state returns reactive values", {
 })
 
 test_that("read_block expr_server evaluates expression correctly", {
-
   # Create test CSV
   temp_csv <- tempfile(fileext = ".csv")
   test_data <- data.frame(x = 1:3, y = c("a", "b", "c"))
