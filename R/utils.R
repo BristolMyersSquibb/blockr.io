@@ -75,3 +75,69 @@ download_url_to_temp <- function(url) {
     stop("Failed to download from URL: ", url, "\n  ", e$message, call. = FALSE)
   })
 }
+
+#' Get list of file extensions supported by rio
+#'
+#' Returns a comprehensive list of file formats that can be handled by rio::import().
+#' Used for file browser accept parameter and format validation.
+#'
+#' @return Character vector of file extensions (without dots)
+#' @keywords internal
+get_rio_extensions <- function() {
+  c(
+    # Tabular text (though we prefer readr for CSV/TSV)
+    "csv", "tsv", "txt", "fwf",
+
+    # Excel
+    "xls", "xlsx", "xlsm", "xlsb",
+
+    # Statistical software
+    "sav", "zsav",     # SPSS
+    "dta",             # Stata
+    "sas7bdat", "xpt", # SAS
+
+    # Arrow columnar
+    "parquet", "feather", "arrow",
+
+    # OpenDocument
+    "ods", "fods",
+
+    # Web and config
+    "json", "xml", "html", "yml", "yaml",
+
+    # Database
+    "dbf", "sqlite", "db",
+
+    # R formats
+    "rds", "rdata", "rda",
+
+    # Other
+    "csvy", "arff", "rec", "mtp", "syd"
+  )
+}
+
+#' Detect file category for UI adaptation
+#'
+#' Categorizes files by extension into broad categories that determine which
+#' UI options to show (csv/excel/arrow/other).
+#'
+#' @param path Character. File path.
+#' @return Character. One of: "csv", "excel", "arrow", "other"
+#' @keywords internal
+detect_file_category <- function(path) {
+  ext <- tolower(tools::file_ext(path))
+
+  if (ext %in% c("csv", "tsv", "txt", "dat", "tab")) {
+    return("csv")
+  }
+
+  if (ext %in% c("xls", "xlsx", "xlsm", "xlsb")) {
+    return("excel")
+  }
+
+  if (ext %in% c("parquet", "feather", "arrow")) {
+    return("arrow")
+  }
+
+  "other"
+}
