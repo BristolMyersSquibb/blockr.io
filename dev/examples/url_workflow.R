@@ -2,7 +2,7 @@ library(blockr.ui)
 library(blockr.core)
 
 # devtools::load_all("../blockr.ui") # ???
-devtools::load_all("blockr.io") # ???
+devtools::load_all(".") # ???
 # devtools::load_all("../blockr.core") # ???
 
 # Swiss GDP data URL (CSV format)
@@ -13,7 +13,10 @@ blockr.core::serve(
     blocks = c(
       data = new_read_block(
         path = swiss_gdp_url,
-        source = "url"
+        source = "url",
+        args = list(
+          sep = ","
+        )
       )
     )
   )

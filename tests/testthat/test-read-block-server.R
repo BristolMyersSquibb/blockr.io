@@ -103,7 +103,7 @@ test_that("read_block expr_server respects CSV parameters", {
   # Create block with custom delimiter
   blk <- new_read_block(
     path = temp_csv,
-    csv_sep = ";"
+    args = list(sep = ";")
   )
 
   shiny::testServer(
@@ -146,7 +146,7 @@ test_that("read_block expr_server handles Excel files", {
   # Create block reading specific sheet
   blk <- new_read_block(
     path = temp_xlsx,
-    excel_sheet = "Sheet2"
+    args = list(sheet = "Sheet2")
   )
 
   shiny::testServer(
@@ -174,8 +174,7 @@ test_that("read_block expr_server state returns reactive values", {
 
   blk <- new_read_block(
     path = temp_csv,
-    csv_sep = ",",
-    csv_skip = 2
+    args = list(sep = ",", skip = 2)
   )
 
   shiny::testServer(
@@ -188,13 +187,12 @@ test_that("read_block expr_server state returns reactive values", {
 
       # State should contain reactive functions
       expect_true(is.reactive(result$state$path))
-      expect_true(is.reactive(result$state$csv_sep))
-      expect_true(is.reactive(result$state$csv_skip))
+      expect_true(is.reactive(result$state$args))
 
       # Can call them to get values
       expect_equal(length(result$state$path()), 1)
-      expect_equal(result$state$csv_sep(), ",")
-      expect_equal(result$state$csv_skip(), 2)
+      expect_equal(result$state$args()$sep, ",")
+      expect_equal(result$state$args()$skip, 2)
     }
   )
 

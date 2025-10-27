@@ -8,17 +8,7 @@ new_read_block(
   path = character(),
   source = "path",
   combine = "auto",
-  csv_sep = ",",
-  csv_quote = "\\"",
-  csv_encoding = "UTF-8",
-  csv_skip = 0,
-  csv_n_max = Inf,
-  csv_col_names = TRUE,
-  excel_sheet = NULL,
-  excel_range = NULL,
-  excel_skip = 0,
-  excel_n_max = Inf,
-  excel_col_names = TRUE,
+  args = list(),
   ...
 )
 }
@@ -31,27 +21,15 @@ or "url" for URL download. Automatically set based on path parameter.}
 
 \item{combine}{Strategy for combining multiple files: "auto", "rbind", "cbind", "first"}
 
-\item{csv_sep}{CSV delimiter character (default: ",")}
-
-\item{csv_quote}{CSV quote character (default: '"')}
-
-\item{csv_encoding}{CSV encoding (default: "UTF-8")}
-
-\item{csv_skip}{Number of rows to skip before reading CSV data (default: 0)}
-
-\item{csv_n_max}{Maximum number of rows to read from CSV (default: Inf)}
-
-\item{csv_col_names}{Use first row as column names for CSV (default: TRUE)}
-
-\item{excel_sheet}{Excel sheet name or number (optional)}
-
-\item{excel_range}{Excel cell range (optional, e.g., "A1:C10")}
-
-\item{excel_skip}{Number of rows to skip before reading Excel data (default: 0)}
-
-\item{excel_n_max}{Maximum number of rows to read from Excel (default: Inf)}
-
-\item{excel_col_names}{Use first row as column names for Excel (default: TRUE)}
+\item{args}{Named list of format-specific reading parameters. Only specify values
+that differ from defaults. Available parameters:
+\itemize{
+\item \strong{For CSV files:} \code{sep} (default: ","), \code{quote} (default: '"'),
+\code{encoding} (default: "UTF-8"), \code{skip} (default: 0),
+\code{n_max} (default: Inf), \code{col_names} (default: TRUE)
+\item \strong{For Excel files:} \code{sheet} (default: NULL), \code{range} (default: NULL),
+\code{skip} (default: 0), \code{n_max} (default: Inf), \code{col_names} (default: TRUE)
+}}
 
 \item{...}{Forwarded to \code{\link[blockr.core:new_data_block]{blockr.core::new_data_block()}}}
 }
@@ -132,21 +110,24 @@ Default: \code{rappdirs::user_data_dir("blockr")}
 serve(new_read_block())
 
 # Pre-load specific files
-serve(new_read_block(paths = c("data.csv", "more_data.csv")))
+serve(new_read_block(path = c("data.csv", "more_data.csv")))
 
-# Browse mode with custom volumes
+# Custom CSV parameters (semicolon delimiter, skip first 5 rows)
 serve(new_read_block(
-  source = "path",
-  volumes = c(home = "~", data = "/path/to/data")
+  path = "data.csv",
+  args = list(sep = ";", skip = 5)
+))
+
+# Excel with specific sheet
+serve(new_read_block(
+  path = "data.xlsx",
+  args = list(sheet = "Sales", range = "A1:E100")
 ))
 
 # URL mode - fetch remote data
 serve(new_read_block(
-  url = "https://raw.githubusercontent.com/user/repo/main/data.csv"
+  path = "https://raw.githubusercontent.com/user/repo/main/data.csv"
 ))
-
-# Specify upload storage location
-serve(new_read_block(upload_path = "/my/storage/dir"))
 }
 
 }

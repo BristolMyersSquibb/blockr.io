@@ -9,17 +9,13 @@
 #' @param source Either "upload" for file upload widget, "path" for file browser,
 #'   or "url" for URL download. Automatically set based on path parameter.
 #' @param combine Strategy for combining multiple files: "auto", "rbind", "cbind", "first"
-#' @param csv_sep CSV delimiter character (default: ",")
-#' @param csv_quote CSV quote character (default: '"')
-#' @param csv_encoding CSV encoding (default: "UTF-8")
-#' @param csv_skip Number of rows to skip before reading CSV data (default: 0)
-#' @param csv_n_max Maximum number of rows to read from CSV (default: Inf)
-#' @param csv_col_names Use first row as column names for CSV (default: TRUE)
-#' @param excel_sheet Excel sheet name or number (optional)
-#' @param excel_range Excel cell range (optional, e.g., "A1:C10")
-#' @param excel_skip Number of rows to skip before reading Excel data (default: 0)
-#' @param excel_n_max Maximum number of rows to read from Excel (default: Inf)
-#' @param excel_col_names Use first row as column names for Excel (default: TRUE)
+#' @param args Named list of format-specific reading parameters. Only specify values
+#'   that differ from defaults. Available parameters:
+#'   - **For CSV files:** `sep` (default: ","), `quote` (default: '"'),
+#'     `encoding` (default: "UTF-8"), `skip` (default: 0),
+#'     `n_max` (default: Inf), `col_names` (default: TRUE)
+#'   - **For Excel files:** `sheet` (default: NULL), `range` (default: NULL),
+#'     `skip` (default: 0), `n_max` (default: Inf), `col_names` (default: TRUE)
 #' @param ... Forwarded to [blockr.core::new_data_block()]
 #'
 #' @section Configuration:
@@ -76,21 +72,24 @@
 #' serve(new_read_block())
 #'
 #' # Pre-load specific files
-#' serve(new_read_block(paths = c("data.csv", "more_data.csv")))
+#' serve(new_read_block(path = c("data.csv", "more_data.csv")))
 #'
-#' # Browse mode with custom volumes
+#' # Custom CSV parameters (semicolon delimiter, skip first 5 rows)
 #' serve(new_read_block(
-#'   source = "path",
-#'   volumes = c(home = "~", data = "/path/to/data")
+#'   path = "data.csv",
+#'   args = list(sep = ";", skip = 5)
+#' ))
+#'
+#' # Excel with specific sheet
+#' serve(new_read_block(
+#'   path = "data.xlsx",
+#'   args = list(sheet = "Sales", range = "A1:E100")
 #' ))
 #'
 #' # URL mode - fetch remote data
 #' serve(new_read_block(
-#'   url = "https://raw.githubusercontent.com/user/repo/main/data.csv"
+#'   path = "https://raw.githubusercontent.com/user/repo/main/data.csv"
 #' ))
-#'
-#' # Specify upload storage location
-#' serve(new_read_block(upload_path = "/my/storage/dir"))
 #' }
 #'
 #' @importFrom rappdirs user_data_dir
@@ -102,17 +101,7 @@ new_read_block <- function(
   path = character(),
   source = "path",
   combine = "auto",
-  csv_sep = ",",
-  csv_quote = "\"",
-  csv_encoding = "UTF-8",
-  csv_skip = 0,
-  csv_n_max = Inf,
-  csv_col_names = TRUE,
-  excel_sheet = NULL,
-  excel_range = NULL,
-  excel_skip = 0,
-  excel_n_max = Inf,
-  excel_col_names = TRUE,
+  args = list(),
   ...
 ) {
   # Validate parameters
@@ -162,18 +151,8 @@ new_read_block <- function(
           r_source <- reactiveVal(source)
           r_combine <- reactiveVal(combine)
 
-          # File type-specific options (from constructor parameters)
-          r_csv_sep <- reactiveVal(csv_sep)
-          r_csv_quote <- reactiveVal(csv_quote)
-          r_csv_encoding <- reactiveVal(csv_encoding)
-          r_csv_skip <- reactiveVal(csv_skip)
-          r_csv_n_max <- reactiveVal(csv_n_max)
-          r_csv_col_names <- reactiveVal(csv_col_names)
-          r_excel_sheet <- reactiveVal(excel_sheet)
-          r_excel_range <- reactiveVal(excel_range)
-          r_excel_skip <- reactiveVal(excel_skip)
-          r_excel_n_max <- reactiveVal(excel_n_max)
-          r_excel_col_names <- reactiveVal(excel_col_names)
+          # File type-specific options stored as a single list
+          r_args <- reactiveVal(args)
 
           # Path storage - unified field for both URLs and file paths
           # r_path: State-persisted value (URL string when source="url", file paths otherwise)
@@ -240,54 +219,65 @@ new_read_block <- function(
           # Update state from inputs
           # Note: source is updated when user actually selects/uploads data, not when accordion changes
           observeEvent(input$combine, r_combine(input$combine))
-          observeEvent(input$csv_sep, r_csv_sep(input$csv_sep))
-          observeEvent(input$csv_quote, r_csv_quote(input$csv_quote))
-          observeEvent(input$csv_encoding, r_csv_encoding(input$csv_encoding))
+
+          # CSV parameter updates - collect into args list
+          observeEvent(input$csv_sep, {
+            current <- r_args()
+            current$sep <- input$csv_sep
+            r_args(current)
+          })
+          observeEvent(input$csv_quote, {
+            current <- r_args()
+            current$quote <- input$csv_quote
+            r_args(current)
+          })
+          observeEvent(input$csv_encoding, {
+            current <- r_args()
+            current$encoding <- input$csv_encoding
+            r_args(current)
+          })
           observeEvent(input$csv_skip, {
-            val <- if (input$csv_skip == "") 0 else as.numeric(input$csv_skip)
-            r_csv_skip(val)
+            current <- r_args()
+            current$skip <- if (input$csv_skip == "") 0 else as.numeric(input$csv_skip)
+            r_args(current)
           })
           observeEvent(input$csv_n_max, {
-            val <- if (input$csv_n_max == "") {
-              Inf
-            } else {
-              as.numeric(input$csv_n_max)
-            }
-            r_csv_n_max(val)
+            current <- r_args()
+            current$n_max <- if (input$csv_n_max == "") Inf else as.numeric(input$csv_n_max)
+            r_args(current)
           })
-          observeEvent(
-            input$csv_col_names,
-            r_csv_col_names(input$csv_col_names)
-          )
+          observeEvent(input$csv_col_names, {
+            current <- r_args()
+            current$col_names <- input$csv_col_names
+            r_args(current)
+          })
+
+          # Excel parameter updates - collect into args list
           observeEvent(input$excel_sheet, {
-            # Convert empty string to NULL
-            val <- input$excel_sheet
-            r_excel_sheet(if (val == "") NULL else val)
+            current <- r_args()
+            current$sheet <- if (input$excel_sheet == "") NULL else input$excel_sheet
+            r_args(current)
           })
           observeEvent(input$excel_range, {
-            val <- input$excel_range
-            r_excel_range(if (val == "") NULL else val)
+            current <- r_args()
+            current$range <- if (input$excel_range == "") NULL else input$excel_range
+            r_args(current)
           })
           observeEvent(input$excel_skip, {
-            val <- if (input$excel_skip == "") {
-              0
-            } else {
-              as.numeric(input$excel_skip)
-            }
-            r_excel_skip(val)
+            current <- r_args()
+            current$skip <- if (input$excel_skip == "") 0 else as.numeric(input$excel_skip)
+            r_args(current)
           })
           observeEvent(input$excel_n_max, {
-            val <- if (input$excel_n_max == "") {
-              Inf
-            } else {
-              as.numeric(input$excel_n_max)
-            }
-            r_excel_n_max(val)
+            current <- r_args()
+            current$n_max <- if (input$excel_n_max == "") Inf else as.numeric(input$excel_n_max)
+            r_args(current)
           })
-          observeEvent(
-            input$excel_col_names,
-            r_excel_col_names(input$excel_col_names)
-          )
+          observeEvent(input$excel_col_names, {
+            current <- r_args()
+            current$col_names <- input$excel_col_names
+            r_args(current)
+          })
 
           # Handle URL input - download to temp file and treat like a path
           observeEvent(input$url_input, {
@@ -503,38 +493,24 @@ new_read_block <- function(
 
           list(
             expr = reactive({
-              # Use read_expr() to generate expression
-              read_expr(
-                paths = r_file_paths(),
-                file_type = detected_type(),
-                combine = r_combine(),
-                # CSV parameters
-                sep = r_csv_sep(),
-                col_names = r_csv_col_names(),
-                skip = r_csv_skip(),
-                n_max = r_csv_n_max(),
-                quote = r_csv_quote(),
-                encoding = r_csv_encoding(),
-                # Excel parameters
-                sheet = r_excel_sheet(),
-                range = r_excel_range()
+              # Use read_expr() to generate expression, passing args via do.call
+              do.call(
+                read_expr,
+                c(
+                  list(
+                    paths = r_file_paths(),
+                    file_type = detected_type(),
+                    combine = r_combine()
+                  ),
+                  r_args()
+                )
               )
             }),
             state = list(
               path = r_path, # Reactive itself, not called
               source = r_source,
               combine = r_combine,
-              csv_sep = r_csv_sep,
-              csv_quote = r_csv_quote,
-              csv_encoding = r_csv_encoding,
-              csv_skip = r_csv_skip,
-              csv_n_max = r_csv_n_max,
-              csv_col_names = r_csv_col_names,
-              excel_sheet = r_excel_sheet,
-              excel_range = r_excel_range,
-              excel_skip = r_excel_skip,
-              excel_n_max = r_excel_n_max,
-              excel_col_names = r_excel_col_names
+              args = r_args
               # Note: volumes and upload_path are runtime configuration, not persisted state
             )
           )
@@ -714,8 +690,9 @@ new_read_block <- function(
                       class = "block-input-wrapper",
                       textInput(
                         inputId = NS(id, "csv_sep"),
-                        label = "CSV Delimiter",
-                        value = csv_sep
+                        label = "Delimiter",
+                        value = if (!is.null(args$sep)) args$sep else ",",
+                        placeholder = "default: ,"
                       )
                     ),
                     div(
@@ -723,7 +700,8 @@ new_read_block <- function(
                       textInput(
                         inputId = NS(id, "csv_quote"),
                         label = "Quote character",
-                        value = csv_quote
+                        value = if (!is.null(args$quote)) args$quote else "\"",
+                        placeholder = "default: \""
                       )
                     ),
                     div(
@@ -737,7 +715,7 @@ new_read_block <- function(
                           "Windows-1252",
                           "ISO-8859-1"
                         ),
-                        selected = csv_encoding
+                        selected = if (!is.null(args$encoding)) args$encoding else "UTF-8"
                       )
                     ),
                     div(
@@ -745,8 +723,8 @@ new_read_block <- function(
                       textInput(
                         inputId = NS(id, "csv_skip"),
                         label = "Skip rows",
-                        value = as.character(csv_skip),
-                        placeholder = "0"
+                        value = if (!is.null(args$skip)) as.character(args$skip) else "",
+                        placeholder = "default: 0"
                       )
                     ),
                     div(
@@ -754,12 +732,8 @@ new_read_block <- function(
                       textInput(
                         inputId = NS(id, "csv_n_max"),
                         label = "Max rows to read",
-                        value = if (is.infinite(csv_n_max)) {
-                          ""
-                        } else {
-                          as.character(csv_n_max)
-                        },
-                        placeholder = "All rows (leave empty)"
+                        value = if (!is.null(args$n_max) && !is.infinite(args$n_max)) as.character(args$n_max) else "",
+                        placeholder = "default: all rows"
                       )
                     ),
                     div(
@@ -767,7 +741,7 @@ new_read_block <- function(
                       checkboxInput(
                         inputId = NS(id, "csv_col_names"),
                         label = "First row is header",
-                        value = csv_col_names
+                        value = if (!is.null(args$col_names)) args$col_names else TRUE
                       )
                     )
                   )
@@ -783,9 +757,9 @@ new_read_block <- function(
                       class = "block-input-wrapper",
                       textInput(
                         inputId = NS(id, "excel_sheet"),
-                        label = "Excel Sheet name or number",
-                        value = if (is.null(excel_sheet)) "" else excel_sheet,
-                        placeholder = "Leave empty for first sheet"
+                        label = "Sheet name or number",
+                        value = if (!is.null(args$sheet)) as.character(args$sheet) else "",
+                        placeholder = "default: first sheet"
                       )
                     ),
                     div(
@@ -793,8 +767,8 @@ new_read_block <- function(
                       textInput(
                         inputId = NS(id, "excel_range"),
                         label = "Cell range",
-                        value = if (is.null(excel_range)) "" else excel_range,
-                        placeholder = "e.g., A1:C10 (empty = all)"
+                        value = if (!is.null(args$range)) args$range else "",
+                        placeholder = "default: all cells (e.g., A1:C10)"
                       )
                     ),
                     div(
@@ -802,8 +776,8 @@ new_read_block <- function(
                       textInput(
                         inputId = NS(id, "excel_skip"),
                         label = "Skip rows",
-                        value = as.character(excel_skip),
-                        placeholder = "0"
+                        value = if (!is.null(args$skip)) as.character(args$skip) else "",
+                        placeholder = "default: 0"
                       )
                     ),
                     div(
@@ -811,12 +785,8 @@ new_read_block <- function(
                       textInput(
                         inputId = NS(id, "excel_n_max"),
                         label = "Max rows to read",
-                        value = if (is.infinite(excel_n_max)) {
-                          ""
-                        } else {
-                          as.character(excel_n_max)
-                        },
-                        placeholder = "All rows (leave empty)"
+                        value = if (!is.null(args$n_max) && !is.infinite(args$n_max)) as.character(args$n_max) else "",
+                        placeholder = "default: all rows"
                       )
                     ),
                     div(
@@ -824,7 +794,7 @@ new_read_block <- function(
                       checkboxInput(
                         inputId = NS(id, "excel_col_names"),
                         label = "First row is header",
-                        value = excel_col_names
+                        value = if (!is.null(args$col_names)) args$col_names else TRUE
                       )
                     )
                   )

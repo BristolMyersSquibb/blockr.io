@@ -68,9 +68,7 @@ if (requireNamespace("devtools", quietly = TRUE)) {
 # Create and serve the block
 serve(new_read_block(
   path = "%s",
-  csv_sep = ",",
-  csv_quote = "\\"",
-  csv_encoding = "UTF-8"
+  args = list(sep = ",", quote = "\\"", encoding = "UTF-8")
 ))
 ', pkg_root, csv_file)
 

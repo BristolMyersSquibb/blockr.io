@@ -8,6 +8,13 @@
 \description{
 Adds blocks for reading and writing various data file types.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://bristolmyerssquibb.github.io/blockr.io/}
+}
+
+}
 \author{
 \strong{Maintainer}: Nicolas Bennett \email{nicolas@cynkra.com}
 
