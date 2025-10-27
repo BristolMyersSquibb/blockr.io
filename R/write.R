@@ -14,6 +14,9 @@
 #'   Default: "csv"
 #' @param mode Character. Either "download" to trigger browser download (recommended for beginners),
 #'   or "browse" to write files to server filesystem. Default: "download"
+#' @param auto_write Logical. When TRUE (default), automatically writes files when data changes
+#'   (browse mode only). When FALSE, user must click "Write File" button to save. Has no effect
+#'   in download mode.
 #' @param args Named list of format-specific writing parameters. Only specify values
 #'   that differ from defaults. Available parameters:
 #'   - **For CSV files:** `sep` (default: ","), `quote` (default: TRUE),

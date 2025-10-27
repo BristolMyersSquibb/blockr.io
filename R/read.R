@@ -7,7 +7,7 @@
 #' @param path Character vector of file paths to pre-load. When provided,
 #'   automatically switches to "path" mode regardless of the source parameter.
 #' @param source Either "upload" for file upload widget, "path" for file browser,
-#'   or "url" for URL download. Automatically set based on path parameter.
+#'   or "url" for URL download. Default: "upload". Automatically set based on path parameter.
 #' @param combine Strategy for combining multiple files: "auto", "rbind", "cbind", "first"
 #' @param args Named list of format-specific reading parameters. Only specify values
 #'   that differ from defaults. Available parameters:

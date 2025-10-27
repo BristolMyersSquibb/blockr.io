@@ -6,7 +6,7 @@
 \usage{
 new_read_block(
   path = character(),
-  source = "path",
+  source = "upload",
   combine = "auto",
   args = list(),
   ...
@@ -17,7 +17,7 @@ new_read_block(
 automatically switches to "path" mode regardless of the source parameter.}
 
 \item{source}{Either "upload" for file upload widget, "path" for file browser,
-or "url" for URL download. Automatically set based on path parameter.}
+or "url" for URL download. Default: "upload". Automatically set based on path parameter.}
 
 \item{combine}{Strategy for combining multiple files: "auto", "rbind", "cbind", "first"}
 
