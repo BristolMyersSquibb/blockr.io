@@ -54,7 +54,8 @@ test_that("write_block expr_server handles multiple inputs for Excel", {
   blk <- new_write_block(
     directory = temp_dir,
     filename = "report",
-    format = "excel"
+    format = "excel",
+    mode = "browse"
   )
 
   shiny::testServer(
@@ -93,6 +94,7 @@ test_that("write_block expr_server respects CSV delimiter parameter", {
     directory = temp_dir,
     filename = "data",
     format = "csv",
+    mode = "browse",
     args = list(sep = ";")
   )
 
@@ -131,7 +133,8 @@ test_that("write_block expr_server generates ZIP for multiple CSV inputs", {
   blk <- new_write_block(
     directory = temp_dir,
     filename = "multi",
-    format = "csv"
+    format = "csv",
+    mode = "browse"
   )
 
   shiny::testServer(
@@ -170,7 +173,8 @@ test_that("write_block expr_server handles Parquet format", {
   blk <- new_write_block(
     directory = temp_dir,
     filename = "data",
-    format = "parquet"
+    format = "parquet",
+    mode = "browse"
   )
 
   shiny::testServer(
@@ -207,6 +211,7 @@ test_that("write_block expr_server state returns reactive values", {
     directory = temp_dir,
     filename = "output",
     format = "csv",
+    mode = "browse",
     args = list(sep = ",")
   )
 
@@ -292,7 +297,8 @@ test_that("write_block expr_server handles auto-timestamp filename", {
   blk <- new_write_block(
     directory = temp_dir,
     filename = "",  # Empty = auto-timestamp
-    format = "csv"
+    format = "csv",
+    mode = "browse"
   )
 
   shiny::testServer(
@@ -366,7 +372,8 @@ test_that("write_block expr_server handles variadic inputs correctly", {
   blk <- new_write_block(
     directory = temp_dir,
     filename = "multi",
-    format = "excel"
+    format = "excel",
+    mode = "browse"
   )
 
   shiny::testServer(
@@ -407,7 +414,8 @@ test_that("write_block expr_server handles single Excel sheet", {
   blk <- new_write_block(
     directory = temp_dir,
     filename = "single_sheet",
-    format = "excel"
+    format = "excel",
+    mode = "browse"
   )
 
   shiny::testServer(
@@ -447,7 +455,8 @@ test_that("write_block expr_server handles Feather format", {
   blk <- new_write_block(
     directory = temp_dir,
     filename = "data",
-    format = "feather"
+    format = "feather",
+    mode = "browse"
   )
 
   shiny::testServer(

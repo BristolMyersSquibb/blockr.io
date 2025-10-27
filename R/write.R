@@ -12,8 +12,8 @@
 #'   - **If empty** (default): Generates timestamped filename (e.g., `data_20250127_143022.csv`)
 #' @param format Character. Output format: "csv", "excel", "parquet", or "feather".
 #'   Default: "csv"
-#' @param mode Character. Either "browse" to write files to server filesystem,
-#'   or "download" to trigger browser download. Default: "browse"
+#' @param mode Character. Either "download" to trigger browser download (recommended for beginners),
+#'   or "browse" to write files to server filesystem. Default: "download"
 #' @param args Named list of format-specific writing parameters. Only specify values
 #'   that differ from defaults. Available parameters:
 #'   - **For CSV files:** `sep` (default: ","), `quote` (default: TRUE),
@@ -100,7 +100,7 @@ new_write_block <- function(
   directory = "",
   filename = "",
   format = "csv",
-  mode = "browse",
+  mode = "download",
   auto_write = TRUE,
   args = list(),
   ...
@@ -491,6 +491,22 @@ new_write_block <- function(
               id = NS(id, "mode_pills"),
               selected = mode,
               bslib::nav_panel(
+                title = "Download",
+                value = "download",
+                div(
+                  class = "mt-3",
+                  div(
+                    class = "block-help-text mb-3",
+                    "Download file(s) to your browser's download folder."
+                  ),
+                  downloadButton(
+                    NS(id, "download_data"),
+                    "Download File",
+                    class = "btn-primary"
+                  )
+                )
+              ),
+              bslib::nav_panel(
                 title = "Browse",
                 value = "browse",
                 div(
@@ -532,22 +548,6 @@ new_write_block <- function(
                         class = "btn-primary btn-sm"
                       )
                     )
-                  )
-                )
-              ),
-              bslib::nav_panel(
-                title = "Download",
-                value = "download",
-                div(
-                  class = "mt-3",
-                  div(
-                    class = "block-help-text mb-3",
-                    "Download file(s) to your browser's download folder."
-                  ),
-                  downloadButton(
-                    NS(id, "download_data"),
-                    "Download File",
-                    class = "btn-primary"
                   )
                 )
               )
