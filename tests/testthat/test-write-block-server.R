@@ -58,29 +58,33 @@ test_that("write_block expr_server handles multiple inputs for Excel", {
     mode = "browse"
   )
 
-  shiny::testServer(
-    blockr.core:::get_s3_method("block_server", blk),
-    args = list(
-      x = blk,
-      data = list(
-        ...args = reactiveValues(
-          sheet1 = iris[1:10, ],
-          sheet2 = mtcars[1:5, ]
+  # Suppress "NAs introduced by coercion" warning from blockr.core
+  # when it tries to sort arg names like "sheet1", "sheet2" as integers
+  suppressWarnings({
+    shiny::testServer(
+      blockr.core:::get_s3_method("block_server", blk),
+      args = list(
+        x = blk,
+        data = list(
+          ...args = reactiveValues(
+            sheet1 = iris[1:10, ],
+            sheet2 = mtcars[1:5, ]
+          )
         )
-      )
-    ),
-    {
-      session$flushReact()
+      ),
+      {
+        session$flushReact()
 
-      result <- session$returned
-      expr_result <- result$expr()
+        result <- session$returned
+        expr_result <- result$expr()
 
-      # Verify it's an Excel write
-      expr_text <- paste(deparse(expr_result), collapse = " ")
-      expect_true(grepl("writexl::write_xlsx", expr_text))
-      expect_true(grepl("report\\.xlsx", expr_text))
-    }
-  )
+        # Verify it's an Excel write
+        expr_text <- paste(deparse(expr_result), collapse = " ")
+        expect_true(grepl("writexl::write_xlsx", expr_text))
+        expect_true(grepl("report\\.xlsx", expr_text))
+      }
+    )
+  })
 
   unlink(temp_dir, recursive = TRUE)
 })

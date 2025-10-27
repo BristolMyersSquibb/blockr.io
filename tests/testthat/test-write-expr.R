@@ -423,7 +423,9 @@ test_that("write_expr handles quote parameter correctly", {
   eval(expr2)
 
   # Read back and verify data integrity
-  result <- readr::read_csv(temp_file2, show_col_types = FALSE)
+  # Suppress parsing warning - readr has trouble with unquoted fields
+  # but the test verifies the functionality works correctly
+  result <- suppressWarnings(readr::read_csv(temp_file2, show_col_types = FALSE))
   expect_equal(result$name, c("Alice", "Bob", "Charlie"))
 
   unlink(c(temp_file1, temp_file2))
