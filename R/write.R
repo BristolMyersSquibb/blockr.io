@@ -94,6 +94,7 @@
 #' }
 #'
 #' @importFrom shinyFiles shinyDirButton shinyDirChoose parseDirPath
+#' @importFrom shinyjs click
 #' @rdname write
 #' @export
 new_write_block <- function(
@@ -406,6 +407,11 @@ new_write_block <- function(
             }
           )
 
+          # Trigger download when action button is clicked
+          observeEvent(input$download_trigger, {
+            shinyjs::click("download_data")
+          })
+
           # Output: Current directory display
           output$current_directory <- renderText({
             dir <- r_directory()
@@ -499,7 +505,7 @@ new_write_block <- function(
                   actionButton(
                     NS(id, "download_trigger"),
                     "Download File",
-                    class = "btn-outline-primary"
+                    class = "btn-outline-secondary"
                   ),
                   downloadButton(
                     NS(id, "download_data"),
@@ -562,7 +568,7 @@ new_write_block <- function(
             class = "block-form-grid",
             div(
               class = "block-section",
-              tags$h4("File Configuration", class = "mt-5"),
+              tags$h4("File Configuration", class = "mt-3"),
               div(
                 class = "block-section-grid",
                 div(
