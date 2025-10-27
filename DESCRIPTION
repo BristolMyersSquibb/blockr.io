@@ -2,24 +2,38 @@ Package: blockr.io
 Title: Reading and writing for blockr
 Version: 0.0.1
 Authors@R:
-    c(person(given = "Nicolas",
-             family = "Bennett",
+    c(person(given = "Christoph",
+             family = "Sax",
              role = c("aut", "cre"),
+             email = "christoph@cynkra.com",
+             comment = c(ORCID = "0000-0002-7192-7044")),
+      person(given = "Nicolas",
+             family = "Bennett",
+             role = "aut",
              email = "nicolas@cynkra.com")
     )
 Description: Adds blocks for reading and writing various data file types.
 License: GPL (>= 3)
+URL: https://bristolmyerssquibb.github.io/blockr.io/
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
-Imports: 
+RoxygenNote: 7.3.3
+VignetteBuilder: knitr
+Imports:
     readxl,
-    writexl,
     shiny,
     blockr.core (>= 0.1.1),
-    haven,
     readr,
     shinyFiles,
-    rio
+    rio,
+    arrow,
+    bslib,
+    rappdirs,
+    shinyjs,
+    writexl,
+    zip
+Suggests:
+    knitr,
+    rmarkdown
 Remotes:
     BristolMyersSquibb/blockr.core

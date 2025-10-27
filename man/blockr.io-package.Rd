@@ -8,8 +8,20 @@
 \description{
 Adds blocks for reading and writing various data file types.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://bristolmyerssquibb.github.io/blockr.io/}
+}
+
+}
 \author{
-\strong{Maintainer}: Nicolas Bennett \email{nicolas@cynkra.com}
+\strong{Maintainer}: Christoph Sax \email{christoph@cynkra.com} (\href{https://orcid.org/0000-0002-7192-7044}{ORCID})
+
+Authors:
+\itemize{
+  \item Nicolas Bennett \email{nicolas@cynkra.com}
+}
 
 }
 \keyword{internal}
