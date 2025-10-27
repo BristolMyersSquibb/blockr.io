@@ -2,9 +2,14 @@ Package: blockr.io
 Title: Reading and writing for blockr
 Version: 0.0.1
 Authors@R:
-    c(person(given = "Nicolas",
-             family = "Bennett",
+    c(person(given = "Christoph",
+             family = "Sax",
              role = c("aut", "cre"),
+             email = "christoph@cynkra.com",
+             comment = c(ORCID = "0000-0002-7192-7044")),
+      person(given = "Nicolas",
+             family = "Bennett",
+             role = "aut",
              email = "nicolas@cynkra.com")
     )
 Description: Adds blocks for reading and writing various data file types.

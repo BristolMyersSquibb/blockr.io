@@ -8,7 +8,8 @@ new_write_block(
   directory = "",
   filename = "",
   format = "csv",
-  mode = "browse",
+  mode = "download",
+  auto_write = TRUE,
   args = list(),
   ...
 )
@@ -27,8 +28,8 @@ variable \code{BLOCKR_WRITE_DIR}. Default: current working directory.}
 \item{format}{Character. Output format: "csv", "excel", "parquet", or "feather".
 Default: "csv"}
 
-\item{mode}{Character. Either "browse" to write files to server filesystem,
-or "download" to trigger browser download. Default: "browse"}
+\item{mode}{Character. Either "download" to trigger browser download (recommended for beginners),
+or "browse" to write files to server filesystem. Default: "download"}
 
 \item{args}{Named list of format-specific writing parameters. Only specify values
 that differ from defaults. Available parameters:
@@ -123,7 +124,7 @@ serve(new_write_block(
 # Multiple dataframes to Excel with auto-timestamp
 serve(new_write_block(
   directory = "/tmp",
-  filename = "",  # auto-generated
+  filename = "", # auto-generated
   format = "excel"
 ))
 

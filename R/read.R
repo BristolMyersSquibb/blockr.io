@@ -99,7 +99,7 @@
 #' @export
 new_read_block <- function(
   path = character(),
-  source = "path",
+  source = "upload",
   combine = "auto",
   args = list(),
   ...
@@ -561,23 +561,6 @@ new_read_block <- function(
                 id = NS(id, "source_pills"),
                 selected = source,
                 bslib::nav_panel(
-                  title = "Browse",
-                  value = "path",
-                  div(
-                    class = "block-input-wrapper mt-3",
-                    div(
-                      class = "block-help-text mb-3",
-                      "Select files from the file system. References the original file location."
-                    ),
-                    shinyFiles::shinyFilesButton(
-                      NS(id, "file_browser"),
-                      label = "Browse...",
-                      title = "Select files to read",
-                      multiple = TRUE
-                    )
-                  )
-                ),
-                bslib::nav_panel(
                   title = "Upload",
                   value = "upload",
                   div(
@@ -593,6 +576,23 @@ new_read_block <- function(
                       label = NULL,
                       multiple = TRUE,
                       accept = paste0(".", get_rio_extensions())
+                    )
+                  )
+                ),
+                bslib::nav_panel(
+                  title = "Browse",
+                  value = "path",
+                  div(
+                    class = "block-input-wrapper mt-3",
+                    div(
+                      class = "block-help-text mb-3",
+                      "Select files from the file system. References the original file location."
+                    ),
+                    shinyFiles::shinyFilesButton(
+                      NS(id, "file_browser"),
+                      label = "Browse...",
+                      title = "Select files to read",
+                      multiple = TRUE
                     )
                   )
                 ),
