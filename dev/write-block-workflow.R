@@ -35,4 +35,3 @@ serve(
     )
   )
 )
-This mostly works nicely, so I'm gonna commit.

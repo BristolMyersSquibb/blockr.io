@@ -7,7 +7,8 @@ test_that("write_block expr_server generates correct CSV expression", {
   blk <- new_write_block(
     directory = temp_dir,
     filename = "output",
-    format = "csv"
+    format = "csv",
+    mode = "browse"
   )
 
   # Test the expr_server module with proper variadic pattern
@@ -27,7 +28,15 @@ test_that("write_block expr_server generates correct CSV expression", {
       result <- session$returned
       expect_true(is.reactive(result$expr))
 
-      # Get the expression
+      # Expression should be NULL before submit
+      expr_before <- result$expr()
+      expect_null(expr_before)
+
+      # Simulate submit button click
+      session$setInputs(submit_write = 1)
+      session$flushReact()
+
+      # Get the expression after submit
       expr_result <- result$expr()
       expect_true(inherits(expr_result, "call"))
 

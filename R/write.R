@@ -212,10 +212,26 @@ new_write_block <- function(
             r_args(current)
           })
 
-          # Reactive to store validated write expression
-          r_write_expression_validated <- reactiveVal(NULL)
+          # Reactive to store the write expression (set when submit clicked)
+          r_write_expression_set <- reactiveVal(NULL)
 
-          # Submit button for browse mode - writes file when clicked
+          # Directory creation - create when directory path is set
+          observeEvent(r_directory(), {
+            req(r_directory())
+            tryCatch(
+              {
+                dir.create(r_directory(), recursive = TRUE, showWarnings = FALSE)
+                if (!dir.exists(r_directory())) {
+                  r_write_status(sprintf("\u2717 Cannot create directory: %s", r_directory()))
+                }
+              },
+              error = function(e) {
+                r_write_status(sprintf("\u2717 Directory error: %s", conditionMessage(e)))
+              }
+            )
+          })
+
+          # Submit button for browse mode - sets expression to be evaluated by blockr.core
           observeEvent(input$submit_write, {
             req(length(arg_names()) > 0)
             req(r_directory())
@@ -230,62 +246,29 @@ new_write_block <- function(
               args = r_args()
             )
 
-            # Create environment with data
-            eval_env <- new.env(parent = parent.frame())
-            names_vec <- arg_names()
-            ll <- reactiveValuesToList(...args)
+            # Set the expression - blockr.core will evaluate it
+            # Expression writes file and returns first data for pipeline continuity
+            first_data <- as.name(arg_names()[1])
+            r_write_expression_set(bquote({
+              .(expr)
+              .(first_data)
+            }))
 
-            for (i in seq_along(names_vec)) {
-              arg_i <- ll[[i]]
-              data_val <- if (is.reactive(arg_i)) {
-                arg_i()
-              } else {
-                arg_i
-              }
-              assign(names_vec[i], data_val, envir = eval_env)
-            }
-
-            # Ensure directory exists
-            dir.create(r_directory(), recursive = TRUE, showWarnings = FALSE)
-
-            # Execute write
-            tryCatch(
-              {
-                eval(expr, envir = eval_env)
-                r_write_status(sprintf(
-                  "\u2713 Written at %s",
-                  format(Sys.time(), "%H:%M:%S")
-                ))
-
-                # Store expression for pipeline
-                first_data <- as.name(arg_names()[1])
-                r_write_expression_validated(bquote({
-                  .(expr)
-                  .(first_data)
-                }))
-              },
-              error = function(e) {
-                r_write_status(sprintf("\u2717 Error: %s", conditionMessage(e)))
-              }
-            )
+            # Update status to indicate expression is ready
+            r_write_status("Ready - expression will be evaluated")
           })
 
           # Generate expression that adapts based on mode
           r_write_expression <- reactive({
             if (r_mode() == "browse") {
-              # Browse mode: Return last validated expression or identity
-              if (!is.null(r_write_expression_validated())) {
-                r_write_expression_validated()
-              } else {
-                # Before first submit, just return identity
-                req(length(arg_names()) > 0)
-                bquote(identity(.(as.name(arg_names()[1]))))
-              }
+              # Browse mode: Return NULL until submit clicked, then return write expression
+              # NULL means blockr.core won't evaluate anything
+              # Once expression is set, blockr.core will evaluate it
+              r_write_expression_set()
             } else {
-              # Download mode: Return identity() - valid do-nothing expression
-              # Download handler will do the actual writing when user clicks download
-              req(length(arg_names()) > 0)
-              bquote(identity(.(as.name(arg_names()[1]))))
+              # Download mode: Return NULL - download handler does the writing
+              # No automatic evaluation needed
+              NULL
             }
           })
 
