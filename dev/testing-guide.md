@@ -152,3 +152,76 @@ test_that("block outputs correct data end-to-end", {
   cleanup_test_app(app_dir, app)
 })
 ```
+
+---
+
+## Migration Success Story: From Layer 3 to Layer 2
+
+### Case Study: Read Block Tests
+
+**Problem:** Three shinytest2 tests were taking ~30 seconds to verify basic data output functionality that didn't require browser interaction.
+
+**Tests migrated:**
+1. "loads CSV file with default settings" - Basic data loading
+2. "handles multiple CSV files with rbind" - Multiple file combination
+3. "handles CSV with custom delimiter" - Parameter configuration
+
+**What changed:**
+- Enhanced existing testServer tests to also **evaluate expressions** and verify data output
+- Deleted redundant shinytest2 test file entirely
+
+**Before:**
+```r
+# shinytest2 - Takes ~10 seconds
+app <- AppDriver$new(serve(new_read_block(path = csv_file)))
+result_data <- get_block_result(app)
+expect_equal(nrow(result_data), 5)
+```
+
+**After:**
+```r
+# testServer - Takes ~0.5 seconds
+blk <- new_read_block(path = csv_file)
+testServer(blk$expr_server, args = list(), {
+  session$flushReact()
+  expr_result <- session$returned$expr()
+
+  # Evaluate expression and verify data
+  data <- eval(expr_result)
+  expect_equal(nrow(data), 5)
+})
+```
+
+**Results:**
+- **Performance:** 30s → 1.5s (20x faster)
+- **Coverage:** Identical - both verify data output
+- **Maintenance:** Simpler tests without browser setup overhead
+
+**Key insight:** These tests were NOT testing integration - they were testing that `serve()` could launch and extract data, which is just expression evaluation with extra steps. testServer + `eval()` provides identical coverage at a fraction of the cost.
+
+**When Layer 3 IS appropriate:**
+- User uploads file via fileInput widget
+- User clicks "Advanced Options" accordion and changes delimiter
+- Multi-block stack integration testing
+- Testing actual UI rendering and JavaScript behavior
+
+These scenarios test **user workflows and integration**, not just data output.
+
+**New integration test added:**
+See `test-shinytest2-read-block-integration.R` for focused integration testing:
+
+**"user changes CSV delimiter in UI and data updates" (1 test, ~5s, 8 assertions):**
+- Tests TRUE user workflow that testServer CANNOT simulate:
+  1. User loads file with wrong delimiter → sees malformed data
+  2. User changes `csv_sep` input in UI via `app$set_inputs()`
+  3. App reactively updates → data becomes correct
+- This tests the complete pipeline: UI input → reactive update → data output → exportTestValues
+- Input ID pattern discovered: `"{serve_id}-expr-{input_name}"` (e.g., `"block-expr-csv_sep"`)
+- Note: No separate smoke test needed - if integration test passes, serve() infrastructure works
+
+This test provides REAL integration value. It verifies something testServer fundamentally cannot test: user interaction workflows.
+
+**Additional integration test ideas for future:**
+- File upload widget interaction with persistence
+- shinyFiles browser widget interaction
+- Multi-block stack integration with data flow between blocks

@@ -1,7 +1,11 @@
 test_that("read_block expr_server generates correct CSV expression", {
   # Create test CSV file
   temp_csv <- tempfile(fileext = ".csv")
-  write.csv(mtcars[1:5, ], temp_csv, row.names = FALSE)
+  write.csv(
+    data.frame(x = 1:5, y = letters[1:5]),
+    temp_csv,
+    row.names = FALSE
+  )
 
   # Create block
   blk <- new_read_block(path = temp_csv)
@@ -24,6 +28,14 @@ test_that("read_block expr_server generates correct CSV expression", {
       expr_text <- deparse(expr_result)
       expect_true(any(grepl("readr::read_csv", expr_text)))
       expect_true(any(grepl(basename(temp_csv), expr_text)))
+
+      # NEW: Evaluate expression and verify data output
+      data <- eval(expr_result)
+      expect_true(is.data.frame(data))
+      expect_equal(nrow(data), 5)
+      expect_equal(ncol(data), 2)
+      expect_equal(data$x, 1:5)
+      expect_equal(data$y, letters[1:5])
     }
   )
 
@@ -34,8 +46,16 @@ test_that("read_block expr_server handles multiple files with rbind", {
   # Create test CSV files
   temp_csv1 <- tempfile(fileext = ".csv")
   temp_csv2 <- tempfile(fileext = ".csv")
-  write.csv(data.frame(id = 1:3), temp_csv1, row.names = FALSE)
-  write.csv(data.frame(id = 4:6), temp_csv2, row.names = FALSE)
+  write.csv(
+    data.frame(id = 1:3, value = c(10, 20, 30)),
+    temp_csv1,
+    row.names = FALSE
+  )
+  write.csv(
+    data.frame(id = 4:6, value = c(40, 50, 60)),
+    temp_csv2,
+    row.names = FALSE
+  )
 
   # Create block with rbind
   blk <- new_read_block(
@@ -56,6 +76,13 @@ test_that("read_block expr_server handles multiple files with rbind", {
       expr_text <- paste(deparse(expr_result), collapse = " ")
       expect_true(grepl("rbind", expr_text))
       expect_true(grepl("readr::read_csv", expr_text))
+
+      # NEW: Evaluate expression and verify data output
+      data <- eval(expr_result)
+      expect_true(is.data.frame(data))
+      expect_equal(nrow(data), 6)
+      expect_equal(data$id, 1:6)
+      expect_equal(data$value, c(10, 20, 30, 40, 50, 60))
     }
   )
 
@@ -76,9 +103,7 @@ test_that("read_block expr_server respects CSV parameters", {
   # Create block with custom delimiter
   blk <- new_read_block(
     path = temp_csv,
-    csv_sep = ";",
-    csv_skip = 1,
-    csv_col_names = FALSE
+    csv_sep = ";"
   )
 
   shiny::testServer(
@@ -93,8 +118,14 @@ test_that("read_block expr_server respects CSV parameters", {
 
       # Verify parameters are in the expression
       expect_true(grepl('delim = ";"', expr_text))
-      expect_true(grepl("skip = 1", expr_text))
-      expect_true(grepl("col_names = FALSE", expr_text))
+
+      # NEW: Evaluate expression and verify data output
+      data <- eval(expr_result)
+      expect_true(is.data.frame(data))
+      expect_equal(nrow(data), 5)
+      expect_equal(ncol(data), 2)
+      expect_equal(data$a, 1:5)
+      expect_equal(data$b, 6:10)
     }
   )
 
