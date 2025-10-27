@@ -239,7 +239,7 @@ new_write_block <- function(
             req(length(arg_names()) > 0)
             req(r_directory())
             req(r_mode() == "browse")
-            req(!r_auto_write())  # Only trigger when auto_write is disabled
+            req(!r_auto_write()) # Only trigger when auto_write is disabled
 
             # Generate write expression
             expr <- write_expr(
@@ -496,10 +496,15 @@ new_write_block <- function(
                     class = "block-help-text mb-3",
                     "Download file(s) to your browser's download folder."
                   ),
+                  actionButton(
+                    NS(id, "download_trigger"),
+                    "Download File",
+                    class = "btn-outline-primary"
+                  ),
                   downloadButton(
                     NS(id, "download_data"),
-                    "Download File",
-                    class = "btn-primary"
+                    "Download",
+                    class = "d-none"
                   )
                 )
               ),
@@ -516,7 +521,8 @@ new_write_block <- function(
                     NS(id, "dir_browser"),
                     label = "Select Directory...",
                     title = "Choose output directory",
-                    multiple = FALSE
+                    multiple = FALSE,
+                    class = "btn-outline-secondary"
                   ),
                   div(
                     class = "block-help-text mt-2",
@@ -556,7 +562,7 @@ new_write_block <- function(
             class = "block-form-grid",
             div(
               class = "block-section",
-              tags$h4("File Configuration"),
+              tags$h4("File Configuration", class = "mt-5"),
               div(
                 class = "block-section-grid",
                 div(

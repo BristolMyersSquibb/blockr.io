@@ -140,16 +140,8 @@ example_data <- data.frame(
             220, 240, 260, 280)
 )
 
-# Create and serve a pipeline with dataset and write block
-serve(
-  new_board(
-    blocks = blocks(
-      data = new_dataset_block(available_datasets = list(sales = example_data), selected_dataset = "sales"),
-      write = new_write_block(mode = "download", format = "excel", filename = "")
-    ),
-    links = links(data_write = new_link("data", "write"))
-  )
-)
+# Create and serve just the write block with example data
+serve(new_write_block(mode = "download", format = "excel", filename = ""), data = example_data)
 ', pkg_root)
 
 writeLines(app_content2, file.path(app_dir2, "app.R"))
