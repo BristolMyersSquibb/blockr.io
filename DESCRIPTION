@@ -24,7 +24,9 @@ Imports:
     arrow,
     bslib,
     rappdirs,
-    shinyjs
+    shinyjs,
+    writexl,
+    zip
 Suggests:
     knitr,
     rmarkdown

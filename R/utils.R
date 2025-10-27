@@ -177,3 +177,31 @@ detect_file_category <- function(path) {
 
   "other"
 }
+
+#' Extract names for variadic block arguments
+#'
+#' Helper function for variadic blocks. Processes ...args names to handle
+#' numeric indices vs named arguments.
+#'
+#' @param x List with names (typically ...args)
+#' @return Character vector of names, or NULL if all numeric
+#' @keywords internal
+dot_args_names <- function(x) {
+  res <- names(x)
+
+  # Check if names are all numeric (1, 2, 3, etc.)
+  unnamed <- grepl("^[1-9][0-9]*$", res)
+
+  # All numeric - return NULL (no custom names)
+  if (all(unnamed)) {
+    return(NULL)
+  }
+
+  # Mix of numeric and named - replace numeric with empty strings
+  if (any(unnamed)) {
+    return(replace(res, unnamed, ""))
+  }
+
+  # All named - return as-is
+  res
+}
