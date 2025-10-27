@@ -196,3 +196,69 @@ test_that("Write block integration: Parquet format (browse mode)", {
   cleanup_test_app(app_dir, app)
   unlink(output_dir, recursive = TRUE)
 })
+
+test_that("Write block integration: Submit button with auto_write=FALSE (browse mode)", {
+  skip_if_not_installed("shinytest2")
+  skip_on_cran()
+
+  output_dir <- tempfile("blockr_write_test_")
+  dir.create(output_dir, recursive = TRUE)
+
+  # Create app with auto_write=FALSE - requires submit button click
+  app_dir <- create_test_app(
+    block_code = sprintf(
+      'serve(new_board(
+        blocks = c(
+          data = new_dataset_block(selected_dataset = "iris"),
+          writer = new_write_block(
+            directory = "%s",
+            filename = "iris_submit",
+            format = "csv",
+            mode = "browse",
+            auto_write = FALSE
+          )
+        ),
+        links = c(
+          new_link("data", "writer", "1")
+        )
+      ))',
+      output_dir
+    )
+  )
+
+  app <- shinytest2::AppDriver$new(
+    app_dir,
+    timeout = 30000,
+    name = "write_block_submit"
+  )
+
+  # Wait for app to initialize
+  app$wait_for_idle(duration = 1000)
+
+  # Verify NO file exists yet (auto_write is FALSE)
+  files_before <- list.files(output_dir, pattern = "iris_submit\\.csv$")
+  expect_equal(length(files_before), 0,
+    info = sprintf("Files should not exist before submit. Found: %s",
+      paste(list.files(output_dir), collapse = ", ")))
+
+  # Find and click the submit button
+  # The submit button is in the writer block's UI with id "writer-submit_write"
+  app$click("writer-submit_write")
+
+  # Wait for the write operation to complete
+  app$wait_for_idle(duration = 2000)
+
+  # Verify file was created after clicking submit
+  files_after <- list.files(output_dir, pattern = "iris_submit\\.csv$", full.names = TRUE)
+  expect_equal(length(files_after), 1,
+    info = sprintf("Output dir: %s, Files found: %s",
+      output_dir, paste(list.files(output_dir), collapse = ", ")))
+
+  # Verify file content
+  result_data <- readr::read_csv(files_after[1], show_col_types = FALSE)
+  expect_equal(nrow(result_data), 150)  # iris has 150 rows
+  expect_equal(ncol(result_data), 5)    # iris has 5 columns
+
+  cleanup_test_app(app_dir, app)
+  unlink(output_dir, recursive = TRUE)
+})
