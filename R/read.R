@@ -112,13 +112,7 @@ new_read_block <- function(
   # These are runtime configuration, not persisted state
   # Evaluated once at construction time and captured in closure
   volumes <- blockr_option("volumes", c(home = path.expand("~")))
-  upload_path <- blockr_option(
-    "upload_path",
-    Sys.getenv(
-      "BLOCKR_UPLOAD_PATH",
-      rappdirs::user_data_dir("blockr")
-    )
-  )
+  upload_path <- blockr_option("upload_path", rappdirs::user_data_dir("blockr"))
 
   # Handle volumes parameter
   if (is.character(volumes)) {
@@ -434,8 +428,7 @@ new_read_block <- function(
             }
 
             strategy <- r_combine()
-            switch(
-              strategy,
+            switch(strategy,
               "auto" = "Will attempt to row-bind files, fallback to first file",
               "rbind" = "Will row-bind files (requires same columns)",
               "cbind" = "Will column-bind files (requires same row count)",

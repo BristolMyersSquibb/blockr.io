@@ -111,10 +111,7 @@ new_write_block <- function(
 
   # Get default directory from options if not provided
   if (directory == "") {
-    directory <- blockr_option(
-      "write_dir",
-      Sys.getenv("BLOCKR_WRITE_DIR", getwd())
-    )
+    directory <- blockr_option("write_dir", path.expand("~"))
   }
 
   # Get volumes for directory browser
