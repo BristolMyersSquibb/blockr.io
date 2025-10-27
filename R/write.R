@@ -101,6 +101,7 @@ new_write_block <- function(
   filename = "",
   format = "csv",
   mode = "browse",
+  auto_write = TRUE,
   args = list(),
   ...
 ) {
@@ -144,7 +145,7 @@ new_write_block <- function(
       moduleServer(
         id,
         function(input, output, session) {
-          # volumes and directory available here via closure
+          # volumes, directory, auto_write available here via closure
 
           # Extract arg names for variadic inputs
           arg_names <- reactive({
@@ -157,6 +158,7 @@ new_write_block <- function(
           r_filename <- reactiveVal(filename)
           r_format <- reactiveVal(format)
           r_mode <- reactiveVal(mode)
+          r_auto_write <- reactiveVal(auto_write)
           r_args <- reactiveVal(args)
           r_last_write <- reactiveVal(NULL) # Track last write time
           r_write_status <- reactiveVal("") # Status message
@@ -190,6 +192,10 @@ new_write_block <- function(
             if (!is.null(input$mode_pills)) {
               r_mode(input$mode_pills)
             }
+          })
+
+          observeEvent(input$auto_write, {
+            r_auto_write(input$auto_write)
           })
 
           observeEvent(input$filename, r_filename(input$filename))
@@ -231,11 +237,12 @@ new_write_block <- function(
             )
           })
 
-          # Submit button for browse mode - sets expression to be evaluated by blockr.core
+          # Submit button for browse mode (only when auto_write is FALSE)
           observeEvent(input$submit_write, {
             req(length(arg_names()) > 0)
             req(r_directory())
             req(r_mode() == "browse")
+            req(!r_auto_write())  # Only trigger when auto_write is disabled
 
             # Generate write expression
             expr <- write_expr(
@@ -258,16 +265,34 @@ new_write_block <- function(
             r_write_status("Ready - expression will be evaluated")
           })
 
-          # Generate expression that adapts based on mode
+          # Generate expression that adapts based on mode and auto_write setting
           r_write_expression <- reactive({
             if (r_mode() == "browse") {
-              # Browse mode: Return NULL until submit clicked, then return write expression
-              # NULL means blockr.core won't evaluate anything
-              # Once expression is set, blockr.core will evaluate it
-              r_write_expression_set()
+              if (r_auto_write()) {
+                # Auto-write enabled (default): Generate expression automatically
+                req(length(arg_names()) > 0)
+                req(r_directory())
+
+                expr <- write_expr(
+                  data_names = arg_names(),
+                  directory = r_directory(),
+                  filename = r_filename(),
+                  format = r_format(),
+                  args = r_args()
+                )
+
+                # Return expression with write code and data passthrough
+                first_data <- as.name(arg_names()[1])
+                bquote({
+                  .(expr)
+                  .(first_data)
+                })
+              } else {
+                # Auto-write disabled: Wait for submit button
+                r_write_expression_set()
+              }
             } else {
               # Download mode: Return NULL - download handler does the writing
-              # No automatic evaluation needed
               NULL
             }
           })
@@ -413,6 +438,7 @@ new_write_block <- function(
               filename = r_filename,
               format = r_format,
               mode = r_mode,
+              auto_write = r_auto_write,
               args = r_args
             )
           )
@@ -471,7 +497,7 @@ new_write_block <- function(
                   class = "mt-3",
                   div(
                     class = "block-help-text mb-3",
-                    "Write files to server filesystem. Click Submit to write."
+                    "Write files to server filesystem."
                   ),
                   shinyFiles::shinyDirButton(
                     NS(id, "dir_browser"),
@@ -485,10 +511,26 @@ new_write_block <- function(
                   ),
                   div(
                     class = "mt-3",
-                    actionButton(
-                      NS(id, "submit_write"),
-                      "Submit",
-                      class = "btn-primary btn-sm"
+                    checkboxInput(
+                      NS(id, "auto_write"),
+                      "Auto-write",
+                      value = auto_write
+                    ),
+                    div(
+                      class = "block-help-text mb-3",
+                      "When enabled, files are written automatically as data changes. When disabled, click Submit to write."
+                    )
+                  ),
+                  conditionalPanel(
+                    condition = "!input.auto_write",
+                    ns = NS(id),
+                    div(
+                      class = "mt-2",
+                      actionButton(
+                        NS(id, "submit_write"),
+                        "Submit",
+                        class = "btn-primary btn-sm"
+                      )
                     )
                   )
                 )
