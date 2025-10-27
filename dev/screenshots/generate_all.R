@@ -21,7 +21,7 @@ cat("Output directory: man/figures/\n\n")
 # =============================================================================
 # READ BLOCK - File reading with CSV options visible
 # =============================================================================
-cat("1/1 - Read block\n")
+cat("1/2 - Read block\n")
 
 # Create a CSV file in dev/screenshots directory (permanent location)
 screenshots_dir <- normalizePath("dev/screenshots")
@@ -98,10 +98,92 @@ tryCatch({
   # Stop app
   app$stop()
 
-  cat("\n✓ Screenshot generated successfully!\n")
+  cat("\n✓ Read block screenshot generated successfully!\n")
 }, error = function(e) {
-  cat("\n[ERROR] Failed to create screenshot:", conditionMessage(e), "\n")
+  cat("\n[ERROR] Failed to create read block screenshot:", conditionMessage(e), "\n")
 }, finally = {
   # Clean up temp directory
   unlink(app_dir, recursive = TRUE)
 })
+
+# =============================================================================
+# WRITE BLOCK - File writing with download mode
+# =============================================================================
+cat("\n2/2 - Write block\n")
+
+# Create temp app directory for write block
+app_dir2 <- tempfile("blockr_screenshot_write_")
+dir.create(app_dir2)
+
+# Create app.R for write block
+app_content2 <- sprintf('
+library(blockr.core)
+
+# Load blockr.io from development
+pkg_path <- "%s"
+if (requireNamespace("devtools", quietly = TRUE)) {
+  tryCatch(
+    devtools::load_all(pkg_path, quiet = TRUE),
+    error = function(e) library(blockr.io)
+  )
+} else {
+  library(blockr.io)
+}
+
+# Create example data for the write block
+example_data <- data.frame(
+  date = seq(as.Date("2024-01-01"), by = "month", length.out = 12),
+  product = rep(c("Widget A", "Widget B", "Gadget C"), each = 4),
+  revenue = c(1200, 1500, 1800, 2100, 950, 1100, 1250, 1400,
+              2200, 2400, 2600, 2800),
+  units = c(120, 150, 180, 210, 95, 110, 125, 140,
+            220, 240, 260, 280)
+)
+
+# Create and serve a pipeline with dataset and write block
+serve(
+  new_board(
+    blocks = blocks(
+      data = new_dataset_block(available_datasets = list(sales = example_data), selected_dataset = "sales"),
+      write = new_write_block(mode = "download", format = "excel", filename = "")
+    ),
+    links = links(data_write = new_link("data", "write"))
+  )
+)
+', pkg_root)
+
+writeLines(app_content2, file.path(app_dir2, "app.R"))
+
+cat("Created write block test app at:", app_dir2, "\n")
+cat("Launching app and taking screenshot...\n")
+
+# Launch app and take screenshot
+tryCatch({
+  app2 <- AppDriver$new(
+    app_dir = app_dir2,
+    name = "write_block_screenshot",
+    width = 800,
+    height = 600
+  )
+
+  # Wait for app to load
+  Sys.sleep(3)
+
+  # Take screenshot
+  screenshot_path2 <- file.path(normalizePath("man/figures"), "write-block.png")
+  app2$get_screenshot(screenshot_path2)
+
+  cat("Screenshot saved to:", screenshot_path2, "\n")
+
+  # Stop app
+  app2$stop()
+
+  cat("\n✓ Write block screenshot generated successfully!\n")
+}, error = function(e) {
+  cat("\n[ERROR] Failed to create write block screenshot:", conditionMessage(e), "\n")
+}, finally = {
+  # Clean up temp directory
+  unlink(app_dir2, recursive = TRUE)
+})
+
+cat("\n=== All screenshots generated ===\n")

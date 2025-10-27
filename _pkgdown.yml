@@ -14,10 +14,11 @@ navbar:
         href: articles/blockr-io-showcase.html
 
 reference:
-- title: File Reading Block
-  desc: Unified block for reading various file formats
+- title: File I/O Blocks
+  desc: Unified blocks for reading and writing various file formats
   contents:
   - new_read_block
+  - new_write_block
 
 - title: Expression Helpers
   desc: Pure functions for generating file reading expressions
