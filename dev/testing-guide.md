@@ -2,18 +2,28 @@
 
 ## Overview
 
-This document outlines the three-layer testing strategy for blockr.io. Each layer serves a distinct purpose with clear trade-offs. Understanding WHEN to use each tool is critical.
+This document outlines the **TWO-TIER testing strategy** for blockr.io. Understanding WHEN to use each tool is critical for fast, maintainable tests.
 
 ## Testing Philosophy
 
-1. **Test at the appropriate level** - Don't use a slow tool when a fast one suffices
-2. **Each layer has a purpose** - Unit tests ≠ testServer ≠ shinytest2
+1. **DEFAULT: Use testServer** - For all Shiny reactivity, UI interactions, and module logic
+2. **Use unit tests for pure functions** - Expression builders, helpers, parsers
 3. **Speed matters** - Fast tests = fast feedback = better development
-4. **Coverage over duplication** - Don't test the same thing at multiple layers
+4. **shinytest2 is almost never needed** - Only for pure visual UI checks with no server impact
 
 ---
 
-## The Three Layers
+## ⚠️ IMPORTANT: Two-Tier Strategy
+
+**99% of your tests should be:**
+- **Tier 1: Unit Tests** - Pure R functions (no Shiny)
+- **Tier 2: testServer** - ALL Shiny reactivity and UI interactions
+
+**shinytest2 is rarely needed** - See bottom of this guide for exceptional cases.
+
+---
+
+## The Two Main Testing Layers
 
 ### Layer 1: Unit Tests (Pure Functions, No Shiny)
 
@@ -51,34 +61,46 @@ test_that("read_expr generates correct CSV expression", {
 
 ---
 
-### Layer 2: testServer (Reactive Logic, No Browser)
+### Layer 2: testServer (ALL Shiny Interactions - USE THIS)
 
-**Files**: `test-read-block-server.R` (21 tests)
+**Files**: `test-read-block-server.R`, `test-write-block-server.R`
 **Speed**: ⚡⚡ Fast (~0.2-0.5s per test)
-**Total**: 21 tests
 
 **What it CAN test**:
-- ✅ Block's `expr_server` reactive logic
+- ✅ Block reactive logic (data and transform blocks)
 - ✅ Reactive values and contexts
 - ✅ State management
 - ✅ Expression generation in reactive context
 - ✅ Module server functions
+- ✅ Data transformations (by evaluating expressions)
+- ✅ **UI interactions** (button clicks, input changes via `session$setInputs()`)
+- ✅ **Reactive auto-updates**
+- ✅ **ALL edge cases and error handling**
 
 **What it CANNOT test**:
-- ❌ Actual UI rendering
-- ❌ User interactions (clicks, uploads)
-- ❌ JavaScript behavior
-- ❌ Full app integration with `serve()`
-- ❌ Browser-specific behavior
+- ❌ Pure visual UI layout (CSS, rendering)
+- ❌ JavaScript-only behavior
+- ❌ File upload widgets (fileInput)
+- ❌ True browser integration testing
 
-**Critical pattern for blockr**:
+**When to use**:
+- Testing Shiny modules (moduleServer)
+- Testing reactive behavior
+- Testing UI input changes and their effects
+- Testing button clicks and interactions
+- Testing state management
+- **This should be your default for testing ANY Shiny logic**
+
+**Critical patterns for blockr.io**:
+
+**Pattern 1: Testing Data Blocks (Read)**
 ```r
-test_that("expr_server generates correct expression", {
+test_that("read_block expr_server generates correct expression", {
   blk <- new_read_block(path = "data.csv")
 
   testServer(
     blk$expr_server,  # Test expr_server directly
-    args = list(),    # Data blocks: no args; Transform blocks: data = reactive(df)
+    args = list(),    # Data blocks don't need data arguments
     {
       session$flushReact()
 
@@ -89,9 +111,97 @@ test_that("expr_server generates correct expression", {
       expr_result <- result$expr()
       expect_true(grepl("readr::read_csv", deparse(expr_result)))
 
-      # Test state
-      expect_true(is.reactive(result$state$path))
-      expect_equal(result$state$csv_sep(), ",")
+      # Can also evaluate to verify data
+      data <- eval(expr_result)
+      expect_true(is.data.frame(data))
+    }
+  )
+})
+```
+
+**Pattern 2: Testing Transform Blocks (Write)**
+```r
+test_that("write_block block_server generates expression", {
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "output",
+    format = "csv",
+    mode = "browse"
+  )
+
+  testServer(
+    blockr.core:::get_s3_method("block_server", blk),  # Use block_server for transform blocks
+    args = list(
+      x = blk,
+      data = list(
+        ...args = reactiveValues(
+          data = iris
+        )
+      )
+    ),
+    {
+      session$flushReact()
+
+      result <- session$returned
+      expr_result <- result$expr()
+
+      # Test expression structure
+      expect_true(grepl("readr::write_csv", deparse(expr_result)))
+    }
+  )
+})
+```
+
+**Pattern 3: Testing UI Button Clicks**
+```r
+test_that("write_block handles submit button click", {
+  blk <- new_write_block(auto_write = FALSE)  # Requires manual submit
+
+  testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(x = blk, data = list(...args = reactiveValues(data = iris))),
+    {
+      session$flushReact()
+
+      # Expression is NULL before button click
+      expect_null(session$returned$expr())
+
+      # SIMULATE BUTTON CLICK - Key: use namespaced ID
+      session$setInputs(`expr-submit_write` = 1)
+      session$flushReact()
+
+      # Expression is generated after click
+      expect_false(is.null(session$returned$expr()))
+    }
+  )
+})
+```
+
+**Pattern 4: Testing Input Changes**
+```r
+test_that("read_block handles UI input changes for delimiter", {
+  blk <- new_read_block(path = semicolon_file)  # File has ";" delimiter
+
+  testServer(
+    blk$expr_server,
+    args = list(),
+    {
+      session$flushReact()
+
+      # Initial expression uses default delimiter
+      expr_initial <- session$returned$expr()
+
+      # USER CHANGES DELIMITER IN UI
+      session$setInputs(csv_sep = ";")
+      session$flushReact()
+
+      # Expression updated with new delimiter
+      expr_updated <- session$returned$expr()
+      expect_true(grepl('delim = ";"', deparse(expr_updated)))
+
+      # Data is now correct
+      data_correct <- eval(expr_updated)
+      expect_equal(ncol(data_correct), 2)  # Should have 2 columns now
     }
   )
 })
@@ -99,129 +209,57 @@ test_that("expr_server generates correct expression", {
 
 ---
 
-### Layer 3: shinytest2 (Full Integration, Browser Required)
+## Note on shinytest2
 
-**Files**: `test-shinytest2-read-block.R` (13 tests)
-**Speed**: 🐌 Slow (~8-15s per test)
-**Total**: 13 tests
+**We don't use shinytest2.** All Shiny testing is done with testServer, which can simulate UI interactions via `session$setInputs()`.
 
-**What it CAN test**:
-- ✅ Complete app launches with `serve(block)`
-- ✅ Actual data output via `exportTestValues()`
-- ✅ End-to-end workflows
-- ✅ Block integration
-- ✅ User interactions (if tests added)
+### Why We Migrated Away from shinytest2
 
-**What it CANNOT do better than testServer**:
-- ❌ **Nothing** - it can do everything testServer can, BUT 20-50x slower
-- ❌ Not suitable for rapid iteration
-- ❌ Requires browser setup (chromote)
+**Previous misunderstanding:**
+- "Button clicks need shinytest2" ❌
+- "UI interactions need a browser" ❌
+- "testServer can't simulate user workflows" ❌
 
-**When to use**:
-- **Critical user journeys only**
-- Final validation that `serve()` works
-- Testing actual data output users see
-- **Use sparingly** - if testServer can test it, use testServer
+**Reality:**
+- Button clicks: `session$setInputs(button_id = 1)` ✅
+- Input changes: `session$setInputs(input_id = new_value)` ✅
+- Reactive updates: All work in testServer ✅
 
-**Anti-pattern (DON'T DO THIS)**:
+**Migration results:**
+- Deleted ALL shinytest2 tests (read and write blocks)
+- Migrated to testServer with `session$setInputs()`
+- **20-50x faster tests**
+- **Zero loss of coverage**
+
+### Examples of "Impossible" Tests That Actually Work
+
+**"You can't test button clicks without a browser"** - FALSE:
 ```r
-test_that("expression has correct structure", {
-  app <- AppDriver$new(...)  # Takes 10 seconds
-  values <- app$get_values()
-  expect_true(grepl("readr", values$...))  # Could test in 0.1s with testServer!
-})
+# This WORKS with testServer:
+session$setInputs(`expr-submit_write` = 1)  # Simulates clicking submit button
+session$flushReact()
+expect_false(is.null(result$expr()))  # Expression generated!
 ```
 
-**Good use**:
+**"You can't test UI input changes without a browser"** - FALSE:
 ```r
-test_that("block outputs correct data end-to-end", {
-  temp_csv <- tempfile(fileext = ".csv")
-  write.csv(mtcars[1:5, ], temp_csv, row.names = FALSE)
-
-  app_dir <- create_test_app(
-    block_code = sprintf('serve(new_read_block(path = "%s"))', temp_csv)
-  )
-
-  app <- AppDriver$new(app_dir, timeout = 30000)
-  result_data <- get_block_result(app)
-
-  # Verify END RESULT
-  expect_equal(nrow(result_data), 5)
-  expect_equal(result_data$mpg, mtcars$mpg[1:5])
-
-  cleanup_test_app(app_dir, app)
-})
+# This WORKS with testServer:
+session$setInputs(csv_sep = ";")  # User changes delimiter in UI
+session$flushReact()
+expect_true(grepl('delim = ";"', deparse(result$expr())))  # Expression updated!
 ```
 
----
+### If You Think You Need shinytest2
 
-## Migration Success Story: From Layer 3 to Layer 2
+**Stop and ask yourself:**
+- Can I test this with `session$setInputs()` in testServer? → Almost always YES
+- Am I testing logic or just visual UI layout? → Logic = testServer
+- Do I need a browser? → Almost always NO
 
-### Case Study: Read Block Tests
+**The only true exceptions:**
+- Testing pure CSS/visual layout (no server impact)
+- Testing JavaScript-only behavior
+- Testing file upload widgets (fileInput requires browser)
+- True end-to-end integration across multiple systems
 
-**Problem:** Three shinytest2 tests were taking ~30 seconds to verify basic data output functionality that didn't require browser interaction.
-
-**Tests migrated:**
-1. "loads CSV file with default settings" - Basic data loading
-2. "handles multiple CSV files with rbind" - Multiple file combination
-3. "handles CSV with custom delimiter" - Parameter configuration
-
-**What changed:**
-- Enhanced existing testServer tests to also **evaluate expressions** and verify data output
-- Deleted redundant shinytest2 test file entirely
-
-**Before:**
-```r
-# shinytest2 - Takes ~10 seconds
-app <- AppDriver$new(serve(new_read_block(path = csv_file)))
-result_data <- get_block_result(app)
-expect_equal(nrow(result_data), 5)
-```
-
-**After:**
-```r
-# testServer - Takes ~0.5 seconds
-blk <- new_read_block(path = csv_file)
-testServer(blk$expr_server, args = list(), {
-  session$flushReact()
-  expr_result <- session$returned$expr()
-
-  # Evaluate expression and verify data
-  data <- eval(expr_result)
-  expect_equal(nrow(data), 5)
-})
-```
-
-**Results:**
-- **Performance:** 30s → 1.5s (20x faster)
-- **Coverage:** Identical - both verify data output
-- **Maintenance:** Simpler tests without browser setup overhead
-
-**Key insight:** These tests were NOT testing integration - they were testing that `serve()` could launch and extract data, which is just expression evaluation with extra steps. testServer + `eval()` provides identical coverage at a fraction of the cost.
-
-**When Layer 3 IS appropriate:**
-- User uploads file via fileInput widget
-- User clicks "Advanced Options" accordion and changes delimiter
-- Multi-block stack integration testing
-- Testing actual UI rendering and JavaScript behavior
-
-These scenarios test **user workflows and integration**, not just data output.
-
-**New integration test added:**
-See `test-shinytest2-read-block-integration.R` for focused integration testing:
-
-**"user changes CSV delimiter in UI and data updates" (1 test, ~5s, 8 assertions):**
-- Tests TRUE user workflow that testServer CANNOT simulate:
-  1. User loads file with wrong delimiter → sees malformed data
-  2. User changes `csv_sep` input in UI via `app$set_inputs()`
-  3. App reactively updates → data becomes correct
-- This tests the complete pipeline: UI input → reactive update → data output → exportTestValues
-- Input ID pattern discovered: `"{serve_id}-expr-{input_name}"` (e.g., `"block-expr-csv_sep"`)
-- Note: No separate smoke test needed - if integration test passes, serve() infrastructure works
-
-This test provides REAL integration value. It verifies something testServer fundamentally cannot test: user interaction workflows.
-
-**Additional integration test ideas for future:**
-- File upload widget interaction with persistence
-- shinyFiles browser widget interaction
-- Multi-block stack integration with data flow between blocks
+For blockr.io, **NONE of these apply**. All our tests are now testServer.
