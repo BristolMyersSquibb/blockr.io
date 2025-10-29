@@ -4,9 +4,6 @@ test_that("write_block expr_server with auto_write=FALSE starts with NULL expres
   dir.create(temp_dir)
 
   # Create block with auto_write=FALSE
-  # NOTE: Testing submit button with testServer doesn't work because the button
-  # is wrapped in conditionalPanel which doesn't render in testServer environment.
-  # Submit button functionality should be tested with Layer 3 integration tests.
   blk <- new_write_block(
     directory = temp_dir,
     filename = "output",
@@ -38,6 +35,81 @@ test_that("write_block expr_server with auto_write=FALSE starts with NULL expres
 
       # Verify auto_write state is FALSE
       expect_false(result$state$auto_write())
+    }
+  )
+
+  unlink(temp_dir, recursive = TRUE)
+})
+
+test_that("write_block expr_server handles submit button click with auto_write=FALSE", {
+  # This test REPLACES test-shinytest2-write-block-integration.R
+  # It proves that "user clicks submit button" can be tested with testServer
+
+  temp_dir <- tempfile("write_test_")
+  dir.create(temp_dir)
+
+  # Create block with auto_write=FALSE (requires manual submit)
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "iris_submit",
+    format = "csv",
+    mode = "browse",
+    auto_write = FALSE
+  )
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(
+      x = blk,
+      data = list(
+        ...args = reactiveValues(
+          data = iris
+        )
+      )
+    ),
+    {
+      session$flushReact()
+
+      result <- session$returned
+
+      # STEP 1: Verify no file exists yet and expression is NULL
+      files_before <- list.files(temp_dir, pattern = "iris_submit\\.csv$")
+      expect_equal(length(files_before), 0)
+
+      expr_before <- result$expr()
+      expect_null(expr_before, info = "Expression should be NULL before submit")
+
+      # Debug: Check state before button click
+      # cat("\nBefore button click:\n")
+      # cat("  mode:", result$state$mode(), "\n")
+      # cat("  auto_write:", result$state$auto_write(), "\n")
+      # cat("  directory:", result$state$directory(), "\n")
+      # cat("  expr is NULL:", is.null(result$expr()), "\n")
+
+      # STEP 2: USER CLICKS SUBMIT BUTTON IN UI
+      # This is the key part - session$setInputs() simulates button click
+      # The button is namespaced as "expr-submit_write" because it's in the expr module
+      session$setInputs(`expr-submit_write` = 1)
+      session$flushReact()
+
+      # Debug: Check state after button click
+      # cat("\nAfter button click:\n")
+      # cat("  expr is NULL:", is.null(result$expr()), "\n")
+
+      # STEP 3: Verify expression is now generated after submit
+      expr_after <- result$expr()
+      expect_false(is.null(expr_after), info = "Expression should be generated after submit")
+
+      # Verify it's a write expression
+      expr_text <- paste(deparse(expr_after), collapse = " ")
+      expect_true(grepl("readr::write_csv", expr_text))
+      expect_true(grepl("iris_submit\\.csv", expr_text))
+      expect_true(grepl("data", expr_text))  # Should reference the data variable name
+
+      # Note: We don't evaluate the expression here because it references
+      # a variable name ("data") that needs to exist in the calling environment.
+      # The important thing is that clicking submit generates the expression,
+      # which proves the UI interaction works with testServer.
     }
   )
 
@@ -484,6 +556,182 @@ test_that("write_block expr_server handles Feather format", {
       expect_true(grepl("arrow::write_feather", expr_text))
       expect_true(grepl("data\\.feather", expr_text))
       expect_true(grepl("`1`", expr_text))  # Should reference `1` variable
+    }
+  )
+
+  unlink(temp_dir, recursive = TRUE)
+})
+
+# ============================================================================
+# HIGH PRIORITY: Comprehensive argument testing
+# ============================================================================
+
+test_that("write_block expr_server handles mode=download", {
+  temp_dir <- tempfile("write_test_")
+  dir.create(temp_dir)
+
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "download_test",
+    format = "csv",
+    mode = "download"  # Download mode instead of browse
+  )
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(
+      x = blk,
+      data = list(
+        ...args = reactiveValues(
+          data = mtcars[1:5, 1:3]
+        )
+      )
+    ),
+    {
+      session$flushReact()
+
+      result <- session$returned
+
+      # In download mode, expression should be NULL (handled by downloadHandler)
+      expr_result <- result$expr()
+      expect_null(expr_result, info = "Download mode should return NULL expr")
+
+      # Verify state reflects download mode
+      expect_equal(result$state$mode(), "download")
+    }
+  )
+
+  unlink(temp_dir, recursive = TRUE)
+})
+
+test_that("write_block expr_server respects CSV quote parameter", {
+  temp_dir <- tempfile("write_test_")
+  dir.create(temp_dir)
+
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "quoted",
+    format = "csv",
+    mode = "browse",
+    args = list(quote = TRUE)  # Quote all fields (use TRUE, not "all" string)
+  )
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(
+      x = blk,
+      data = list(
+        ...args = reactiveValues(
+          data = data.frame(name = c("Alice", "Bob"), value = c(10, 20))
+        )
+      )
+    ),
+    {
+      session$flushReact()
+
+      result <- session$returned
+      expr_result <- result$expr()
+      expr_text <- paste(deparse(expr_result), collapse = " ")
+
+      # Verify quote parameter is in expression (TRUE converts to "all")
+      expect_true(grepl('quote = "all"', expr_text))
+      expect_true(grepl("readr::write_csv", expr_text))
+    }
+  )
+
+  unlink(temp_dir, recursive = TRUE)
+})
+
+test_that("write_block expr_server respects CSV na parameter", {
+  temp_dir <- tempfile("write_test_")
+  dir.create(temp_dir)
+
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "with_na",
+    format = "csv",
+    mode = "browse",
+    args = list(na = "MISSING")  # Custom NA string
+  )
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(
+      x = blk,
+      data = list(
+        ...args = reactiveValues(
+          data = data.frame(x = c(1, NA, 3), y = c(NA, 2, 3))
+        )
+      )
+    ),
+    {
+      session$flushReact()
+
+      result <- session$returned
+      expr_result <- result$expr()
+      expr_text <- paste(deparse(expr_result), collapse = " ")
+
+      # Verify na parameter is in expression
+      expect_true(grepl('na = "MISSING"', expr_text))
+      expect_true(grepl("readr::write_csv", expr_text))
+    }
+  )
+
+  unlink(temp_dir, recursive = TRUE)
+})
+
+# NOTE: col_names parameter is not currently supported by write_expr_csv
+# test_that("write_block expr_server respects CSV col_names parameter", {
+#   # This test is commented out because col_names is not implemented in write-expr.R
+#   # Consider adding this parameter support in future if needed
+# })
+
+test_that("write_block expr_server handles format UI changes", {
+  skip_if_not_installed("arrow")
+
+  temp_dir <- tempfile("write_test_")
+  dir.create(temp_dir)
+
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "format_change",
+    format = "csv",  # Start with CSV
+    mode = "browse"
+  )
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(
+      x = blk,
+      data = list(
+        ...args = reactiveValues(
+          data = iris[1:10, ]
+        )
+      )
+    ),
+    {
+      session$flushReact()
+
+      result <- session$returned
+
+      # Initial format is CSV
+      expr_initial <- result$expr()
+      expr_text_initial <- paste(deparse(expr_initial), collapse = " ")
+      expect_true(grepl("readr::write_csv", expr_text_initial))
+      expect_true(grepl("format_change\\.csv", expr_text_initial))
+
+      # USER CHANGES FORMAT IN UI
+      session$setInputs(`expr-format` = "parquet")
+      session$flushReact()
+
+      # Expression should now use parquet
+      expr_updated <- result$expr()
+      expr_text_updated <- paste(deparse(expr_updated), collapse = " ")
+      expect_true(grepl("arrow::write_parquet", expr_text_updated))
+      expect_true(grepl("format_change\\.parquet", expr_text_updated))
+
+      # State should reflect the change
+      expect_equal(result$state$format(), "parquet")
     }
   )
 
