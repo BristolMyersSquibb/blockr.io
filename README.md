@@ -1,7 +1,7 @@
 # blockr.io
 
 <!-- badges: start -->
-[![check](https://github.com/BristolMyersSquibb/blockr.io/actions/workflows/check.yaml/badge.svg)](https://github.com/BristolMyersSquibb/blockr.io/actions/workflows/check.yaml)
+[![check](https://github.com/BristolMyersSquibb/blockr.io/actions/workflows/ci.yaml/badge.svg)](https://github.com/BristolMyersSquibb/blockr.io/actions/workflows/ci.yaml)
 [![coverage](https://codecov.io/gh/BristolMyersSquibb/blockr.io/graph/badge.svg)](https://app.codecov.io/gh/BristolMyersSquibb/blockr.io)
 <!-- badges: end -->
 

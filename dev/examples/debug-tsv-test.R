@@ -14,7 +14,6 @@ write.table(
 )
 
 cat("TSV file created:", temp_tsv, "\n")
-
 cat("File contents:\n")
 cat(readLines(temp_tsv), sep = "\n")
 
