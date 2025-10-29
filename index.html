@@ -54,34 +54,42 @@
 <div class="page-header"><h1 id="blockrio">blockr.io<a class="anchor" aria-label="anchor" href="#blockrio"></a>
 </h1></div>
 <!-- badges: start -->
-<!-- badges: end -->
+
 <p>Upload and download multiple file formats such as Excel, csv, xpt, etc. to and from a blockr data pipeline.</p>
+<div class="section level2">
+<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
+</h2>
+<p>blockr.io is part of the blockr ecosystem. blockr.core provides the workflow engine, blockr.ui provides the visual interface, and blockr.io provides file I/O blocks for reading and writing data in various formats. These packages work together to create interactive data workflows with flexible file handling.</p>
+</div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>You can install the development version of blockr.io from <a href="https://github.com/" class="external-link">GitHub</a> with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("devtools")</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"BristolMyersSquibb/blockr.io"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"BristolMyersSquibb/blockr.io"</span><span class="op">)</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"BristolMyersSquibb/blockr.core"</span><span class="op">)</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"BristolMyersSquibb/blockr.ui"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
+<h2 id="getting-started">Getting Started<a class="anchor" aria-label="anchor" href="#getting-started"></a>
 </h2>
-<p>Read a CSV file and write to Excel:</p>
+<p>Create and launch an empty dashboard:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://bristolmyerssquibb.github.io/blockr.core/" class="external-link">blockr.core</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">blockr.ui</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://bristolmyerssquibb.github.io/blockr.io/">blockr.io</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/serve.html" class="external-link">serve</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/new_board.html" class="external-link">new_board</a></span><span class="op">(</span></span>
-<span>    blocks <span class="op">=</span> <span class="fu"><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/new_block.html" class="external-link">blocks</a></span><span class="op">(</span></span>
-<span>      a <span class="op">=</span> <span class="fu"><a href="reference/read.html">new_read_block</a></span><span class="op">(</span>source <span class="op">=</span> <span class="st">"path"</span><span class="op">)</span>,  <span class="co"># Browse for files</span></span>
-<span>      b <span class="op">=</span> <span class="fu"><a href="reference/write.html">new_write_block</a></span><span class="op">(</span>format <span class="op">=</span> <span class="st">"excel"</span>, mode <span class="op">=</span> <span class="st">"download"</span><span class="op">)</span></span>
-<span>    <span class="op">)</span>,</span>
-<span>    links <span class="op">=</span> <span class="fu"><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/new_link.html" class="external-link">links</a></span><span class="op">(</span>ab <span class="op">=</span> <span class="fu"><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/new_link.html" class="external-link">new_link</a></span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"b"</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/serve.html" class="external-link">serve</a></span><span class="op">(</span><span class="fu">new_dag_board</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>This opens a visual interface in your web browser. Add blocks using the “+” button, connect them by dragging, and configure each block through its settings.</p>
+</div>
+<div class="section level2">
+<h2 id="available-blocks">Available Blocks<a class="anchor" aria-label="anchor" href="#available-blocks"></a>
+</h2>
 <p>The unified <code><a href="reference/read.html">new_read_block()</a></code> supports multiple sources (browse, upload, URL) and formats (CSV, Excel, Parquet, etc.) with smart format detection. The <code><a href="reference/write.html">new_write_block()</a></code> can output to various formats and supports both download and filesystem modes.</p>
+</div>
+<div class="section level2">
+<h2 id="learn-more">Learn More<a class="anchor" aria-label="anchor" href="#learn-more"></a>
+</h2>
+<p>The <a href="https://bristolmyerssquibb.github.io/blockr.io/">blockr.io website</a> includes full documentation and examples. For information on the broader blockr ecosystem, see <a href="https://bristolmyerssquibb.github.io/blockr.core/" class="external-link">blockr.core</a> and <a href="https://bristolmyerssquibb.github.io/blockr.dplyr/" class="external-link">blockr.dplyr</a>.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="license">
@@ -108,7 +116,13 @@
 </ul>
 </div>
 
-
+<div class="dev-status">
+<h2 data-toc-skip>Dev status</h2>
+<ul class="list-unstyled">
+<li><a href="https://github.com/BristolMyersSquibb/blockr.io/actions/workflows/check.yaml" class="external-link"><img src="https://github.com/BristolMyersSquibb/blockr.io/actions/workflows/check.yaml/badge.svg" alt="check"></a></li>
+<li><a href="https://app.codecov.io/gh/BristolMyersSquibb/blockr.io" class="external-link"><img src="https://codecov.io/gh/BristolMyersSquibb/blockr.io/graph/badge.svg" alt="coverage"></a></li>
+</ul>
+</div>
 
   </aside>
 </div>
