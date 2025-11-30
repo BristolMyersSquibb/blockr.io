@@ -17,11 +17,7 @@ write.csv(mtcars, temp_csv, row.names = FALSE)
 serve(
   new_dock_board(
     blocks = c(
-      data = new_read_block(
-        path = temp_csv,
-        source = "path",
-        combine = "auto"
-      ),
+      data = new_dataset_block(dataset = "iris"),
       output = new_write_block(
         mode = "download",
         format = "csv",

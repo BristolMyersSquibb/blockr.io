@@ -307,6 +307,30 @@ new_write_block <- function(
             }
           })
 
+          # Update status when auto-write generates a new expression
+          observe({
+            req(r_mode() == "browse")
+            req(r_auto_write())
+            req(r_write_expression())
+
+            # Depend on all data values to trigger status update when data changes
+            for (nm in names(...args)) {
+              ...args[[nm]]
+            }
+
+            # Generate confirmation message with file path and timestamp
+            base_filename <- generate_filename(r_filename())
+            ext <- switch(r_format(),
+              "csv" = ".csv",
+              "excel" = ".xlsx",
+              "parquet" = ".parquet",
+              ".csv"
+            )
+            full_path <- file.path(r_directory(), paste0(base_filename, ext))
+            timestamp <- format(Sys.time(), "%H:%M:%S")
+            r_write_status(sprintf("\u2713 Saved to %s at %s", full_path, timestamp))
+          })
+
 
           # # Execute write when in browse mode and data changes
           # observeEvent(
