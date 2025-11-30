@@ -15,28 +15,10 @@ navbar:
 
 reference:
 - title: File I/O Blocks
-  desc: Unified blocks for reading and writing various file formats
+  desc: Blocks for reading and writing various file formats
   contents:
   - new_read_block
   - new_write_block
-
-- title: Expression Helpers
-  desc: Pure functions for generating file reading expressions
-  contents:
-  - read_expr
-  - read_expr_single
-  - read_expr_csv
-  - read_expr_excel
-  - read_expr_arrow
-  - read_expr_rio
-
-- title: Utility Functions
-  desc: Helper functions for file handling and detection
-  contents:
-  - is_valid_url
-  - download_url_to_temp
-  - get_rio_extensions
-  - detect_file_category
 
 articles:
 - title: Getting Started
