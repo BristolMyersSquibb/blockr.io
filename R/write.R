@@ -14,9 +14,9 @@
 #'   Default: "csv"
 #' @param mode Character. Either "download" for "To Browser" (triggers browser download),
 #'   or "browse" for "To Server" (writes to server filesystem). Default: "download"
-#' @param auto_write Logical. When TRUE (default), automatically writes files when data changes
-#'   (browse mode only). When FALSE, user must click "Write File" button to save. Has no effect
-#'   in download mode.
+#' @param auto_write Logical. When TRUE, automatically writes files when data changes
+#'   (browse mode only). When FALSE (default), user must click "Submit" button to save.
+#'   Has no effect in download mode.
 #' @param args Named list of format-specific writing parameters. Only specify values
 #'   that differ from defaults. Available parameters:
 #'   - **For CSV files:** `sep` (default: ","), `quote` (default: TRUE),
@@ -105,7 +105,7 @@ new_write_block <- function(
   filename = "",
   format = "csv",
   mode = "download",
-  auto_write = TRUE,
+  auto_write = FALSE,
   args = list(),
   ...
 ) {
@@ -262,8 +262,17 @@ new_write_block <- function(
               .(first_data)
             }))
 
-            # Update status to indicate expression is ready
-            r_write_status("Ready - expression will be evaluated")
+            # Generate confirmation message with file path and timestamp
+            base_filename <- generate_filename(r_filename())
+            ext <- switch(r_format(),
+              "csv" = ".csv",
+              "excel" = ".xlsx",
+              "parquet" = ".parquet",
+              ".csv"
+            )
+            full_path <- file.path(r_directory(), paste0(base_filename, ext))
+            timestamp <- format(Sys.time(), "%H:%M:%S")
+            r_write_status(sprintf("\u2713 Saved to %s at %s", full_path, timestamp))
           })
 
           # Generate expression that adapts based on mode and auto_write setting
@@ -559,8 +568,8 @@ new_write_block <- function(
                       class = "mt-2",
                       actionButton(
                         NS(id, "submit_write"),
-                        "Submit",
-                        class = "btn-primary btn-sm"
+                        "Save to File",
+                        class = "btn-outline-secondary"
                       )
                     )
                   )
@@ -655,11 +664,22 @@ new_write_block <- function(
                     ns = NS(id),
                     div(
                       class = "block-input-wrapper",
-                      textInput(
+                      selectizeInput(
                         inputId = NS(id, "csv_sep"),
                         label = "Delimiter",
-                        value = if (!is.null(args$sep)) args$sep else ",",
-                        placeholder = "default: ,"
+                        choices = c(
+                          "Comma (,)" = ",",
+                          "Semicolon (;)" = ";",
+                          "Tab (\\t)" = "\t",
+                          "Pipe (|)" = "|"
+                        ),
+                        selected = if (!is.null(args$sep)) args$sep else ",",
+                        options = list(create = TRUE)
+                      ),
+                      div(
+                        class = "block-help-text",
+                        style = "font-size: 0.75rem;",
+                        "Type to add custom delimiter"
                       )
                     ),
                     div(

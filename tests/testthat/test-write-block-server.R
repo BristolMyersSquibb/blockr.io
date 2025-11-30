@@ -127,7 +127,8 @@ test_that("write_block expr_server handles multiple inputs for Excel", {
     directory = temp_dir,
     filename = "report",
     format = "excel",
-    mode = "browse"
+    mode = "browse",
+    auto_write = TRUE
   )
 
   # Suppress "NAs introduced by coercion" warning from blockr.core
@@ -171,6 +172,7 @@ test_that("write_block expr_server respects CSV delimiter parameter", {
     filename = "data",
     format = "csv",
     mode = "browse",
+    auto_write = TRUE,
     args = list(sep = ";")
   )
 
@@ -210,7 +212,8 @@ test_that("write_block expr_server generates ZIP for multiple CSV inputs", {
     directory = temp_dir,
     filename = "multi",
     format = "csv",
-    mode = "browse"
+    mode = "browse",
+    auto_write = TRUE
   )
 
   shiny::testServer(
@@ -250,7 +253,8 @@ test_that("write_block expr_server handles Parquet format", {
     directory = temp_dir,
     filename = "data",
     format = "parquet",
-    mode = "browse"
+    mode = "browse",
+    auto_write = TRUE
   )
 
   shiny::testServer(
@@ -288,6 +292,7 @@ test_that("write_block expr_server state returns reactive values", {
     filename = "output",
     format = "csv",
     mode = "browse",
+    auto_write = TRUE,
     args = list(sep = ",")
   )
 
@@ -331,7 +336,8 @@ test_that("write_block expr_server generates expression in browse mode", {
     directory = temp_dir,
     filename = "test_output",
     format = "csv",
-    mode = "browse"
+    mode = "browse",
+    auto_write = TRUE
   )
 
   test_df <- data.frame(x = 1:3, y = c("a", "b", "c"), stringsAsFactors = FALSE)
@@ -374,7 +380,8 @@ test_that("write_block expr_server handles auto-timestamp filename", {
     directory = temp_dir,
     filename = "",  # Empty = auto-timestamp
     format = "csv",
-    mode = "browse"
+    mode = "browse",
+    auto_write = TRUE
   )
 
   shiny::testServer(
@@ -410,7 +417,8 @@ test_that("write_block expr_server handles mode changes", {
     directory = temp_dir,
     filename = "output",
     format = "csv",
-    mode = "browse"
+    mode = "browse",
+    auto_write = TRUE
   )
 
   shiny::testServer(
@@ -449,7 +457,8 @@ test_that("write_block expr_server handles variadic inputs correctly", {
     directory = temp_dir,
     filename = "multi",
     format = "excel",
-    mode = "browse"
+    mode = "browse",
+    auto_write = TRUE
   )
 
   shiny::testServer(
@@ -491,7 +500,8 @@ test_that("write_block expr_server handles single Excel sheet", {
     directory = temp_dir,
     filename = "single_sheet",
     format = "excel",
-    mode = "browse"
+    mode = "browse",
+    auto_write = TRUE
   )
 
   shiny::testServer(
@@ -532,7 +542,8 @@ test_that("write_block expr_server handles Feather format", {
     directory = temp_dir,
     filename = "data",
     format = "feather",
-    mode = "browse"
+    mode = "browse",
+    auto_write = TRUE
   )
 
   shiny::testServer(
@@ -613,6 +624,7 @@ test_that("write_block expr_server respects CSV quote parameter", {
     filename = "quoted",
     format = "csv",
     mode = "browse",
+    auto_write = TRUE,
     args = list(quote = TRUE)  # Quote all fields (use TRUE, not "all" string)
   )
 
@@ -651,6 +663,7 @@ test_that("write_block expr_server respects CSV na parameter", {
     filename = "with_na",
     format = "csv",
     mode = "browse",
+    auto_write = TRUE,
     args = list(na = "MISSING")  # Custom NA string
   )
 
@@ -696,7 +709,8 @@ test_that("write_block expr_server handles format UI changes", {
     directory = temp_dir,
     filename = "format_change",
     format = "csv",  # Start with CSV
-    mode = "browse"
+    mode = "browse",
+    auto_write = TRUE
   )
 
   shiny::testServer(
