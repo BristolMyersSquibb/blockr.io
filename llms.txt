@@ -1,0 +1,79 @@
+# blockr.io
+
+blockr.io provides file I/O blocks for reading and writing data in
+various formats. Load CSV, Excel, Parquet, and more through visual
+interfaces - no code required.
+
+## Installation
+
+``` r
+install.packages("blockr.io")
+```
+
+Or install the development version from GitHub:
+
+``` r
+# install.packages("pak")
+pak::pak("BristolMyersSquibb/blockr.io")
+```
+
+## Getting Started
+
+``` r
+library(blockr.io)
+serve(new_board())
+```
+
+This opens a visual interface in your browser. Add blocks using the “+”
+button and connect them to build data pipelines.
+
+## Available Blocks
+
+### Read Block
+
+Load data from multiple sources with automatic format detection:
+
+- **From Browser**: Upload files via drag-and-drop (persisted across
+  sessions)
+- **From Server**: Browse the file system directly
+- **From URL**: Download data from web URLs
+
+Supports CSV, Excel, Parquet, Feather, JSON, SPSS, Stata, SAS, and more.
+
+### Write Block
+
+Export data to various formats with two output modes:
+
+- **To Browser**: Download files directly (recommended for most users)
+- **To Server**: Write to the file system (for automated pipelines)
+
+Supports CSV, Excel, Parquet, and Feather. Multiple inputs become Excel
+sheets or ZIP archives.
+
+## Learn More
+
+See
+[`vignette("blockr-io-showcase")`](https://bristolmyerssquibb.github.io/blockr.io/articles/blockr-io-showcase.md)
+for screenshots and detailed examples.
+
+The [blockr.io website](https://bristolmyerssquibb.github.io/blockr.io/)
+includes full documentation. For the workflow engine, see
+[blockr.core](https://bristolmyerssquibb.github.io/blockr.core/).
+
+# Package index
+
+## File I/O Blocks
+
+Blocks for reading and writing various file formats
+
+- [`new_read_block()`](https://bristolmyerssquibb.github.io/blockr.io/reference/read.md)
+  : Unified file reading block
+- [`new_write_block()`](https://bristolmyerssquibb.github.io/blockr.io/reference/write.md)
+  : Unified file writing block
+
+# Articles
+
+### Getting Started
+
+- [blockr.io Showcase: File I/O
+  Blocks](https://bristolmyerssquibb.github.io/blockr.io/articles/blockr-io-showcase.md):
