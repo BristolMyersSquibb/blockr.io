@@ -259,6 +259,63 @@ test_that("read_expr handles empty paths", {
   expect_null(expr)
 })
 
+test_that("read_expr handles tab delimiter", {
+  temp_file <- tempfile(fileext = ".tsv")
+  write.table(
+    data.frame(x = 1:3, y = 4:6),
+    temp_file,
+    sep = "\t",
+    row.names = FALSE,
+    quote = FALSE
+  )
+
+  expr <- read_expr(
+    paths = temp_file,
+    file_type = "csv",
+    sep = "\t"
+  )
+
+  # Should use read_tsv for tab delimiter
+  expect_equal(as.character(expr[[1]]), c("::", "readr", "read_tsv"))
+
+  # Evaluate and verify
+
+  result <- eval(expr)
+  expect_equal(nrow(result), 3)
+  expect_equal(result$x, 1:3)
+  expect_equal(result$y, 4:6)
+
+  unlink(temp_file)
+})
+
+test_that("read_expr handles pipe delimiter", {
+  temp_file <- tempfile(fileext = ".txt")
+  write.table(
+    data.frame(a = 1:3, b = c("x", "y", "z")),
+    temp_file,
+    sep = "|",
+    row.names = FALSE,
+    quote = FALSE
+  )
+
+  expr <- read_expr(
+    paths = temp_file,
+    file_type = "csv",
+    sep = "|"
+  )
+
+  # Should use read_delim for custom delimiter
+  expect_equal(as.character(expr[[1]]), c("::", "readr", "read_delim"))
+
+  # Evaluate and verify
+  result <- eval(expr)
+  expect_equal(nrow(result), 3)
+  expect_equal(result$a, 1:3)
+  expect_equal(result$b, c("x", "y", "z"))
+
+  unlink(temp_file)
+})
+
 test_that("read_expr respects CSV parameters", {
   temp_file <- tempfile(fileext = ".csv")
   write.csv(data.frame(a = 1:10), temp_file, row.names = FALSE)

@@ -12,11 +12,11 @@
 #'   - **If empty** (default): Generates timestamped filename (e.g., `data_20250127_143022.csv`)
 #' @param format Character. Output format: "csv", "excel", "parquet", or "feather".
 #'   Default: "csv"
-#' @param mode Character. Either "download" to trigger browser download (recommended for beginners),
-#'   or "browse" to write files to server filesystem. Default: "download"
-#' @param auto_write Logical. When TRUE (default), automatically writes files when data changes
-#'   (browse mode only). When FALSE, user must click "Write File" button to save. Has no effect
-#'   in download mode.
+#' @param mode Character. Either "download" for "To Browser" (triggers browser download),
+#'   or "browse" for "To Server" (writes to server filesystem). Default: "download"
+#' @param auto_write Logical. When TRUE, automatically writes files when data changes
+#'   (browse mode only). When FALSE (default), user must click "Submit" button to save.
+#'   Has no effect in download mode.
 #' @param args Named list of format-specific writing parameters. Only specify values
 #'   that differ from defaults. Available parameters:
 #'   - **For CSV files:** `sep` (default: ","), `quote` (default: TRUE),
@@ -57,47 +57,43 @@
 #' - Preserves history, prevents accidental overwrites
 #' - Safe default behavior
 #'
-#' ## Mode: Browse vs Download
+#' ## Mode: To Browser vs To Server
 #'
-#' **Browse mode:**
-#' - Writes files to server filesystem
+#' **To Browser mode** (download):
+#' - Exports files to your computer
+#' - Triggers a download to your browser's download folder
+#' - Useful for exporting results
+#'
+#' **To Server mode** (browse):
+#' - Saves files directly on the server
 #' - User selects directory with file browser
 #' - Files persist on server
-#'
-#' **Download mode:**
-#' - Generates file and triggers browser download
-#' - File saved to user's download folder
-#' - Useful for exporting results
+#' - When running locally, this is your computer's file system
 #'
 #' @return A blockr transform block that writes dataframes to files
 #'
 #' @examples
-#' \dontrun{
-#' # Single dataframe to CSV
-#' serve(new_write_block(
-#'   directory = "/tmp",
+#' # Create a write block for CSV output
+#' block <- new_write_block(
+#'   directory = tempdir(),
 #'   filename = "output",
 #'   format = "csv"
-#' ))
+#' )
+#' block
 #'
-#' # Multiple dataframes to Excel with auto-timestamp
-#' serve(new_write_block(
-#'   directory = "/tmp",
-#'   filename = "", # auto-generated
+#' # Write block for Excel with auto-timestamp
+#' block <- new_write_block(
+#'   directory = tempdir(),
+#'   filename = "",
 #'   format = "excel"
-#' ))
+#' )
 #'
-#' # CSV with custom delimiter
-#' serve(new_write_block(
-#'   directory = "/tmp",
-#'   filename = "data",
-#'   format = "csv",
-#'   args = list(sep = ";")
-#' ))
+#' \dontrun{
+#' # Launch interactive app
+#' serve(new_write_block())
 #' }
 #'
 #' @importFrom shinyFiles shinyDirButton shinyDirChoose parseDirPath
-#' @importFrom shinyjs click
 #' @rdname write
 #' @export
 new_write_block <- function(
@@ -105,7 +101,7 @@ new_write_block <- function(
   filename = "",
   format = "csv",
   mode = "download",
-  auto_write = TRUE,
+  auto_write = FALSE,
   args = list(),
   ...
 ) {
@@ -262,8 +258,17 @@ new_write_block <- function(
               .(first_data)
             }))
 
-            # Update status to indicate expression is ready
-            r_write_status("Ready - expression will be evaluated")
+            # Generate confirmation message with file path and timestamp
+            base_filename <- generate_filename(r_filename())
+            ext <- switch(r_format(),
+              "csv" = ".csv",
+              "excel" = ".xlsx",
+              "parquet" = ".parquet",
+              ".csv"
+            )
+            full_path <- file.path(r_directory(), paste0(base_filename, ext))
+            timestamp <- format(Sys.time(), "%H:%M:%S")
+            r_write_status(sprintf("\u2713 Saved to %s at %s", full_path, timestamp))
           })
 
           # Generate expression that adapts based on mode and auto_write setting
@@ -296,6 +301,30 @@ new_write_block <- function(
               # Download mode: Return NULL - download handler does the writing
               NULL
             }
+          })
+
+          # Update status when auto-write generates a new expression
+          observe({
+            req(r_mode() == "browse")
+            req(r_auto_write())
+            req(r_write_expression())
+
+            # Depend on all data values to trigger status update when data changes
+            for (nm in names(...args)) {
+              ...args[[nm]]
+            }
+
+            # Generate confirmation message with file path and timestamp
+            base_filename <- generate_filename(r_filename())
+            ext <- switch(r_format(),
+              "csv" = ".csv",
+              "excel" = ".xlsx",
+              "parquet" = ".parquet",
+              ".csv"
+            )
+            full_path <- file.path(r_directory(), paste0(base_filename, ext))
+            timestamp <- format(Sys.time(), "%H:%M:%S")
+            r_write_status(sprintf("\u2713 Saved to %s at %s", full_path, timestamp))
           })
 
 
@@ -363,12 +392,17 @@ new_write_block <- function(
               }
             },
             content = function(file) {
+              # Use a fixed timestamp for consistent filename generation
+              # This prevents mismatch between write_expr and file search
+              fixed_timestamp <- Sys.time()
+              base_filename <- generate_filename(r_filename(), fixed_timestamp)
+
               # Generate write expression for temp directory
               temp_dir <- dirname(file)
               expr <- write_expr(
                 data_names = arg_names(),
                 directory = temp_dir,
-                filename = r_filename(),
+                filename = base_filename, # Use pre-computed filename
                 format = r_format(),
                 args = r_args()
               )
@@ -394,26 +428,26 @@ new_write_block <- function(
               eval(expr, envir = eval_env)
 
               # Find generated file and copy to download location
+              # Use same base_filename as we used for write_expr
               generated_file <- list.files(
                 temp_dir,
                 pattern = paste0(
                   "^",
-                  gsub("\\.", "\\\\.", generate_filename(r_filename())),
+                  gsub("\\.", "\\\\.", base_filename),
                   "\\."
                 ),
                 full.names = TRUE
               )[1]
 
               if (!is.na(generated_file) && file.exists(generated_file)) {
-                file.copy(generated_file, file, overwrite = TRUE)
+                # Only copy if source and dest are different (can be same in tests)
+                if (normalizePath(generated_file) != normalizePath(file, mustWork = FALSE)) {
+                  file.copy(generated_file, file, overwrite = TRUE)
+                }
               }
             }
           )
 
-          # Trigger download when action button is clicked
-          observeEvent(input$download_trigger, {
-            shinyjs::click("download_data")
-          })
 
           # Output: Current directory display
           output$current_directory <- renderText({
@@ -453,8 +487,6 @@ new_write_block <- function(
     },
     ui = function(id) {
       tagList(
-        shinyjs::useShinyjs(),
-
         # Add CSS
         css_responsive_grid(),
         css_advanced_toggle(NS(id, "advanced-options"), use_subgrid = TRUE),
@@ -491,40 +523,44 @@ new_write_block <- function(
                 border-color: rgb(236, 236, 236);
                 z-index: 2;
               }
+              /* Make inputs full width */
+              .write-block-container .shiny-input-container {
+                width: 100% !important;
+              }
+              .write-block-container .selectize-control {
+                width: 100% !important;
+              }
             "
             )),
             bslib::navset_pill(
               id = NS(id, "mode_pills"),
               selected = mode,
               bslib::nav_panel(
-                title = "Download",
+                title = "To Browser",
                 value = "download",
                 div(
                   class = "mt-3",
+                  tags$h4("Export files to your computer", class = "mb-2"),
                   div(
                     class = "block-help-text mb-3",
-                    "Download file(s) to your browser's download folder."
-                  ),
-                  actionButton(
-                    NS(id, "download_trigger"),
-                    "Download File",
-                    class = "btn-outline-secondary"
+                    "Triggers a download to your browser's download folder."
                   ),
                   downloadButton(
                     NS(id, "download_data"),
-                    "Download",
-                    class = "d-none"
+                    "Download File",
+                    class = "btn-outline-secondary"
                   )
                 )
               ),
               bslib::nav_panel(
-                title = "Browse",
+                title = "To Server",
                 value = "browse",
                 div(
                   class = "mt-3",
+                  tags$h4("Save files to the server", class = "mb-2"),
                   div(
                     class = "block-help-text mb-3",
-                    "Write files to server filesystem."
+                    "When running locally, this is your computer."
                   ),
                   shinyFiles::shinyDirButton(
                     NS(id, "dir_browser"),
@@ -541,12 +577,8 @@ new_write_block <- function(
                     class = "mt-3",
                     checkboxInput(
                       NS(id, "auto_write"),
-                      "Auto-write",
+                      "Auto-write: automatically save when data changes",
                       value = auto_write
-                    ),
-                    div(
-                      class = "block-help-text mb-3",
-                      "When enabled, files are written automatically as data changes. When disabled, click Submit to write."
                     )
                   ),
                   conditionalPanel(
@@ -556,8 +588,8 @@ new_write_block <- function(
                       class = "mt-2",
                       actionButton(
                         NS(id, "submit_write"),
-                        "Submit",
-                        class = "btn-primary btn-sm"
+                        "Save to File",
+                        class = "btn-outline-secondary"
                       )
                     )
                   )
@@ -584,6 +616,7 @@ new_write_block <- function(
                   ),
                   div(
                     class = "block-help-text",
+                    style = "font-size: 0.75rem;",
                     "Fixed filename overwrites on each change. Empty generates unique timestamped files."
                   )
                 ),
@@ -651,11 +684,22 @@ new_write_block <- function(
                     ns = NS(id),
                     div(
                       class = "block-input-wrapper",
-                      textInput(
+                      selectizeInput(
                         inputId = NS(id, "csv_sep"),
                         label = "Delimiter",
-                        value = if (!is.null(args$sep)) args$sep else ",",
-                        placeholder = "default: ,"
+                        choices = c(
+                          "Comma (,)" = ",",
+                          "Semicolon (;)" = ";",
+                          "Tab (\\t)" = "\t",
+                          "Pipe (|)" = "|"
+                        ),
+                        selected = if (!is.null(args$sep)) args$sep else ",",
+                        options = list(create = TRUE)
+                      ),
+                      div(
+                        class = "block-help-text",
+                        style = "font-size: 0.75rem;",
+                        "Type to add custom delimiter"
                       )
                     ),
                     div(

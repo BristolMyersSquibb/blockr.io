@@ -38,28 +38,28 @@ A blockr data block that reads file(s) and returns a data.frame.
 }
 \description{
 A single block for reading files in various formats with smart UI that adapts
-based on detected file type. Supports both upload and browse modes with
-persistent storage for uploaded files.
+based on detected file type. Supports "From Browser" (upload) and "From Server"
+(browse) modes with persistent storage for uploaded files.
 }
 \details{
 \subsection{File Handling Modes}{
 
 The block supports three modes:
 
-\strong{Upload mode:}
+\strong{From Browser mode} (upload):
 \itemize{
-\item User uploads files via fileInput widget
+\item User uploads files from their computer via the browser
 \item Files are copied to persistent storage directory (upload_path)
 \item State stores permanent file paths
 \item Works across R sessions with state restoration
 }
 
-\strong{Browse mode:}
+\strong{From Server mode} (path):
 \itemize{
-\item User browses file system with shinyFiles
-\item Directly selects existing files
+\item User picks files that already exist on the server
+\item No file copying, reads directly from original location
 \item State stores selected file paths
-\item No file copying, reads from original location
+\item When running locally, this is your computer's file system
 }
 
 \strong{URL mode:}
@@ -105,29 +105,21 @@ Default: \code{rappdirs::user_data_dir("blockr")}
 }
 
 \examples{
+# Create a read block for a CSV file
+csv_file <- tempfile(fileext = ".csv")
+write.csv(mtcars[1:5, ], csv_file, row.names = FALSE)
+block <- new_read_block(path = csv_file)
+block
+
+# With custom CSV parameters
+block <- new_read_block(
+  path = csv_file,
+  args = list(n_max = 3)
+)
+
 \dontrun{
-# Basic usage with upload
+# Launch interactive app
 serve(new_read_block())
-
-# Pre-load specific files
-serve(new_read_block(path = c("data.csv", "more_data.csv")))
-
-# Custom CSV parameters (semicolon delimiter, skip first 5 rows)
-serve(new_read_block(
-  path = "data.csv",
-  args = list(sep = ";", skip = 5)
-))
-
-# Excel with specific sheet
-serve(new_read_block(
-  path = "data.xlsx",
-  args = list(sheet = "Sales", range = "A1:E100")
-))
-
-# URL mode - fetch remote data
-serve(new_read_block(
-  path = "https://raw.githubusercontent.com/user/repo/main/data.csv"
-))
 }
 
 }

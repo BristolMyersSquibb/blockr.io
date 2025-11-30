@@ -1,37 +1,4 @@
-#' Build expression to read file(s)
-#'
-#' Creates an R expression that reads one or more files using standard R packages
-#' (readr, readxl, arrow, rio). This is a pure function with no Shiny dependencies,
-#' making it easily testable.
-#'
-#' @param paths Character vector of file paths to read
-#' @param file_type Character. Type of file: "csv", "excel", "arrow", or "other"
-#' @param combine Character. For multiple files: "first" (use first only),
-#'   "rbind" (row bind), "cbind" (column bind), or "auto" (try rbind, fallback to first)
-#' @param ... Additional parameters passed to the reader function. Common parameters:
-#'   - For CSV: sep, col_names, skip, n_max, quote, encoding
-#'   - For Excel: sheet, range, col_names, skip, n_max
-#'
-#' @return A language object (expression) that can be evaluated to read the file(s)
-#'
-#' @examples
-#' \dontrun{
-#' # Single CSV file
-#' expr <- read_expr("data.csv", "csv", sep = ",", col_names = TRUE)
-#' data <- eval(expr)
-#'
-#' # Multiple CSV files with rbind
-#' expr <- read_expr(
-#'   c("data1.csv", "data2.csv"),
-#'   "csv",
-#'   combine = "rbind",
-#'   sep = ","
-#' )
-#' data <- eval(expr)
-#' }
-#'
-#' @keywords internal
-#' @export
+# Internal function - not exported
 read_expr <- function(
   paths,
   file_type = c("csv", "excel", "arrow", "other"),

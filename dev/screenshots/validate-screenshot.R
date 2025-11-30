@@ -4,7 +4,7 @@
 #' takes a screenshot, and returns the result. It's designed to be a
 #' simple, direct way to test whether a block implementation works correctly.
 #'
-#' @param block A blockr block object (e.g., from new_filter_expr_block())
+#' @param block A blockr block object (e.g., from new_read_block())
 #' @param data Data to use for the block (default: mtcars)
 #' @param filename Name for the screenshot file (default: auto-generated)
 #' @param output_dir Directory to save screenshot (default: "man/figures")
@@ -13,7 +13,16 @@
 #' @param delay Seconds to wait for app to load (default: 5)
 #' @param expand_advanced Logical. If TRUE, attempts to click "advanced options"
 #'   toggle before taking screenshot (default: FALSE)
+#' @param use_dock Logical. If TRUE, uses blockr.dock for improved styling
+#'   and automatically crops to the block panel (default: TRUE)
+#' @param dataset Character. Name of the dataset to use in dock mode
+#'   (default: "mtcars"). Must be a dataset available via data().
+#' @param dataset_package Character. Package containing the dataset
+#'   (default: "datasets").
 #' @param verbose Print progress messages (default: TRUE)
+#' @param block_code Optional character string. R code to create the block inline
+#'   instead of loading from RDS. Useful for blocks with file paths that don't
+#'   serialize well. Example: 'new_read_block(path = "/path/to/file.csv")'
 #'
 #' @return A list with components:
 #'   - success: Logical indicating if screenshot was created successfully
@@ -23,22 +32,16 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Simple usage with default data (mtcars)
+#' # Simple usage with read block
 #' result <- validate_block_screenshot(
-#'   new_filter_expr_block("mpg > 20")
+#'   new_read_block(path = "data.csv")
 #' )
 #'
-#' # With custom data
+#' # With write block (needs data)
 #' result <- validate_block_screenshot(
-#'   new_select_block(columns = c("Species")),
-#'   data = iris,
-#'   filename = "iris-select.png"
-#' )
-#'
-#' # With advanced options expanded
-#' result <- validate_block_screenshot(
-#'   new_summarize_block(),
-#'   expand_advanced = TRUE
+#'   new_write_block(mode = "download"),
+#'   data = mtcars,
+#'   filename = "write-block.png"
 #' )
 #'
 #' # Check if successful
@@ -59,7 +62,14 @@ validate_block_screenshot <- function(
   height = 600,
   delay = 5,
   expand_advanced = FALSE,
-  verbose = TRUE
+  use_dock = TRUE,
+  dataset = "mtcars",
+  dataset_package = "datasets",
+  dataset_y = NULL,
+  dataset_y_package = "datasets",
+  input_names = c("x", "y"),
+  verbose = TRUE,
+  block_code = NULL
 ) {
   # Set NOT_CRAN environment variable for shinytest2
   old_not_cran <- Sys.getenv("NOT_CRAN", unset = NA)
@@ -139,6 +149,19 @@ validate_block_screenshot <- function(
     data_list <- list(data = data)
   }
 
+  # Check for magick package if using dock mode (needed for cropping)
+  if (use_dock && !requireNamespace("magick", quietly = TRUE)) {
+    return(list(
+      success = FALSE,
+      path = NULL,
+      error = paste(
+        "magick package is required for dock mode cropping.",
+        "Install with: install.packages('magick')"
+      ),
+      filename = filename
+    ))
+  }
+
   # Try to create the screenshot
   result <- tryCatch(
     {
@@ -149,17 +172,105 @@ validate_block_screenshot <- function(
       # Save data to RDS file to avoid deparse issues
       saveRDS(data_list, file.path(temp_dir, "data.rds"))
 
-      # Save block to RDS file to avoid deparse issues
-      saveRDS(block, file.path(temp_dir, "block.rds"))
+      # Only save block to RDS if not using inline block_code
+      if (is.null(block_code)) {
+        saveRDS(block, file.path(temp_dir, "block.rds"))
+      }
 
       # Detect if this is a data block (doesn't need data parameter)
       is_data_block <- inherits(block, "data_block")
 
-      # Create minimal app.R file
-      app_content <- if (is_data_block) {
-        # Data blocks don't take data parameter
-        sprintf(
-          '
+      # Determine how to load the block in app.R
+      block_load_code <- if (!is.null(block_code)) {
+        # Use inline code - more reliable for blocks with file paths
+        sprintf("block <- %s", block_code)
+      } else {
+        # Load from RDS file
+        'block <- readRDS("block.rds")'
+      }
+
+      # Create app.R file - different content based on use_dock
+      if (use_dock) {
+        if (is_data_block) {
+          # Data blocks (like read_block) are sources - show them as the first block
+          # with no upstream data source in dock
+          app_content <- sprintf(
+            '
+library(blockr.core)
+library(blockr.dock)
+
+# Load the blockr.io package
+# Try to load from development first, fall back to installed version
+tryCatch(
+  devtools::load_all("%s"),
+  error = function(e) {
+    library(blockr.io)
+  }
+)
+
+# Create/load block
+%s
+
+# Run the app using dock board - data block as the only block
+blockr.core::serve(
+  blockr.dock::new_dock_board(
+    blocks = c(
+      a = block
+    )
+  )
+)
+            ',
+            normalizePath("."),
+            block_load_code
+          )
+        } else {
+          # Transform blocks (like write_block) need a data source upstream
+          app_content <- sprintf(
+            '
+library(blockr.core)
+library(blockr.dock)
+
+# Load the blockr.io package
+# Try to load from development first, fall back to installed version
+tryCatch(
+  devtools::load_all("%s"),
+  error = function(e) {
+    library(blockr.io)
+  }
+)
+
+# Load data
+data <- readRDS("data.rds")
+
+# Create/load block
+%s
+
+# Run the app using dock board with default layout
+# serve() is from blockr.core, dock_board is from blockr.dock
+# Default layout: extensions on left, blocks on right
+# We will crop to the right panel (blocks) after taking screenshot
+blockr.core::serve(
+  blockr.dock::new_dock_board(
+    blocks = c(
+      a = blockr.core::new_dataset_block("%s", package = "%s"),
+      b = block
+    ),
+    links = list(from = "a", to = "b", input = "data")
+  )
+)
+            ',
+            normalizePath("."),
+            block_load_code,
+            dataset,
+            dataset_package
+          )
+        }
+      } else {
+        # Use blockr.core directly (original behavior)
+        if (is_data_block) {
+          # Data blocks don't take data parameter
+          app_content <- sprintf(
+            '
 library(blockr.core)
 
 # Load the blockr.io package
@@ -171,18 +282,19 @@ tryCatch(
   }
 )
 
-# Load block
-block <- readRDS("block.rds")
+# Create/load block
+%s
 
 # Run the app (data blocks don\'t need data parameter)
 blockr.core::serve(block)
-          ',
-          normalizePath(".")
-        )
-      } else {
-        # Transform blocks need data parameter
-        sprintf(
-          '
+            ',
+            normalizePath("."),
+            block_load_code
+          )
+        } else {
+          # Transform blocks need data parameter
+          app_content <- sprintf(
+            '
 library(blockr.core)
 
 # Load the blockr.io package
@@ -194,18 +306,22 @@ tryCatch(
   }
 )
 
-# Load data and block
+# Load data
 data <- readRDS("data.rds")
-block <- readRDS("block.rds")
+
+# Create/load block
+%s
 
 # Run the app
 blockr.core::serve(
   block,
   data = data
 )
-          ',
-          normalizePath(".")
-        )
+            ',
+            normalizePath("."),
+            block_load_code
+          )
+        }
       }
 
       writeLines(app_content, file.path(temp_dir, "app.R"))
@@ -227,30 +343,17 @@ blockr.core::serve(
       if (expand_advanced) {
         tryCatch(
           {
-            # Try to find and click the advanced toggle
-            # The selector may vary, try common patterns
-            advanced_selectors <- c(
-              ".advanced-toggle",
-              "[id$='advanced-toggle']",
-              "[onclick*='advanced']"
+            # Click all advanced toggles on the page
+            app$run_js(
+              "
+              var toggles = document.querySelectorAll('.block-advanced-toggle');
+              toggles.forEach(function(toggle) {
+                toggle.click();
+              });
+              "
             )
-
-            for (selector in advanced_selectors) {
-              tryCatch(
-                {
-                  app$run_js(sprintf(
-                    "document.querySelector('%s')?.click();",
-                    selector
-                  ))
-                  # Wait for animation/expansion
-                  Sys.sleep(0.5)
-                  break
-                },
-                error = function(e) {
-                  # Try next selector
-                }
-              )
-            }
+            # Wait for animation/expansion
+            Sys.sleep(0.5)
           },
           error = function(e) {
             # Block doesn't have advanced options - that's fine
@@ -268,6 +371,97 @@ blockr.core::serve(
 
       # Take screenshot
       app$get_screenshot(output_path)
+
+      # If using dock mode, crop to just the panel content
+      if (use_dock && file.exists(output_path)) {
+        # Get the bounding box of the panel using JavaScript
+        # Try multiple selectors in order of preference
+        # Note: use get_js instead of run_js to get the return value
+        panel_bounds <- tryCatch(
+          {
+            app$get_js(
+              "
+              (function() {
+                // Find the panel that contains actual block content (the right panel)
+                // In default dock layout: left = extensions (empty), right = blocks
+                var groupViews = document.querySelectorAll('.dv-groupview');
+
+                // Find the groupview that contains block content
+                // Look for the one with actual shiny content inside
+                for (var i = 0; i < groupViews.length; i++) {
+                  var panel = groupViews[i];
+                  // Check if this panel has actual content (not just empty toolbar)
+                  var hasContent = panel.querySelector('.shiny-html-output') ||
+                                   panel.querySelector('.block-container') ||
+                                   panel.querySelector('[class*=\"blockr\"]') ||
+                                   panel.querySelector('.form-group') ||
+                                   panel.querySelector('.selectize-control');
+
+                  if (hasContent && panel.offsetWidth > 100) {
+                    var rect = panel.getBoundingClientRect();
+                    return {
+                      x: Math.round(rect.left),
+                      y: Math.round(rect.top),
+                      width: Math.round(rect.width),
+                      height: Math.round(rect.height),
+                      selector: '.dv-groupview (with content)'
+                    };
+                  }
+                }
+
+                // Fallback: get the last (rightmost) groupview
+                if (groupViews.length > 0) {
+                  var lastPanel = groupViews[groupViews.length - 1];
+                  var rect = lastPanel.getBoundingClientRect();
+                  return {
+                    x: Math.round(rect.left),
+                    y: Math.round(rect.top),
+                    width: Math.round(rect.width),
+                    height: Math.round(rect.height),
+                    selector: '.dv-groupview (last)'
+                  };
+                }
+
+                return null;
+              })()
+              "
+            )
+          },
+          error = function(e) NULL
+        )
+
+        if (!is.null(panel_bounds) && !is.null(panel_bounds$width)) {
+          if (verbose) {
+            selector_info <- if (!is.null(panel_bounds$selector)) {
+              paste0(" (selector: ", panel_bounds$selector, ")")
+            } else {
+              ""
+            }
+            cat(sprintf(
+              "  Cropping to panel bounds: x=%d, y=%d, w=%d, h=%d%s\n",
+              panel_bounds$x, panel_bounds$y,
+              panel_bounds$width, panel_bounds$height,
+              selector_info
+            ))
+          }
+
+          # Use magick to crop the image
+          img <- magick::image_read(output_path)
+          # Add small padding around the panel
+          padding <- 0
+          crop_geometry <- sprintf(
+            "%dx%d+%d+%d",
+            panel_bounds$width + padding * 2,
+            panel_bounds$height + padding * 2,
+            max(0, panel_bounds$x - padding),
+            max(0, panel_bounds$y - padding)
+          )
+          img_cropped <- magick::image_crop(img, crop_geometry)
+          magick::image_write(img_cropped, output_path)
+        } else if (verbose) {
+          cat("  Warning: Could not detect panel bounds for cropping\n")
+        }
+      }
 
       # Stop the app and cleanup
       app$stop()
@@ -339,23 +533,12 @@ blockr.core::serve(
 #' \dontrun{
 #' # Test multiple blocks
 #' blocks <- list(
-#'   filter = new_filter_expr_block("mpg > 20"),
-#'   select = new_select_block(columns = c("mpg", "cyl")),
-#'   arrange = new_arrange_block(columns = "mpg")
+#'   read = new_read_block(path = "data.csv"),
+#'   write = new_write_block(mode = "download")
 #' )
 #'
 #' results <- validate_blocks_batch(blocks)
 #' print(results)
-#'
-#' # With advanced options for specific blocks
-#' blocks <- list(
-#'   `summarize-block` = list(
-#'     block = new_summarize_block(),
-#'     expand_advanced = TRUE
-#'   ),
-#'   `filter-block` = new_filter_expr_block("mpg > 20")
-#' )
-#' results <- validate_blocks_batch(blocks)
 #' }
 #'
 #' @export

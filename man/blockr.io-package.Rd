@@ -4,7 +4,7 @@
 \name{blockr.io-package}
 \alias{blockr.io}
 \alias{blockr.io-package}
-\title{blockr.io: Reading and writing for blockr}
+\title{blockr.io: Interactive File Import and Export Blocks}
 \description{
 Adds blocks for reading and writing various data file types.
 }
@@ -12,6 +12,7 @@ Adds blocks for reading and writing various data file types.
 Useful links:
 \itemize{
   \item \url{https://bristolmyerssquibb.github.io/blockr.io/}
+  \item Report bugs at \url{https://github.com/BristolMyersSquibb/blockr.io/issues}
 }
 
 }

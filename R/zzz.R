@@ -2,8 +2,8 @@ register_io_blocks <- function() {
   # nocov start
   register_blocks(
     "new_read_block",
-    name = "Read data",
-    description = "Read data from various file formats (CSV, Excel, SPSS, SAS, Stata, Parquet, JSON, etc.) with automatic format detection and smart adaptive UI",
+    name = "Import Data",
+    description = "Read and load data from files on your computer, server, or web. Supports CSV, Excel, SPSS, SAS, Stata, Parquet, and more.",
     category = "input",
     icon = "file-earmark-arrow-up",
     package = utils::packageName(),
@@ -12,8 +12,8 @@ register_io_blocks <- function() {
 
   register_blocks(
     "new_write_block",
-    name = "Write data",
-    description = "Write dataframes to various file formats (CSV, Excel, Parquet, Feather). Supports single or multiple inputs with download or filesystem modes",
+    name = "Export Data",
+    description = "Write and save your data to CSV, Excel, Parquet, or Feather files. Download directly or save to server.",
     category = "output",
     icon = "save",
     package = utils::packageName(),

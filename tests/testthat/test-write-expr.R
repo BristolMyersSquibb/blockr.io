@@ -430,3 +430,51 @@ test_that("write_expr handles quote parameter correctly", {
 
   unlink(c(temp_file1, temp_file2))
 })
+
+test_that("write_expr_csv writes TSV file with tab delimiter", {
+  skip_if_not_installed("readr")
+
+  # Create test data
+  test_df <- data.frame(x = 1:3, y = 4:6)
+
+  # Generate expression with tab delimiter
+  temp_file <- tempfile(fileext = ".tsv")
+  expr <- write_expr_csv(c(data = "test_df"), temp_file, args = list(sep = "\t"))
+
+  # EVALUATE
+  eval(expr)
+
+  # Verify file exists
+  expect_true(file.exists(temp_file))
+
+  # Read back with tab delimiter
+  result <- readr::read_tsv(temp_file, show_col_types = FALSE)
+  expect_equal(result$x, 1:3)
+  expect_equal(result$y, 4:6)
+
+  unlink(temp_file)
+})
+
+test_that("write_expr_csv writes file with pipe delimiter", {
+  skip_if_not_installed("readr")
+
+  # Create test data
+  test_df <- data.frame(a = 1:3, b = c("x", "y", "z"), stringsAsFactors = FALSE)
+
+  # Generate expression with pipe delimiter
+  temp_file <- tempfile(fileext = ".txt")
+  expr <- write_expr_csv(c(data = "test_df"), temp_file, args = list(sep = "|"))
+
+  # EVALUATE
+  eval(expr)
+
+  # Verify file exists
+  expect_true(file.exists(temp_file))
+
+  # Read back with pipe delimiter
+  result <- readr::read_delim(temp_file, delim = "|", show_col_types = FALSE)
+  expect_equal(result$a, 1:3)
+  expect_equal(result$b, c("x", "y", "z"))
+
+  unlink(temp_file)
+})
