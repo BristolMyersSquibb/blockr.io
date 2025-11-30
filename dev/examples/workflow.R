@@ -1,8 +1,7 @@
-# Dock workflow example: Full ETL pipeline
+# blockr.io Example Workflow
 #
-# This example shows a complete read -> transform -> write workflow
-# combining blockr.io (read/write) with blockr.dplyr (transformations).
-# Run with: source("dev/examples/dock-full-workflow.R")
+# Complete ETL pipeline: read -> transform -> write
+# Run with: source("dev/examples/workflow.R")
 
 library(blockr.core)
 library(blockr.dock)
