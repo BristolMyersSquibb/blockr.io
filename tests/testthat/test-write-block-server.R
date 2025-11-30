@@ -737,3 +737,355 @@ test_that("write_block expr_server handles format UI changes", {
 
   unlink(temp_dir, recursive = TRUE)
 })
+
+# ============================================================================
+# Tests that verify actual file creation via framework evaluation
+# ============================================================================
+
+test_that("write_block actually writes CSV file in browse mode", {
+  temp_dir <- tempfile("write_actual_")
+  dir.create(temp_dir)
+
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "actual_output",
+    format = "csv",
+    mode = "browse",
+    auto_write = TRUE
+  )
+
+  test_data <- data.frame(x = 1:5, y = letters[1:5], stringsAsFactors = FALSE)
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(
+      x = blk,
+      data = list(
+        ...args = reactiveValues(
+          data = test_data
+        )
+      )
+    ),
+    {
+      session$flushReact()
+
+      # Get the framework's evaluated result
+      result <- session$returned$result()
+
+      # The result should be the data passthrough (write block returns first data)
+      expect_true(is.data.frame(result))
+      expect_equal(nrow(result), 5)
+      expect_equal(result$x, 1:5)
+    }
+  )
+
+  # Check that file was actually written
+  expected_file <- file.path(temp_dir, "actual_output.csv")
+  expect_true(file.exists(expected_file), info = "CSV file should exist after framework evaluation")
+
+  # Verify file contents
+  written_data <- read.csv(expected_file, stringsAsFactors = FALSE)
+  expect_equal(nrow(written_data), 5)
+  expect_equal(written_data$x, 1:5)
+  expect_equal(written_data$y, letters[1:5])
+
+  unlink(temp_dir, recursive = TRUE)
+})
+
+test_that("write_block actually writes Excel file in browse mode", {
+  skip_if_not_installed("writexl")
+  skip_if_not_installed("readxl")
+
+  temp_dir <- tempfile("write_actual_")
+  dir.create(temp_dir)
+
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "actual_excel",
+    format = "excel",
+    mode = "browse",
+    auto_write = TRUE
+  )
+
+  test_data <- data.frame(a = 1:10, b = rnorm(10))
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(
+      x = blk,
+      data = list(
+        ...args = reactiveValues(
+          sheet1 = test_data
+        )
+      )
+    ),
+    {
+      session$flushReact()
+
+      result <- session$returned$result()
+      expect_true(is.data.frame(result))
+      expect_equal(nrow(result), 10)
+    }
+  )
+
+  # Check that file was actually written
+  expected_file <- file.path(temp_dir, "actual_excel.xlsx")
+  expect_true(file.exists(expected_file), info = "Excel file should exist after framework evaluation")
+
+  # Verify file contents
+  written_data <- readxl::read_xlsx(expected_file)
+  expect_equal(nrow(written_data), 10)
+  expect_equal(written_data$a, 1:10)
+
+  unlink(temp_dir, recursive = TRUE)
+})
+
+test_that("write_block actually writes Parquet file in browse mode", {
+  skip_if_not_installed("arrow")
+
+  temp_dir <- tempfile("write_actual_")
+  dir.create(temp_dir)
+
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "actual_parquet",
+    format = "parquet",
+    mode = "browse",
+    auto_write = TRUE
+  )
+
+  test_data <- data.frame(id = 1:20, value = runif(20))
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(
+      x = blk,
+      data = list(
+        ...args = reactiveValues(
+          data = test_data
+        )
+      )
+    ),
+    {
+      session$flushReact()
+
+      result <- session$returned$result()
+      expect_true(is.data.frame(result))
+      expect_equal(nrow(result), 20)
+    }
+  )
+
+  # Check that file was actually written
+  expected_file <- file.path(temp_dir, "actual_parquet.parquet")
+  expect_true(file.exists(expected_file), info = "Parquet file should exist after framework evaluation")
+
+  # Verify file contents
+  written_data <- arrow::read_parquet(expected_file)
+  expect_equal(nrow(written_data), 20)
+  expect_equal(written_data$id, 1:20)
+
+  unlink(temp_dir, recursive = TRUE)
+})
+
+test_that("write_block actually writes multi-sheet Excel in browse mode", {
+  skip_if_not_installed("writexl")
+  skip_if_not_installed("readxl")
+
+  temp_dir <- tempfile("write_actual_")
+  dir.create(temp_dir)
+
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "multi_sheet",
+    format = "excel",
+    mode = "browse",
+    auto_write = TRUE
+  )
+
+  # Suppress "NAs introduced by coercion" warning from blockr.core
+  suppressWarnings({
+    shiny::testServer(
+      blockr.core:::get_s3_method("block_server", blk),
+      args = list(
+        x = blk,
+        data = list(
+          ...args = reactiveValues(
+            sales = data.frame(product = c("A", "B"), revenue = c(100, 200)),
+            inventory = data.frame(item = c("X", "Y", "Z"), qty = c(10, 20, 30))
+          )
+        )
+      ),
+      {
+        session$flushReact()
+
+        result <- session$returned$result()
+        expect_true(is.data.frame(result))
+      }
+    )
+  })
+
+  # Check that file was actually written
+  expected_file <- file.path(temp_dir, "multi_sheet.xlsx")
+  expect_true(file.exists(expected_file), info = "Multi-sheet Excel file should exist")
+
+  # Verify both sheets exist
+  sheets <- readxl::excel_sheets(expected_file)
+  expect_true("sales" %in% sheets)
+  expect_true("inventory" %in% sheets)
+
+  # Verify sheet contents
+  sales_data <- readxl::read_xlsx(expected_file, sheet = "sales")
+  expect_equal(nrow(sales_data), 2)
+  expect_equal(sales_data$product, c("A", "B"))
+
+  inventory_data <- readxl::read_xlsx(expected_file, sheet = "inventory")
+  expect_equal(nrow(inventory_data), 3)
+  expect_equal(inventory_data$item, c("X", "Y", "Z"))
+
+  unlink(temp_dir, recursive = TRUE)
+})
+
+test_that("write_block with auto_write=FALSE only writes after submit", {
+  temp_dir <- tempfile("write_actual_")
+  dir.create(temp_dir)
+
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "manual_submit",
+    format = "csv",
+    mode = "browse",
+    auto_write = FALSE
+  )
+
+  test_data <- data.frame(x = 1:3)
+  expected_file <- file.path(temp_dir, "manual_submit.csv")
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(
+      x = blk,
+      data = list(
+        ...args = reactiveValues(
+          data = test_data
+        )
+      )
+    ),
+    {
+      session$flushReact()
+
+      # Before submit: file should NOT exist
+      expect_false(file.exists(expected_file), info = "File should not exist before submit")
+
+      # Expression should be NULL before submit
+      result <- session$returned
+      expect_null(result$expr())
+
+      # USER CLICKS SUBMIT
+      session$setInputs(`expr-submit_write` = 1)
+      session$flushReact()
+
+      # Expression should now be set
+      expect_false(is.null(result$expr()))
+    }
+  )
+
+  # Note: The file may not exist after testServer because testServer
+  # doesn't fully simulate the framework's evaluation cycle for the
+  # newly-set expression. This tests the expression generation logic.
+  # Full integration would require shinytest2.
+
+  unlink(temp_dir, recursive = TRUE)
+})
+
+# ============================================================================
+# Tests for download mode (issue #9 fix verification)
+# Note: testServer has limitations with downloadHandler - cannot directly invoke
+# the content function. These tests verify download mode state is correct.
+# Full download testing requires shinytest2 with a real browser, or was verified
+# manually (issue #9 fix confirmed working).
+# ============================================================================
+
+test_that("download mode returns NULL expr and correct state", {
+  # This test verifies that download mode is set up correctly
+  # The actual download functionality was tested manually and works
+
+  temp_dir <- tempfile("download_test_")
+  dir.create(temp_dir)
+
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "test_file",
+    format = "csv",
+    mode = "download"
+  )
+
+  test_data <- data.frame(x = 1:5, y = letters[1:5], stringsAsFactors = FALSE)
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(
+      x = blk,
+      data = list(
+        ...args = reactiveValues(
+          data = test_data
+        )
+      )
+    ),
+    {
+      session$flushReact()
+
+      result <- session$returned
+
+      # In download mode, expr should be NULL (download handler handles writing)
+      expect_null(result$expr())
+
+      # Verify state reflects download mode
+      expect_equal(result$state$mode(), "download")
+      expect_equal(result$state$filename(), "test_file")
+      expect_equal(result$state$format(), "csv")
+    }
+  )
+
+  unlink(temp_dir, recursive = TRUE)
+})
+
+test_that("download mode with auto-timestamp has correct state (issue #9 scenario)", {
+  # This tests the scenario that caused issue #9 (empty filename = auto-timestamp)
+  # The actual fix (consistent timestamp in downloadHandler) was verified manually
+
+  temp_dir <- tempfile("download_test_")
+  dir.create(temp_dir)
+
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "",  # Empty = auto-timestamp (this was the issue #9 trigger)
+    format = "csv",
+    mode = "download"
+  )
+
+  test_data <- data.frame(id = 1:10, value = rnorm(10))
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(
+      x = blk,
+      data = list(
+        ...args = reactiveValues(
+          data = test_data
+        )
+      )
+    ),
+    {
+      session$flushReact()
+
+      result <- session$returned
+
+      # Verify download mode is active
+      expect_null(result$expr())
+      expect_equal(result$state$mode(), "download")
+      expect_equal(result$state$filename(), "")  # Empty = auto-timestamp
+    }
+  )
+
+  unlink(temp_dir, recursive = TRUE)
+})

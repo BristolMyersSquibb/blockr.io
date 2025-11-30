@@ -98,7 +98,6 @@
 #' }
 #'
 #' @importFrom shinyFiles shinyDirButton shinyDirChoose parseDirPath
-#' @importFrom shinyjs click
 #' @rdname write
 #' @export
 new_write_block <- function(
@@ -364,12 +363,17 @@ new_write_block <- function(
               }
             },
             content = function(file) {
+              # Use a fixed timestamp for consistent filename generation
+              # This prevents mismatch between write_expr and file search
+              fixed_timestamp <- Sys.time()
+              base_filename <- generate_filename(r_filename(), fixed_timestamp)
+
               # Generate write expression for temp directory
               temp_dir <- dirname(file)
               expr <- write_expr(
                 data_names = arg_names(),
                 directory = temp_dir,
-                filename = r_filename(),
+                filename = base_filename, # Use pre-computed filename
                 format = r_format(),
                 args = r_args()
               )
@@ -395,26 +399,26 @@ new_write_block <- function(
               eval(expr, envir = eval_env)
 
               # Find generated file and copy to download location
+              # Use same base_filename as we used for write_expr
               generated_file <- list.files(
                 temp_dir,
                 pattern = paste0(
                   "^",
-                  gsub("\\.", "\\\\.", generate_filename(r_filename())),
+                  gsub("\\.", "\\\\.", base_filename),
                   "\\."
                 ),
                 full.names = TRUE
               )[1]
 
               if (!is.na(generated_file) && file.exists(generated_file)) {
-                file.copy(generated_file, file, overwrite = TRUE)
+                # Only copy if source and dest are different (can be same in tests)
+                if (normalizePath(generated_file) != normalizePath(file, mustWork = FALSE)) {
+                  file.copy(generated_file, file, overwrite = TRUE)
+                }
               }
             }
           )
 
-          # Trigger download when action button is clicked
-          observeEvent(input$download_trigger, {
-            shinyjs::click("download_data")
-          })
 
           # Output: Current directory display
           output$current_directory <- renderText({
@@ -454,8 +458,6 @@ new_write_block <- function(
     },
     ui = function(id) {
       tagList(
-        shinyjs::useShinyjs(),
-
         # Add CSS
         css_responsive_grid(),
         css_advanced_toggle(NS(id, "advanced-options"), use_subgrid = TRUE),
@@ -514,15 +516,10 @@ new_write_block <- function(
                     class = "block-help-text mb-3",
                     "Triggers a download to your browser's download folder."
                   ),
-                  actionButton(
-                    NS(id, "download_trigger"),
-                    "Download File",
-                    class = "btn-outline-secondary"
-                  ),
                   downloadButton(
                     NS(id, "download_data"),
-                    "Download",
-                    class = "d-none"
+                    "Download File",
+                    class = "btn-outline-secondary"
                   )
                 )
               ),
