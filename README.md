@@ -5,18 +5,13 @@
 [![coverage](https://codecov.io/gh/BristolMyersSquibb/blockr.io/graph/badge.svg)](https://app.codecov.io/gh/BristolMyersSquibb/blockr.io)
 <!-- badges: end -->
 
-blockr.io provides file I/O blocks for reading and writing data in various formats such as Excel, CSV, Parquet, and more.
-
-## Overview
-
-blockr.io is part of the blockr ecosystem and provides file I/O blocks.
+blockr.io provides file I/O blocks for reading and writing data in various formats. Load CSV, Excel, Parquet, and more through visual interfaces - no code required.
 
 ## Installation
 
 ```r
 install.packages("blockr.io")
 ```
-
 Or install the development version from GitHub:
 
 ```r
@@ -26,21 +21,36 @@ pak::pak("BristolMyersSquibb/blockr.io")
 
 ## Getting Started
 
-Create and launch an empty dashboard:
-
 ```r
 library(blockr.io)
 serve(new_board())
 ```
 
-This opens a visual interface in your web browser. Add blocks using the "+" button, connect them by dragging, and configure each block through its settings.
+This opens a visual interface in your browser. Add blocks using the "+" button and connect them to build data pipelines.
 
 ## Available Blocks
 
-The unified `new_read_block()` supports multiple sources (browse, upload, URL) and
-formats (CSV, Excel, Parquet, etc.) with smart format detection. The `new_write_block()`
-can output to various formats and supports both download and filesystem modes.
+### Read Block
+
+Load data from multiple sources with automatic format detection:
+
+- **From Browser**: Upload files via drag-and-drop (persisted across sessions)
+- **From Server**: Browse the file system directly
+- **From URL**: Download data from web URLs
+
+Supports CSV, Excel, Parquet, Feather, JSON, SPSS, Stata, SAS, and more.
+
+### Write Block
+
+Export data to various formats with two output modes:
+
+- **To Browser**: Download files directly (recommended for most users)
+- **To Server**: Write to the file system (for automated pipelines)
+
+Supports CSV, Excel, Parquet, and Feather. Multiple inputs become Excel sheets or ZIP archives.
 
 ## Learn More
 
-The [blockr.io website](https://bristolmyerssquibb.github.io/blockr.io/) includes full documentation and examples. For information on the workflow engine, see [blockr.core](https://bristolmyerssquibb.github.io/blockr.core/).
+See `vignette("blockr-io-showcase")` for screenshots and detailed examples.
+
+The [blockr.io website](https://bristolmyerssquibb.github.io/blockr.io/) includes full documentation. For the workflow engine, see [blockr.core](https://bristolmyerssquibb.github.io/blockr.core/).
