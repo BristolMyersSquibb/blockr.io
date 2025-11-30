@@ -823,24 +823,27 @@ test_that("write_block actually writes Excel file in browse mode", {
 
   test_data <- data.frame(a = 1:10, b = rnorm(10))
 
-  shiny::testServer(
-    blockr.core:::get_s3_method("block_server", blk),
-    args = list(
-      x = blk,
-      data = list(
-        ...args = reactiveValues(
-          sheet1 = test_data
+  # Suppress warning from blockr.core sorting non-numeric arg names
+  suppressWarnings({
+    shiny::testServer(
+      blockr.core:::get_s3_method("block_server", blk),
+      args = list(
+        x = blk,
+        data = list(
+          ...args = reactiveValues(
+            sheet1 = test_data
+          )
         )
-      )
-    ),
-    {
-      session$flushReact()
+      ),
+      {
+        session$flushReact()
 
-      result <- session$returned$result()
-      expect_true(is.data.frame(result))
-      expect_equal(nrow(result), 10)
-    }
-  )
+        result <- session$returned$result()
+        expect_true(is.data.frame(result))
+        expect_equal(nrow(result), 10)
+      }
+    )
+  })
 
   # Check that file was actually written
   expected_file <- file.path(temp_dir, "actual_excel.xlsx")
