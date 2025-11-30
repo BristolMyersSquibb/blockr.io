@@ -552,13 +552,20 @@ new_read_block <- function(
                   border-color: rgb(236, 236, 236);
                   z-index: 2;
                 }
-                .block-input-wrapper {
-                  min-height: 120px;
-                }
 
-                /* Fix file input alignment in dock workflow */
+                /* Fix file input styling */
                 .blockr-file-input .input-group>.form-control {
                   height: 44px !important;
+                }
+                .blockr-file-input .form-group {
+                  margin-bottom: 0;
+                }
+                /* Make inputs full width */
+                .read-block-container .shiny-input-container {
+                  width: 100% !important;
+                }
+                .read-block-container .selectize-control {
+                  width: 100% !important;
                 }
               "
               )),
@@ -570,10 +577,10 @@ new_read_block <- function(
                   value = "upload",
                   div(
                     class = "block-input-wrapper mt-3",
+                    tags$h4("Drag and drop files", class = "mb-2"),
                     div(
                       class = "block-help-text mb-3",
-                      tags$strong("Drag and drop files"),
-                      " or click to select. Creates a copy in the app's storage that persists across sessions."
+                      "Or click to select. Creates a copy in the app's storage that persists across sessions."
                     ),
                     div(
                       class = "blockr-file-input",
@@ -591,10 +598,10 @@ new_read_block <- function(
                   value = "path",
                   div(
                     class = "block-input-wrapper mt-3",
+                    tags$h4("Pick files from the server", class = "mb-2"),
                     div(
                       class = "block-help-text mb-3",
-                      "Pick files that already exist on the server. No copying - reads directly from the file path. ",
-                      tags$em("(When running locally, this is your computer.)")
+                      "Reads directly from the file path; when running locally, this is your computer."
                     ),
                     shinyFiles::shinyFilesButton(
                       NS(id, "file_browser"),
@@ -609,9 +616,10 @@ new_read_block <- function(
                   value = "url",
                   div(
                     class = "block-input-wrapper mt-3",
+                    tags$h4("Fetch data from a web URL", class = "mb-2"),
                     div(
                       class = "block-help-text mb-3",
-                      "Fetch data from a web URL. Downloaded fresh each time the app starts."
+                      "Downloaded fresh each time the app starts."
                     ),
                     textInput(
                       inputId = NS(id, "url_input"),

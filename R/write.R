@@ -492,6 +492,13 @@ new_write_block <- function(
                 border-color: rgb(236, 236, 236);
                 z-index: 2;
               }
+              /* Make inputs full width */
+              .write-block-container .shiny-input-container {
+                width: 100% !important;
+              }
+              .write-block-container .selectize-control {
+                width: 100% !important;
+              }
             "
             )),
             bslib::navset_pill(
@@ -502,9 +509,10 @@ new_write_block <- function(
                 value = "download",
                 div(
                   class = "mt-3",
+                  tags$h4("Export files to your computer", class = "mb-2"),
                   div(
                     class = "block-help-text mb-3",
-                    "Export files to your computer. Triggers a download to your browser's download folder."
+                    "Triggers a download to your browser's download folder."
                   ),
                   actionButton(
                     NS(id, "download_trigger"),
@@ -523,10 +531,10 @@ new_write_block <- function(
                 value = "browse",
                 div(
                   class = "mt-3",
+                  tags$h4("Save files to the server", class = "mb-2"),
                   div(
                     class = "block-help-text mb-3",
-                    "Save files directly on the server. ",
-                    tags$em("(When running locally, this is your computer.)")
+                    "When running locally, this is your computer."
                   ),
                   shinyFiles::shinyDirButton(
                     NS(id, "dir_browser"),
@@ -543,12 +551,8 @@ new_write_block <- function(
                     class = "mt-3",
                     checkboxInput(
                       NS(id, "auto_write"),
-                      "Auto-write",
+                      "Auto-write: automatically save when data changes",
                       value = auto_write
-                    ),
-                    div(
-                      class = "block-help-text mb-3",
-                      "When enabled, files are written automatically as data changes. When disabled, click Submit to write."
                     )
                   ),
                   conditionalPanel(
@@ -586,6 +590,7 @@ new_write_block <- function(
                   ),
                   div(
                     class = "block-help-text",
+                    style = "font-size: 0.75rem;",
                     "Fixed filename overwrites on each change. Empty generates unique timestamped files."
                   )
                 ),
