@@ -5,20 +5,23 @@
 [![coverage](https://codecov.io/gh/BristolMyersSquibb/blockr.io/graph/badge.svg)](https://app.codecov.io/gh/BristolMyersSquibb/blockr.io)
 <!-- badges: end -->
 
-Upload and download multiple file formats such as Excel, csv, xpt, etc.
-to and from a blockr data pipeline.
+blockr.io provides file I/O blocks for reading and writing data in various formats such as Excel, CSV, Parquet, and more.
 
 ## Overview
 
-blockr.io is part of the blockr ecosystem. blockr.core provides the workflow engine, blockr.ui provides the visual interface, and blockr.io provides file I/O blocks for reading and writing data in various formats. These packages work together to create interactive data workflows with flexible file handling.
+blockr.io is part of the blockr ecosystem and provides file I/O blocks.
 
 ## Installation
 
 ```r
+install.packages("blockr.io")
+```
+
+Or install the development version from GitHub:
+
+```r
 # install.packages("pak")
 pak::pak("BristolMyersSquibb/blockr.io")
-pak::pak("BristolMyersSquibb/blockr.core")
-pak::pak("BristolMyersSquibb/blockr.ui")
 ```
 
 ## Getting Started
@@ -26,10 +29,8 @@ pak::pak("BristolMyersSquibb/blockr.ui")
 Create and launch an empty dashboard:
 
 ```r
-library(blockr.core)
-library(blockr.ui)
 library(blockr.io)
-serve(new_dag_board())
+serve(new_board())
 ```
 
 This opens a visual interface in your web browser. Add blocks using the "+" button, connect them by dragging, and configure each block through its settings.
@@ -42,4 +43,4 @@ can output to various formats and supports both download and filesystem modes.
 
 ## Learn More
 
-The [blockr.io website](https://bristolmyerssquibb.github.io/blockr.io/) includes full documentation and examples. For information on the broader blockr ecosystem, see [blockr.core](https://bristolmyerssquibb.github.io/blockr.core/) and [blockr.dplyr](https://bristolmyerssquibb.github.io/blockr.dplyr/).
+The [blockr.io website](https://bristolmyerssquibb.github.io/blockr.io/) includes full documentation and examples. For information on the workflow engine, see [blockr.core](https://bristolmyerssquibb.github.io/blockr.core/).
