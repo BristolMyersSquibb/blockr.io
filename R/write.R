@@ -12,8 +12,8 @@
 #'   - **If empty** (default): Generates timestamped filename (e.g., `data_20250127_143022.csv`)
 #' @param format Character. Output format: "csv", "excel", "parquet", or "feather".
 #'   Default: "csv"
-#' @param mode Character. Either "download" to trigger browser download (recommended for beginners),
-#'   or "browse" to write files to server filesystem. Default: "download"
+#' @param mode Character. Either "download" for "To Browser" (triggers browser download),
+#'   or "browse" for "To Server" (writes to server filesystem). Default: "download"
 #' @param auto_write Logical. When TRUE (default), automatically writes files when data changes
 #'   (browse mode only). When FALSE, user must click "Write File" button to save. Has no effect
 #'   in download mode.
@@ -57,17 +57,18 @@
 #' - Preserves history, prevents accidental overwrites
 #' - Safe default behavior
 #'
-#' ## Mode: Browse vs Download
+#' ## Mode: To Browser vs To Server
 #'
-#' **Browse mode:**
-#' - Writes files to server filesystem
+#' **To Browser mode** (download):
+#' - Exports files to your computer
+#' - Triggers a download to your browser's download folder
+#' - Useful for exporting results
+#'
+#' **To Server mode** (browse):
+#' - Saves files directly on the server
 #' - User selects directory with file browser
 #' - Files persist on server
-#'
-#' **Download mode:**
-#' - Generates file and triggers browser download
-#' - File saved to user's download folder
-#' - Useful for exporting results
+#' - When running locally, this is your computer's file system
 #'
 #' @return A blockr transform block that writes dataframes to files
 #'
@@ -497,13 +498,13 @@ new_write_block <- function(
               id = NS(id, "mode_pills"),
               selected = mode,
               bslib::nav_panel(
-                title = "Download",
+                title = "To Browser",
                 value = "download",
                 div(
                   class = "mt-3",
                   div(
                     class = "block-help-text mb-3",
-                    "Download file(s) to your browser's download folder."
+                    "Export files to your computer. Triggers a download to your browser's download folder."
                   ),
                   actionButton(
                     NS(id, "download_trigger"),
@@ -518,13 +519,14 @@ new_write_block <- function(
                 )
               ),
               bslib::nav_panel(
-                title = "Browse",
+                title = "To Server",
                 value = "browse",
                 div(
                   class = "mt-3",
                   div(
                     class = "block-help-text mb-3",
-                    "Write files to server filesystem."
+                    "Save files directly on the server. ",
+                    tags$em("(When running locally, this is your computer.)")
                   ),
                   shinyFiles::shinyDirButton(
                     NS(id, "dir_browser"),

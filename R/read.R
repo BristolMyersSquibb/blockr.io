@@ -1,8 +1,8 @@
 #' Unified file reading block
 #'
 #' A single block for reading files in various formats with smart UI that adapts
-#' based on detected file type. Supports both upload and browse modes with
-#' persistent storage for uploaded files.
+#' based on detected file type. Supports "From Browser" (upload) and "From Server"
+#' (browse) modes with persistent storage for uploaded files.
 #'
 #' @param path Character vector of file paths to pre-load. When provided,
 #'   automatically switches to "path" mode regardless of the source parameter.
@@ -31,17 +31,17 @@
 #'
 #' The block supports three modes:
 #'
-#' **Upload mode:**
-#' - User uploads files via fileInput widget
+#' **From Browser mode** (upload):
+#' - User uploads files from their computer via the browser
 #' - Files are copied to persistent storage directory (upload_path)
 #' - State stores permanent file paths
 #' - Works across R sessions with state restoration
 #'
-#' **Browse mode:**
-#' - User browses file system with shinyFiles
-#' - Directly selects existing files
+#' **From Server mode** (path):
+#' - User picks files that already exist on the server
+#' - No file copying, reads directly from original location
 #' - State stores selected file paths
-#' - No file copying, reads from original location
+#' - When running locally, this is your computer's file system
 #'
 #' **URL mode:**
 #' - User provides a URL to a data file
@@ -556,38 +556,45 @@ new_read_block <- function(
                   min-height: 120px;
                 }
 
+                /* Fix file input alignment in dock workflow */
+                .blockr-file-input .input-group>.form-control {
+                  height: 44px !important;
+                }
               "
               )),
               bslib::navset_pill(
                 id = NS(id, "source_pills"),
                 selected = source,
                 bslib::nav_panel(
-                  title = "Upload",
+                  title = "From Browser",
                   value = "upload",
                   div(
                     class = "block-input-wrapper mt-3",
                     div(
                       class = "block-help-text mb-3",
-                      HTML(
-                        "<strong>Drag and drop files</strong> or click to browse. Uploaded files are copied and persist across sessions."
-                      )
+                      tags$strong("Drag and drop files"),
+                      " or click to select. Creates a copy in the app's storage that persists across sessions."
                     ),
-                    fileInput(
-                      inputId = NS(id, "file_upload"),
-                      label = NULL,
-                      multiple = TRUE,
-                      accept = paste0(".", get_rio_extensions())
+                    div(
+                      class = "blockr-file-input",
+                      fileInput(
+                        inputId = NS(id, "file_upload"),
+                        label = NULL,
+                        multiple = TRUE,
+                        accept = paste0(".", get_rio_extensions())
+                      )
                     )
                   )
                 ),
                 bslib::nav_panel(
-                  title = "Browse",
+                  title = "From Server",
                   value = "path",
                   div(
                     class = "block-input-wrapper mt-3",
                     div(
                       class = "block-help-text mb-3",
-                      "Select files from the file system. References the original file location."
+                      "Pick files that already exist on the server. No copying - reads directly from the file path. ",
+                      tags$em("(When running locally, this is your computer.)")
                     ),
                     shinyFiles::shinyFilesButton(
                       NS(id, "file_browser"),
@@ -598,13 +605,13 @@ new_read_block <- function(
                   )
                 ),
                 bslib::nav_panel(
-                  title = "URL",
+                  title = "From URL",
                   value = "url",
                   div(
                     class = "block-input-wrapper mt-3",
                     div(
                       class = "block-help-text mb-3",
-                      "Read from a URL. Data is downloaded fresh when the session starts."
+                      "Fetch data from a web URL. Downloaded fresh each time the app starts."
                     ),
                     textInput(
                       inputId = NS(id, "url_input"),

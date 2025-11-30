@@ -28,8 +28,8 @@ variable \code{BLOCKR_WRITE_DIR}. Default: current working directory.}
 \item{format}{Character. Output format: "csv", "excel", "parquet", or "feather".
 Default: "csv"}
 
-\item{mode}{Character. Either "download" to trigger browser download (recommended for beginners),
-or "browse" to write files to server filesystem. Default: "download"}
+\item{mode}{Character. Either "download" for "To Browser" (triggers browser download),
+or "browse" for "To Server" (writes to server filesystem). Default: "download"}
 
 \item{auto_write}{Logical. When TRUE (default), automatically writes files when data changes
 (browse mode only). When FALSE, user must click "Write File" button to save. Has no effect
@@ -99,20 +99,21 @@ Input names are used for sheet names (Excel) or filenames (multi-file ZIP).
 }
 }
 
-\subsection{Mode: Browse vs Download}{
+\subsection{Mode: To Browser vs To Server}{
 
-\strong{Browse mode:}
+\strong{To Browser mode} (download):
 \itemize{
-\item Writes files to server filesystem
-\item User selects directory with file browser
-\item Files persist on server
+\item Exports files to your computer
+\item Triggers a download to your browser's download folder
+\item Useful for exporting results
 }
 
-\strong{Download mode:}
+\strong{To Server mode} (browse):
 \itemize{
-\item Generates file and triggers browser download
-\item File saved to user's download folder
-\item Useful for exporting results
+\item Saves files directly on the server
+\item User selects directory with file browser
+\item Files persist on server
+\item When running locally, this is your computer's file system
 }
 }
 }
