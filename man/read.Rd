@@ -105,29 +105,21 @@ Default: \code{rappdirs::user_data_dir("blockr")}
 }
 
 \examples{
+# Create a read block for a CSV file
+csv_file <- tempfile(fileext = ".csv")
+write.csv(mtcars[1:5, ], csv_file, row.names = FALSE)
+block <- new_read_block(path = csv_file)
+block
+
+# With custom CSV parameters
+block <- new_read_block(
+  path = csv_file,
+  args = list(n_max = 3)
+)
+
 \dontrun{
-# Basic usage with upload
+# Launch interactive app
 serve(new_read_block())
-
-# Pre-load specific files
-serve(new_read_block(path = c("data.csv", "more_data.csv")))
-
-# Custom CSV parameters (semicolon delimiter, skip first 5 rows)
-serve(new_read_block(
-  path = "data.csv",
-  args = list(sep = ";", skip = 5)
-))
-
-# Excel with specific sheet
-serve(new_read_block(
-  path = "data.xlsx",
-  args = list(sheet = "Sales", range = "A1:E100")
-))
-
-# URL mode - fetch remote data
-serve(new_read_block(
-  path = "https://raw.githubusercontent.com/user/repo/main/data.csv"
-))
 }
 
 }

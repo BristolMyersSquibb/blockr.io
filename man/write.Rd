@@ -9,7 +9,7 @@ new_write_block(
   filename = "",
   format = "csv",
   mode = "download",
-  auto_write = TRUE,
+  auto_write = FALSE,
   args = list(),
   ...
 )
@@ -31,9 +31,9 @@ Default: "csv"}
 \item{mode}{Character. Either "download" for "To Browser" (triggers browser download),
 or "browse" for "To Server" (writes to server filesystem). Default: "download"}
 
-\item{auto_write}{Logical. When TRUE (default), automatically writes files when data changes
-(browse mode only). When FALSE, user must click "Write File" button to save. Has no effect
-in download mode.}
+\item{auto_write}{Logical. When TRUE, automatically writes files when data changes
+(browse mode only). When FALSE (default), user must click "Submit" button to save.
+Has no effect in download mode.}
 
 \item{args}{Named list of format-specific writing parameters. Only specify values
 that differ from defaults. Available parameters:
@@ -118,28 +118,24 @@ Input names are used for sheet names (Excel) or filenames (multi-file ZIP).
 }
 }
 \examples{
-\dontrun{
-# Single dataframe to CSV
-serve(new_write_block(
-  directory = "/tmp",
+# Create a write block for CSV output
+block <- new_write_block(
+  directory = tempdir(),
   filename = "output",
   format = "csv"
-))
+)
+block
 
-# Multiple dataframes to Excel with auto-timestamp
-serve(new_write_block(
-  directory = "/tmp",
-  filename = "", # auto-generated
+# Write block for Excel with auto-timestamp
+block <- new_write_block(
+  directory = tempdir(),
+  filename = "",
   format = "excel"
-))
+)
 
-# CSV with custom delimiter
-serve(new_write_block(
-  directory = "/tmp",
-  filename = "data",
-  format = "csv",
-  args = list(sep = ";")
-))
+\dontrun{
+# Launch interactive app
+serve(new_write_block())
 }
 
 }

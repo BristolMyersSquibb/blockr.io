@@ -179,34 +179,7 @@ write_expr_arrow <- function(data_names, path, format = "parquet") {
 }
 
 
-#' Build expression to write data to file(s)
-#'
-#' Main dispatcher that generates appropriate write expression based on
-#' format and number of data objects.
-#'
-#' @param data_names Character vector of data object names.
-#'   Names of the vector (if present) are used for sheet/file naming.
-#' @param directory Character. Directory path for output
-#' @param filename Character. Base filename (without extension).
-#'   If empty, generates timestamped name.
-#' @param format Character. File format: "csv", "excel", "parquet", "feather"
-#' @param args List of format-specific write parameters
-#'
-#' @return A language object (expression) that writes file(s)
-#'
-#' @examples
-#' \dontrun{
-#' # Single CSV
-#' expr <- write_expr(c(data1 = "df"), "/tmp", "output", "csv", list(sep = ";"))
-#' eval(expr)
-#'
-#' # Multiple sheets in Excel
-#' expr <- write_expr(c(sales = "df1", costs = "df2"), "/tmp", "report", "excel")
-#' eval(expr)
-#' }
-#'
-#' @keywords internal
-#' @export
+# Internal function - not exported
 write_expr <- function(
   data_names,
   directory,

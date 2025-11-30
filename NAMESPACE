@@ -2,8 +2,6 @@
 
 export(new_read_block)
 export(new_write_block)
-export(read_expr)
-export(write_expr)
 import(blockr.core)
 import(shiny)
 importFrom(arrow,read_feather)

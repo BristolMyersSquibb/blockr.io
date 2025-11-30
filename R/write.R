@@ -73,28 +73,24 @@
 #' @return A blockr transform block that writes dataframes to files
 #'
 #' @examples
-#' \dontrun{
-#' # Single dataframe to CSV
-#' serve(new_write_block(
-#'   directory = "/tmp",
+#' # Create a write block for CSV output
+#' block <- new_write_block(
+#'   directory = tempdir(),
 #'   filename = "output",
 #'   format = "csv"
-#' ))
+#' )
+#' block
 #'
-#' # Multiple dataframes to Excel with auto-timestamp
-#' serve(new_write_block(
-#'   directory = "/tmp",
-#'   filename = "", # auto-generated
+#' # Write block for Excel with auto-timestamp
+#' block <- new_write_block(
+#'   directory = tempdir(),
+#'   filename = "",
 #'   format = "excel"
-#' ))
+#' )
 #'
-#' # CSV with custom delimiter
-#' serve(new_write_block(
-#'   directory = "/tmp",
-#'   filename = "data",
-#'   format = "csv",
-#'   args = list(sep = ";")
-#' ))
+#' \dontrun{
+#' # Launch interactive app
+#' serve(new_write_block())
 #' }
 #'
 #' @importFrom shinyFiles shinyDirButton shinyDirChoose parseDirPath
