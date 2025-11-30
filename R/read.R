@@ -555,6 +555,7 @@ new_read_block <- function(
                 .block-input-wrapper {
                   min-height: 120px;
                 }
+
               "
               )),
               bslib::navset_pill(

@@ -1,5 +1,5 @@
 Package: blockr.io
-Title: Reading and writing for blockr
+Title: Interactive File Import and Export Blocks
 Version: 0.0.1
 Authors@R:
     c(person(given = "Christoph",
@@ -14,7 +14,9 @@ Authors@R:
     )
 Description: Adds blocks for reading and writing various data file types.
 License: GPL (>= 3)
+Language: en-US
 URL: https://bristolmyerssquibb.github.io/blockr.io/
+BugReports: https://github.com/BristolMyersSquibb/blockr.io/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3

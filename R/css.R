@@ -1,4 +1,4 @@
-#' CSS Utilities for blockr.dplyr Blocks
+#' CSS Utilities for blockr.io Blocks
 #'
 #' This file provides centralized CSS functions for consistent block styling.
 #' All custom classes use the `.block-` prefix to distinguish them from

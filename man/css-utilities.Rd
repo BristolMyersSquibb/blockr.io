@@ -2,7 +2,7 @@
 % Please edit documentation in R/css.R
 \name{css-utilities}
 \alias{css-utilities}
-\title{CSS Utilities for blockr.dplyr Blocks}
+\title{CSS Utilities for blockr.io Blocks}
 \description{
 This file provides centralized CSS functions for consistent block styling.
 All custom classes use the \verb{.block-} prefix to distinguish them from
