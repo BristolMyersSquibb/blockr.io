@@ -697,11 +697,22 @@ new_read_block <- function(
                     ns = NS(id),
                     div(
                       class = "block-input-wrapper",
-                      textInput(
+                      selectizeInput(
                         inputId = NS(id, "csv_sep"),
                         label = "Delimiter",
-                        value = if (!is.null(args$sep)) args$sep else ",",
-                        placeholder = "default: ,"
+                        choices = c(
+                          "Comma (,)" = ",",
+                          "Semicolon (;)" = ";",
+                          "Tab (\\t)" = "\t",
+                          "Pipe (|)" = "|"
+                        ),
+                        selected = if (!is.null(args$sep)) args$sep else ",",
+                        options = list(create = TRUE)
+                      ),
+                      div(
+                        class = "block-help-text",
+                        style = "font-size: 0.75rem;",
+                        "Type to add custom delimiter"
                       )
                     ),
                     div(
