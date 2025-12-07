@@ -27,7 +27,9 @@ generate_filename <- function(filename = "", timestamp = Sys.time()) {
 write_expr_csv <- function(data_names, path, args = list()) {
   # Extract CSV-specific params with defaults
   sep <- if (is.null(args$sep)) "," else args$sep
-  quote <- if (is.null(args$quote)) "needed" else {
+  quote <- if (is.null(args$quote)) {
+    "needed"
+  } else {
     # Convert boolean to readr format
     if (isTRUE(args$quote)) "all" else if (isFALSE(args$quote)) "none" else args$quote
   }
