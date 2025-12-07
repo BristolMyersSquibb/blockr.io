@@ -154,7 +154,7 @@ block
 #> Name: "Write"
 #> Indefinite arity
 #> Initial block state:
-#>  $ directory : chr "/tmp/RtmpWm1JFR"
+#>  $ directory : chr "/tmp/RtmpEqxPdk"
 #>  $ filename  : chr "output"
 #>  $ format    : chr "csv"
 #>  $ mode      : chr "download"
