@@ -5,13 +5,13 @@ read_expr <- function(
   combine = c("first", "rbind", "cbind", "auto"),
   ...
 ) {
-  file_type <- match.arg(file_type)
-  combine <- match.arg(combine)
-
-  # Handle empty paths
+  # Handle empty paths first (no file selected yet)
   if (length(paths) == 0) {
     return(NULL)
   }
+
+  file_type <- match.arg(file_type)
+  combine <- match.arg(combine)
 
   # Single file case - simple
   if (length(paths) == 1) {
