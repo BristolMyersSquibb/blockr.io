@@ -1,4 +1,4 @@
-# blockr.io 0.0.1
+# blockr.io 0.1.0
 
 Initial CRAN release.
 
