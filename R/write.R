@@ -6,7 +6,7 @@
 #'
 #' @param directory Character. Default directory for file output (browse mode only).
 #'   Can be configured via `options(blockr.write_dir = "/path")` or environment
-#'   variable `BLOCKR_WRITE_DIR`. Default: current working directory.
+#'   variable `BLOCKR_WRITE_DIR`. Default: `tempdir()`.
 #' @param filename Character. Optional fixed filename (without extension).
 #'   - **If provided**: Writes to same file path on every upstream change (auto-overwrite)
 #'   - **If empty** (default): Generates timestamped filename (e.g., `data_20250127_143022.csv`)
@@ -88,9 +88,9 @@
 #'   format = "excel"
 #' )
 #'
-#' \dontrun{
-#' # Launch interactive app
-#' serve(new_write_block())
+#' if (interactive()) {
+#'   # Launch interactive app
+#'   serve(new_write_block())
 #' }
 #'
 #' @importFrom shinyFiles shinyDirButton shinyDirChoose parseDirPath
@@ -110,12 +110,14 @@ new_write_block <- function(
   mode <- match.arg(mode, c("browse", "download"))
 
   # Get default directory from options if not provided
+  # Default to tempdir() to comply with CRAN policies (no writing to home filespace)
   if (directory == "") {
-    directory <- blockr_option("write_dir", path.expand("~"))
+    directory <- blockr_option("write_dir", tempdir())
   }
 
   # Get volumes for directory browser
-  volumes <- blockr_option("volumes", c(home = path.expand("~")))
+  # Default to tempdir() to comply with CRAN policies
+  volumes <- blockr_option("volumes", c(temp = tempdir()))
 
   # Handle volumes parameter
   if (is.character(volumes)) {
