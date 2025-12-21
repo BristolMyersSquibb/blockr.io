@@ -17,7 +17,7 @@ new_write_block(
 \arguments{
 \item{directory}{Character. Default directory for file output (browse mode only).
 Can be configured via \code{options(blockr.write_dir = "/path")} or environment
-variable \code{BLOCKR_WRITE_DIR}. Default: current working directory.}
+variable \code{BLOCKR_WRITE_DIR}. Default: \code{tempdir()}.}
 
 \item{filename}{Character. Optional fixed filename (without extension).
 \itemize{

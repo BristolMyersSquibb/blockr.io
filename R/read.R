@@ -21,7 +21,7 @@
 #' @section Configuration:
 #' The following settings are retrieved from options and not stored in block state:
 #' - **volumes**: File browser mount points. Set via `options(blockr.volumes = c(name = "path"))`
-#'   or environment variable `BLOCKR_VOLUMES`. Default: `c(home = "~")`
+#'   or environment variable `BLOCKR_VOLUMES`. Default: `c(temp = tempdir())`
 #' - **upload_path**: Directory for persistent file storage. Set via
 #'   `options(blockr.upload_path = "/path")` or environment variable `BLOCKR_UPLOAD_PATH`.
 #'   Default: `rappdirs::user_data_dir("blockr")`
@@ -103,7 +103,8 @@ new_read_block <- function(
   # Get volumes and upload_path from options (not constructor parameters)
   # These are runtime configuration, not persisted state
   # Evaluated once at construction time and captured in closure
-  volumes <- blockr_option("volumes", c(home = path.expand("~")))
+  # Default to tempdir() to comply with CRAN policies
+  volumes <- blockr_option("volumes", c(temp = tempdir()))
   upload_path <- blockr_option("upload_path", rappdirs::user_data_dir("blockr"))
 
   # Handle volumes parameter

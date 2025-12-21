@@ -97,7 +97,7 @@ When multiple files are selected:
 The following settings are retrieved from options and not stored in block state:
 \itemize{
 \item \strong{volumes}: File browser mount points. Set via \code{options(blockr.volumes = c(name = "path"))}
-or environment variable \code{BLOCKR_VOLUMES}. Default: \code{c(home = "~")}
+or environment variable \code{BLOCKR_VOLUMES}. Default: \code{c(temp = tempdir())}
 \item \strong{upload_path}: Directory for persistent file storage. Set via
 \code{options(blockr.upload_path = "/path")} or environment variable \code{BLOCKR_UPLOAD_PATH}.
 Default: \code{rappdirs::user_data_dir("blockr")}

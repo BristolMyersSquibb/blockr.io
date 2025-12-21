@@ -6,7 +6,7 @@
 \alias{blockr.io-package}
 \title{blockr.io: Interactive File Import and Export Blocks}
 \description{
-Adds blocks for reading and writing various data file types.
+Extends 'blockr.core' with interactive blocks for reading and writing data files. Supports CSV, Excel, Parquet, RDS, and other formats through a graphical interface without writing code directly. Includes file browser integration and configurable import/export options.
 }
 \seealso{
 Useful links:
@@ -22,6 +22,13 @@ Useful links:
 Authors:
 \itemize{
   \item Nicolas Bennett \email{nicolas@cynkra.com}
+  \item David Granjon \email{david@cynkra.com}
+  \item Mike Page \email{mike@cynkra.com}
+}
+
+Other contributors:
+\itemize{
+  \item  Bristol Myers Squibb [funder]
 }
 
 }
