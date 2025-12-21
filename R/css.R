@@ -47,14 +47,6 @@ NULL
 #'
 #' @return HTML style tag with responsive grid CSS
 #' @noRd
-#' @examples
-#' \dontrun{
-#' # In a block's UI function:
-#' tagList(
-#'   css_responsive_grid(),
-#'   # ... rest of UI ...
-#' )
-#' }
 css_responsive_grid <- function() {
   tags$style(HTML(
     "
@@ -124,15 +116,6 @@ css_responsive_grid <- function() {
 #' @param block_name Character string, name of the block (e.g., "filter", "select")
 #' @return HTML style tag with single-column grid CSS
 #' @noRd
-#' @examples
-#' \dontrun{
-#' # In a block's UI function:
-#' tagList(
-#'   css_responsive_grid(),
-#'   css_single_column("filter"),
-#'   # ... rest of UI ...
-#' )
-#' }
 css_single_column <- function(block_name) {
   tags$style(HTML(sprintf(
     "
@@ -169,15 +152,6 @@ css_single_column <- function(block_name) {
 #'   Default FALSE uses simple block layout.
 #' @return HTML style tag with advanced toggle CSS
 #' @noRd
-#' @examples
-#' \dontrun{
-#' # In a block's UI function:
-#' tagList(
-#'   css_responsive_grid(),
-#'   css_advanced_toggle(NS(id, "advanced-options"), use_subgrid = TRUE),
-#'   # ... toggle button and collapsible content ...
-#' )
-#' }
 css_advanced_toggle <- function(id, use_subgrid = FALSE) {
   subgrid_css <- if (use_subgrid) {
     "
@@ -245,20 +219,6 @@ css_advanced_toggle <- function(id, use_subgrid = FALSE) {
 #'
 #' @return HTML style tag with inline checkbox CSS
 #' @noRd
-#' @examples
-#' \dontrun{
-#' # In a block's UI function:
-#' tagList(
-#'   css_responsive_grid(),
-#'   css_inline_checkbox(),
-#'   # ... HTML using the classes ...
-#'   div(
-#'     class = "block-inline-checkbox-wrapper",
-#'     numericInput(...),
-#'     div(class = "block-inline-checkbox", checkboxInput(...))
-#'   )
-#' )
-#' }
 css_inline_checkbox <- function() {
   tags$style(HTML(
     "
@@ -329,19 +289,6 @@ css_inline_checkbox <- function() {
 #'
 #' @return HTML style tag with documentation link CSS
 #' @noRd
-#' @examples
-#' \dontrun{
-#' # In a block's UI function:
-#' tagList(
-#'   css_responsive_grid(),
-#'   css_doc_links(),
-#'   # ... HTML with documentation links ...
-#'   div(
-#'     class = "expression-help-link",
-#'     tags$a(href = "...", target = "_blank", "Documentation \u2197")
-#'   )
-#' )
-#' }
 css_doc_links <- function() {
   tags$style(HTML(
     "
