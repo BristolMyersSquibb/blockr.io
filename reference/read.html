@@ -141,7 +141,7 @@ that differ from defaults. Available parameters:</p><ul><li><p><strong>For CSV f
 
 
 <p>The following settings are retrieved from options and not stored in block state:</p><ul><li><p><strong>volumes</strong>: File browser mount points. Set via <code>options(blockr.volumes = c(name = "path"))</code>
-or environment variable <code>BLOCKR_VOLUMES</code>. Default: <code>c(home = "~")</code></p></li>
+or environment variable <code>BLOCKR_VOLUMES</code>. Default: <code>c(temp = tempdir())</code></p></li>
 <li><p><strong>upload_path</strong>: Directory for persistent file storage. Set via
 <code>options(blockr.upload_path = "/path")</code> or environment variable <code>BLOCKR_UPLOAD_PATH</code>.
 Default: <code>rappdirs::user_data_dir("blockr")</code></p></li>
@@ -158,7 +158,7 @@ Default: <code>rappdirs::user_data_dir("blockr")</code></p></li>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Name: "Read"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> No data inputs</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Initial block state:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ path   : chr "/tmp/RtmpBr9P2A/file194253a9d1d6.csv"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  $ path   : chr "/tmp/RtmpbbrxYm/file1b6c3c2fe801.csv"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ source : chr "upload"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ combine: chr "auto"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ args   : list()</span>
@@ -170,10 +170,10 @@ Default: <code>rappdirs::user_data_dir("blockr")</code></p></li>
 <span class="r-in"><span>  args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>n_max <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># Launch interactive app</span></span></span>
-<span class="r-in"><span><span class="fu">serve</span><span class="op">(</span><span class="fu">new_read_block</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="co"># Launch interactive app</span></span></span>
+<span class="r-in"><span>  <span class="fu">serve</span><span class="op">(</span><span class="fu">new_read_block</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

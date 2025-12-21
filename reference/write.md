@@ -24,7 +24,8 @@ new_write_block(
 
   Character. Default directory for file output (browse mode only). Can
   be configured via `options(blockr.write_dir = "/path")` or environment
-  variable `BLOCKR_WRITE_DIR`. Default: current working directory.
+  variable `BLOCKR_WRITE_DIR`. Default:
+  [`tempdir()`](https://rdrr.io/r/base/tempfile.html).
 
 - filename:
 
@@ -154,7 +155,7 @@ block
 #> Name: "Write"
 #> Indefinite arity
 #> Initial block state:
-#>  $ directory : chr "/tmp/RtmpBr9P2A"
+#>  $ directory : chr "/tmp/RtmpbbrxYm"
 #>  $ filename  : chr "output"
 #>  $ format    : chr "csv"
 #>  $ mode      : chr "download"
@@ -169,8 +170,8 @@ block <- new_write_block(
   format = "excel"
 )
 
-if (FALSE) { # \dontrun{
-# Launch interactive app
-serve(new_write_block())
-} # }
+if (interactive()) {
+  # Launch interactive app
+  serve(new_write_block())
+}
 ```

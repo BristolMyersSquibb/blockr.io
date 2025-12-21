@@ -1,6 +1,9 @@
 # blockr.io: Interactive File Import and Export Blocks
 
-Adds blocks for reading and writing various data file types.
+Extends 'blockr.core' with interactive blocks for reading and writing
+data files. Supports CSV, Excel, Parquet, RDS, and other formats through
+a graphical interface without writing code directly. Includes file
+browser integration and configurable import/export options.
 
 ## See also
 
@@ -19,3 +22,11 @@ Useful links:
 Authors:
 
 - Nicolas Bennett <nicolas@cynkra.com>
+
+- David Granjon <david@cynkra.com>
+
+- Mike Page <mike@cynkra.com>
+
+Other contributors:
+
+- Bristol Myers Squibb \[funder\]

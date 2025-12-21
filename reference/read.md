@@ -123,7 +123,7 @@ block state:
 
 - **volumes**: File browser mount points. Set via
   `options(blockr.volumes = c(name = "path"))` or environment variable
-  `BLOCKR_VOLUMES`. Default: `c(home = "~")`
+  `BLOCKR_VOLUMES`. Default: `c(temp = tempdir())`
 
 - **upload_path**: Directory for persistent file storage. Set via
   `options(blockr.upload_path = "/path")` or environment variable
@@ -141,7 +141,7 @@ block
 #> Name: "Read"
 #> No data inputs
 #> Initial block state:
-#>  $ path   : chr "/tmp/RtmpBr9P2A/file194253a9d1d6.csv"
+#>  $ path   : chr "/tmp/RtmpbbrxYm/file1b6c3c2fe801.csv"
 #>  $ source : chr "upload"
 #>  $ combine: chr "auto"
 #>  $ args   : list()
@@ -153,8 +153,8 @@ block <- new_read_block(
   args = list(n_max = 3)
 )
 
-if (FALSE) { # \dontrun{
-# Launch interactive app
-serve(new_read_block())
-} # }
+if (interactive()) {
+  # Launch interactive app
+  serve(new_read_block())
+}
 ```
