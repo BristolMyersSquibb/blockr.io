@@ -79,9 +79,9 @@
 #'   args = list(n_max = 3)
 #' )
 #'
-#' \dontrun{
-#' # Launch interactive app
-#' serve(new_read_block())
+#' if (interactive()) {
+#'   # Launch interactive app
+#'   serve(new_read_block())
 #' }
 #'
 #' @importFrom rappdirs user_data_dir

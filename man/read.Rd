@@ -117,9 +117,9 @@ block <- new_read_block(
   args = list(n_max = 3)
 )
 
-\dontrun{
-# Launch interactive app
-serve(new_read_block())
+if (interactive()) {
+  # Launch interactive app
+  serve(new_read_block())
 }
 
 }

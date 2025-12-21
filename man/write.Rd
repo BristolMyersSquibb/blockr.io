@@ -133,9 +133,9 @@ block <- new_write_block(
   format = "excel"
 )
 
-\dontrun{
-# Launch interactive app
-serve(new_write_block())
+if (interactive()) {
+  # Launch interactive app
+  serve(new_write_block())
 }
 
 }
