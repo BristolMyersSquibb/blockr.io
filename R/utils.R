@@ -71,10 +71,13 @@ download_url_to_temp <- function(url) {
   # Create temp file with extension
   temp_file <- tempfile(fileext = ext)
 
+  # Use curl if available (handles servers that block R's default user-agent)
+  method <- if (nzchar(Sys.which("curl"))) "curl" else "auto"
+
   # Download with error handling
   tryCatch(
     {
-      download.file(url, temp_file, quiet = TRUE, mode = "wb")
+      download.file(url, temp_file, quiet = TRUE, mode = "wb", method = method)
       temp_file
     },
     error = function(e) {
