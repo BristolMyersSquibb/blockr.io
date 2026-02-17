@@ -4,14 +4,8 @@ template:
 
 navbar:
   structure:
-    left: [intro, reference, articles, news]
+    left: [intro, reference, news]
     right: [search, github]
-  components:
-    articles:
-      text: Articles
-      menu:
-      - text: Showcase
-        href: articles/blockr-io-showcase.html
 
 reference:
 - title: File I/O Blocks
@@ -19,9 +13,3 @@ reference:
   contents:
   - new_read_block
   - new_write_block
-
-articles:
-- title: Getting Started
-  navbar: ~
-  contents:
-  - blockr-io-showcase
