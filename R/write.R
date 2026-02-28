@@ -490,6 +490,10 @@ new_write_block <- function(
             .write-block-container .selectize-control {
               width: 100% !important;
             }
+            /* Tighten spacing in file config grid */
+            .write-block-container .block-form-grid .shiny-input-container {
+              margin-bottom: 0;
+            }
             /* Execution mode toggle */
             .blockr-exec-toggle {
               display: inline-flex;
@@ -571,7 +575,7 @@ new_write_block <- function(
           # --- File Configuration (shared) ---
           div(
             class = "block-form-grid",
-            style = "padding-bottom: 0;",
+            style = "padding-bottom: 0; margin-bottom: 0;",
             div(
               class = "block-section",
               tags$h4("File Configuration", class = "mb-3"),
