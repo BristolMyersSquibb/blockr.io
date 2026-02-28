@@ -166,12 +166,12 @@ new_read_block <- function(
             length(path) > 0 && nzchar(path[[1]]) && is_valid_url(path[[1]])
           ) {
             if (exists("initial_file_paths") && length(initial_file_paths) > 0) {
-              detect_file_category(initial_file_paths[1])
+              file_category(initial_file_paths[1])
             } else {
               "unknown"
             }
           } else if (length(path) > 0) {
-            detect_file_category(path[1])
+            file_category(path[1])
           } else {
             "unknown"
           }
@@ -282,7 +282,7 @@ new_read_block <- function(
                     strsplit(path_val, "?", fixed = TRUE)[[1]][1]
                   )
                   r_file_paths(set_names(temp_file, url_display))
-                  detected_type(detect_file_category(temp_file))
+                  detected_type(file_category(temp_file))
                 },
                 error = function(e) {
                   r_file_paths(character())
@@ -303,7 +303,7 @@ new_read_block <- function(
                 named_path <- set_names(path_val, basename(resolved))
                 r_path(named_path)
                 r_file_paths(named_path)
-                detected_type(detect_file_category(resolved))
+                detected_type(file_category(resolved))
               } else if (!dir.exists(resolved)) {
                 r_file_paths(character())
                 detected_type("unknown")
@@ -352,7 +352,7 @@ new_read_block <- function(
             r_file_paths(permanent_paths)
 
             # Detect file type from first file
-            detected_type(detect_file_category(permanent_paths[1]))
+            detected_type(file_category(permanent_paths[1]))
 
             # Update source to "upload" now that we have uploaded files
             r_source("upload")

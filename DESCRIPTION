@@ -44,7 +44,6 @@ Imports:
     shiny,
     readr,
     rio,
-    bslib,
     shinyjs,
     writexl,
     zip

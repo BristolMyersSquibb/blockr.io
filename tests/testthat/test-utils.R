@@ -1,7 +1,7 @@
 # Tests for utility functions
 
-test_that("get_supported_extensions returns character vector with expected extensions", {
-  exts <- get_supported_extensions()
+test_that("file_extensions returns character vector with expected extensions", {
+  exts <- file_extensions()
 
   expect_type(exts, "character")
   expect_true(length(exts) > 0)

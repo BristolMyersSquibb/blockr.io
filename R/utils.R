@@ -155,15 +155,15 @@ get_rio_extensions <- function() {
   )
 }
 
-#' Detect file category for UI adaptation
+#' File category from extension
 #'
-#' Categorizes files by extension into broad categories that determine which
-#' UI options to show (csv/excel/arrow/other).
+#' Categorizes a file by its extension into a broad format family that
+#' determines reader dispatch and UI adaptation.
 #'
 #' @param path Character. File path.
-#' @return Character. One of: "csv", "excel", "arrow", "other"
-#' @keywords internal
-detect_file_category <- function(path) {
+#' @return One of `"csv"`, `"excel"`, `"arrow"`, `"other"`.
+#' @export
+file_category <- function(path) {
   ext <- tolower(tools::file_ext(path))
 
   if (ext %in% c("csv", "tsv", "txt", "dat", "tab")) {
@@ -209,7 +209,7 @@ dot_args_names <- function(x) {
   res
 }
 
-#' Get supported file extensions
+#' Supported file extensions
 #'
 #' Returns a character vector of file extensions (without dots) supported by
 #' the read block. Useful for sibling packages that need to filter or validate
@@ -217,7 +217,7 @@ dot_args_names <- function(x) {
 #'
 #' @return Character vector of file extensions (without dots)
 #' @export
-get_supported_extensions <- function() {
+file_extensions <- function() {
   get_rio_extensions()
 }
 

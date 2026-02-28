@@ -316,13 +316,13 @@ test_that("read_expr handles pipe delimiter", {
   unlink(temp_file)
 })
 
-# Tests for read_file_expr (exported convenience wrapper)
+# Tests for file_expr (exported convenience wrapper)
 
-test_that("read_file_expr returns correct expression for CSV", {
+test_that("file_expr returns correct expression for CSV", {
   temp_csv <- tempfile(fileext = ".csv")
   write.csv(data.frame(x = 1:3, y = 4:6), temp_csv, row.names = FALSE)
 
-  expr <- read_file_expr(temp_csv)
+  expr <- file_expr(temp_csv)
 
   # Should dispatch to CSV reader based on extension
 
@@ -338,14 +338,14 @@ test_that("read_file_expr returns correct expression for CSV", {
   unlink(temp_csv)
 })
 
-test_that("read_file_expr returns correct expression for Excel", {
+test_that("file_expr returns correct expression for Excel", {
   skip_if_not_installed("readxl")
   skip_if_not_installed("writexl")
 
   temp_xlsx <- tempfile(fileext = ".xlsx")
   writexl::write_xlsx(data.frame(a = 1:5), temp_xlsx)
 
-  expr <- read_file_expr(temp_xlsx)
+  expr <- file_expr(temp_xlsx)
 
   expect_equal(as.character(expr[[1]]), c("::", "readxl", "read_excel"))
 
@@ -355,13 +355,13 @@ test_that("read_file_expr returns correct expression for Excel", {
   unlink(temp_xlsx)
 })
 
-test_that("read_file_expr returns correct expression for Parquet", {
+test_that("file_expr returns correct expression for Parquet", {
   skip_if_not_installed("arrow")
 
   temp_parquet <- tempfile(fileext = ".parquet")
   arrow::write_parquet(data.frame(x = 1:5), temp_parquet)
 
-  expr <- read_file_expr(temp_parquet)
+  expr <- file_expr(temp_parquet)
 
   expect_equal(as.character(expr[[1]]), c("::", "arrow", "read_parquet"))
 
@@ -371,11 +371,11 @@ test_that("read_file_expr returns correct expression for Parquet", {
   unlink(temp_parquet)
 })
 
-test_that("read_file_expr passes extra args to reader", {
+test_that("file_expr passes extra args to reader", {
   temp_csv <- tempfile(fileext = ".csv")
   write.csv(data.frame(x = 1:10), temp_csv, row.names = FALSE)
 
-  expr <- read_file_expr(temp_csv, n_max = 3)
+  expr <- file_expr(temp_csv, n_max = 3)
 
   result <- eval(expr)
   expect_equal(nrow(result), 3)
@@ -383,10 +383,10 @@ test_that("read_file_expr passes extra args to reader", {
   unlink(temp_csv)
 })
 
-test_that("read_file_expr errors on invalid input", {
-  expect_error(read_file_expr(""))
-  expect_error(read_file_expr(123))
-  expect_error(read_file_expr(c("a.csv", "b.csv")))
+test_that("file_expr errors on invalid input", {
+  expect_error(file_expr(""))
+  expect_error(file_expr(123))
+  expect_error(file_expr(c("a.csv", "b.csv")))
 })
 
 test_that("read_expr respects CSV parameters", {

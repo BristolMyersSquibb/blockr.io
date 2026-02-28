@@ -23,6 +23,12 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
         path_input_dep(),
         tags$label("Data directory"),
         div(
+          style = "margin-bottom: 6px;",
+          actionButton(ns("data_dir_set"), "Set data directory",
+            class = "btn-sm blockr-datadir-btn"
+          )
+        ),
+        div(
           class = "blockr-path-input",
           div(
             class = "blockr-path-input-field",
@@ -37,12 +43,6 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
               id = ns("data_dir_browse_dropdown"),
               class = "blockr-path-dropdown"
             )
-          )
-        ),
-        div(
-          style = "margin-top: 6px;",
-          actionButton(ns("data_dir_set"), "Set data directory",
-            class = "btn-sm blockr-datadir-btn"
           )
         )
       )
@@ -60,9 +60,22 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
           if (grepl("/$", path_val) || dir.exists(path_val)) {
             dir_to_list <- path_val
             name_filter <- ""
+            query_base <- if (!nzchar(path_val) || grepl("/$", path_val)) {
+              path_val
+            } else {
+              paste0(path_val, "/")
+            }
           } else {
             dir_to_list <- dirname(path_val)
             name_filter <- tolower(basename(path_val))
+            slash_pos <- regexpr("^.*/", path_val)
+            query_base <- if (slash_pos > 0) {
+              regmatches(path_val, slash_pos)
+            } else if (grepl("^(~|[A-Za-z]:)$", path_val)) {
+              paste0(path_val, "/")
+            } else {
+              ""
+            }
           }
 
           if (!nzchar(dir_to_list)) {
@@ -105,7 +118,7 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
           httpResponse(
             200,
             "application/json",
-            jsonlite::toJSON(list(items = items), auto_unbox = TRUE)
+            jsonlite::toJSON(list(items = items, base = query_base), auto_unbox = TRUE)
           )
         }
       )
