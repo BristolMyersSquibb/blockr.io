@@ -38,13 +38,13 @@ RoxygenNote: 7.3.3
 VignetteBuilder: knitr
 Imports:
     blockr.core (>= 0.1.1),
+    htmltools,
+    jsonlite,
     readxl,
     shiny,
     readr,
-    shinyFiles,
     rio,
     bslib,
-    rappdirs,
     shinyjs,
     writexl,
     zip

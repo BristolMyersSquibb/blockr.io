@@ -1,0 +1,99 @@
+/* blockr path-input widget styles */
+
+.blockr-path-input {
+  position: relative;
+  width: 100%;
+}
+
+.blockr-path-input-field {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ced4da;
+  border-radius: 0.375rem;
+  background: #fff;
+  overflow: hidden;
+}
+
+.blockr-path-prefix {
+  padding: 0.375rem 0 0.375rem 0.75rem;
+  color: #6c757d;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.blockr-path-text {
+  flex-grow: 1;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  min-width: 0;
+  background: transparent;
+}
+
+.blockr-path-text:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.blockr-path-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1050;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-top: none;
+  border-radius: 0 0 0.375rem 0.375rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.blockr-path-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.blockr-path-dropdown-item:hover,
+.blockr-path-dropdown-item.active {
+  background-color: #f0f0f5;
+}
+
+.blockr-path-icon {
+  flex-shrink: 0;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+}
+
+.blockr-path-name {
+  flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blockr-path-size {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.blockr-path-status {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-top: 4px;
+  min-height: 1.2em;
+}

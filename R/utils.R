@@ -208,3 +208,45 @@ dot_args_names <- function(x) {
   # All named - return as-is
   res
 }
+
+#' Get supported file extensions
+#'
+#' Returns a character vector of file extensions (without dots) supported by
+#' the read block. Useful for sibling packages that need to filter or validate
+#' file paths before passing them to blockr.io.
+#'
+#' @return Character vector of file extensions (without dots)
+#' @export
+get_supported_extensions <- function() {
+  get_rio_extensions()
+}
+
+#' Clean up old uploaded files
+#'
+#' Removes files older than a given age from an upload directory.
+#'
+#' @param upload_dir Character. Path to the upload directory.
+#' @param max_age_days Numeric. Maximum age in days. Files older than this
+#'   are removed. Default: 30.
+#' @return Invisible NULL.
+#' @keywords internal
+cleanup_uploads <- function(upload_dir, max_age_days = 30) {
+  if (!dir.exists(upload_dir)) {
+    return(invisible(NULL))
+  }
+
+  files <- list.files(upload_dir, full.names = TRUE)
+  if (length(files) == 0) {
+    return(invisible(NULL))
+  }
+
+  info <- file.info(files)
+  cutoff <- Sys.time() - as.difftime(max_age_days, units = "days")
+  old_files <- files[!is.na(info$mtime) & info$mtime < cutoff]
+
+  if (length(old_files) > 0) {
+    unlink(old_files)
+  }
+
+  invisible(NULL)
+}

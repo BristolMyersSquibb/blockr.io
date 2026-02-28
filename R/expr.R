@@ -1,3 +1,21 @@
+#' Create a read expression for a single file
+#'
+#' Convenience wrapper that detects the file category from the path and
+#' returns an unevaluated R expression for reading the file. Useful for
+#' sibling packages that construct pipelines programmatically.
+#'
+#' @param path Character. Path to a single file.
+#' @param ... Additional parameters forwarded to the reader (e.g. `sep`,
+#'   `sheet`, `skip`).
+#' @return A language object (unevaluated call) that, when evaluated, reads the
+#'   file into a data frame.
+#' @export
+read_file_expr <- function(path, ...) {
+  stopifnot(is_string(path), nzchar(path))
+  file_type <- detect_file_category(path)
+  read_expr_single(path, file_type, ...)
+}
+
 # Internal function - not exported
 read_expr <- function(
   paths,

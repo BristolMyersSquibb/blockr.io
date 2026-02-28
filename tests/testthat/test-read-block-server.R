@@ -316,7 +316,7 @@ test_that("read_block handles URL source via framework", {
 
   block <- new_read_block(
     path = url,
-    source = "url"
+    source = "path"
   )
 
   testServer(

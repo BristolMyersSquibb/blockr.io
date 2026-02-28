@@ -8,7 +8,7 @@ library(blockr.dock)
 library(blockr.dag)
 library(blockr.dplyr)
 
-devtools::load_all(".")
+devtools::load_all("blockr.io")
 
 # Create a sample CSV file
 temp_csv <- tempfile(fileext = ".csv")

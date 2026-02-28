@@ -93,7 +93,6 @@
 #'   serve(new_write_block())
 #' }
 #'
-#' @importFrom shinyFiles shinyDirButton shinyDirChoose parseDirPath
 #' @rdname write
 #' @export
 new_write_block <- function(
@@ -115,27 +114,6 @@ new_write_block <- function(
     directory <- blockr_option("write_dir", tempdir())
   }
 
-  # Get volumes for directory browser
-  # Default to tempdir() to comply with CRAN policies
-  volumes <- blockr_option("volumes", c(temp = tempdir()))
-
-  # Handle volumes parameter
-  if (is.character(volumes)) {
-    volumes <- path.expand(volumes)
-  }
-
-  if (is_string(volumes) && grepl(":", volumes)) {
-    volumes <- strsplit(volumes, ":", fixed = TRUE)[[1L]]
-  }
-
-  if (is.null(names(volumes))) {
-    if (length(volumes) == 1L) {
-      names(volumes) <- "volume"
-    } else if (length(volumes) > 1L) {
-      names(volumes) <- paste0("volume", seq_along(volumes))
-    }
-  }
-
   # Expand directory path
   directory <- path.expand(directory)
 
@@ -144,7 +122,7 @@ new_write_block <- function(
       moduleServer(
         id,
         function(input, output, session) {
-          # volumes, directory, auto_write available here via closure
+          # directory, auto_write available here via closure
 
           # Extract arg names for variadic inputs
           arg_names <- reactive({
@@ -162,29 +140,35 @@ new_write_block <- function(
           r_last_write <- reactiveVal(NULL) # Track last write time
           r_write_status <- reactiveVal("") # Status message
 
-          # Initialize shinyFiles directory browser
-          shinyFiles::shinyDirChoose(
-            input,
-            "dir_browser",
-            roots = volumes,
-            session = session
+          # Data directory from board options
+          data_dir_reactive <- reactive({
+            coal(get_board_option_or_null("data_dir", session), "")
+          })
+
+          # Path input module for directory selection
+          dir_path <- path_input_server(
+            "dir_path",
+            data_dir = data_dir_reactive,
+            mode = "directory"
           )
 
-          # Handle directory browser selection
-          selected_dir <- reactive({
-            if (!is.null(input$dir_browser) && !identical(input$dir_browser, "")) {
-              path <- shinyFiles::parseDirPath(volumes, input$dir_browser)
-              if (length(path) > 0) path else NULL
-            } else {
-              NULL
-            }
-          })
+          # Handle directory path changes
+          observeEvent(dir_path(), {
+            path_val <- dir_path()
+            req(nzchar(path_val))
 
-          observeEvent(selected_dir(), {
-            if (!is.null(selected_dir())) {
-              r_directory(selected_dir())
+            # Resolve relative paths against data directory
+            resolved <- path_val
+            data_dir <- data_dir_reactive()
+            if (
+              nzchar(data_dir) &&
+              !grepl("^(/|~|[A-Za-z]:)", path_val)
+            ) {
+              resolved <- file.path(data_dir, path_val)
             }
-          })
+
+            r_directory(resolved)
+          }, ignoreInit = TRUE)
 
           # Update state from inputs
           observeEvent(input$mode_pills, {
@@ -564,13 +548,7 @@ new_write_block <- function(
                     class = "block-help-text mb-3",
                     "When running locally, this is your computer."
                   ),
-                  shinyFiles::shinyDirButton(
-                    NS(id, "dir_browser"),
-                    label = "Select Directory...",
-                    title = "Choose output directory",
-                    multiple = FALSE,
-                    class = "btn-outline-secondary"
-                  ),
+                  path_input_ui(NS(id, "dir_path")),
                   div(
                     class = "block-help-text mt-2",
                     textOutput(NS(id, "current_directory"))
