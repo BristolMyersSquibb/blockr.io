@@ -78,7 +78,7 @@ read_expr <- function(
 #' @keywords internal
 read_expr_single <- function(path, file_type, ...) {
   # Dispatch to appropriate builder
-  if (file_type == "csv") {
+  inner <- if (file_type == "csv") {
     read_expr_csv(path, ...)
   } else if (file_type == "excel") {
     read_expr_excel(path, ...)
@@ -87,6 +87,24 @@ read_expr_single <- function(path, file_type, ...) {
   } else {
     read_expr_rio(path, ...)
   }
+
+  ext <- tolower(tools::file_ext(path))
+
+  # Wrap: ensure result is a data frame, with a helpful error on failure
+  bquote(local({
+    .res <- tryCatch(.(inner), error = function(e) {
+      stop("Cannot read .", .(ext), " file: ", conditionMessage(e), call. = FALSE)
+    })
+    if (!is.data.frame(.res)) {
+      .res <- tryCatch(as.data.frame(.res), error = function(e) {
+        stop(
+          "The .", .(ext), " file was read but could not be converted to a table.",
+          call. = FALSE
+        )
+      })
+    }
+    .res
+  }))
 }
 
 

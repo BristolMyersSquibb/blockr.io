@@ -4,24 +4,27 @@
 #' Accepts multiple input dataframes and handles single files, multi-sheet
 #' Excel, or ZIP archives depending on format and number of inputs.
 #'
-#' @param directory Character. Default directory for file output (browse mode only).
-#'   Can be configured via `options(blockr.write_dir = "/path")` or environment
-#'   variable `BLOCKR_WRITE_DIR`. Default: `tempdir()`.
+#' @param directory Character. Default directory for file output. When non-empty,
+#'   enables server-side writing. Can be configured via
+#'   `options(blockr.write_dir = "/path")` or environment variable
+#'   `BLOCKR_WRITE_DIR`. Default: `""` (empty — download-only until user sets a path).
 #' @param filename Character. Optional fixed filename (without extension).
 #'   - **If provided**: Writes to same file path on every upstream change (auto-overwrite)
 #'   - **If empty** (default): Generates timestamped filename (e.g., `data_20250127_143022.csv`)
 #' @param format Character. Output format: "csv", "excel", "parquet", or "feather".
 #'   Default: "csv"
-#' @param mode Character. Either "download" for "To Browser" (triggers browser download),
-#'   or "browse" for "To Server" (writes to server filesystem). Default: "download"
 #' @param auto_write Logical. When TRUE, automatically writes files when data changes
-#'   (browse mode only). When FALSE (default), user must click "Submit" button to save.
-#'   Has no effect in download mode.
+#'   (requires a non-empty directory). When FALSE (default), user must click
+#'   "Save to File" button.
 #' @param args Named list of format-specific writing parameters. Only specify values
 #'   that differ from defaults. Available parameters:
 #'   - **For CSV files:** `sep` (default: ","), `quote` (default: TRUE),
 #'     `na` (default: "")
 #'   - **For Excel/Arrow:** Minimal options needed (handled by underlying packages)
+#' @param mode `r lifecycle::badge("deprecated")` Previously selected between
+#'   "browse" and "download" tabs. Now ignored — both download and server-save
+#'   are always available. Kept for backwards compatibility; emits a deprecation
+#'   warning when non-NULL.
 #' @param ... Forwarded to [blockr.core::new_transform_block()]
 #'
 #' @details
@@ -57,16 +60,17 @@
 #' - Preserves history, prevents accidental overwrites
 #' - Safe default behavior
 #'
-#' ## Mode: To Browser vs To Server
+#' ## Download vs Server Save
 #'
-#' **To Browser mode** (download):
-#' - Exports files to your computer
+#' Both options are always available in a flat layout (no tabs):
+#'
+#' **Download to Browser:**
+#' - Always available via the download button
 #' - Triggers a download to your browser's download folder
-#' - Useful for exporting results
 #'
-#' **To Server mode** (browse):
-#' - Saves files directly on the server
-#' - User selects directory with file browser
+#' **Save to Server:**
+#' - Active when a server directory path is set (non-empty)
+#' - User enters a directory path in the path input
 #' - Files persist on server
 #' - When running locally, this is your computer's file system
 #'
@@ -99,23 +103,28 @@ new_write_block <- function(
   directory = "",
   filename = "",
   format = "csv",
-  mode = "download",
   auto_write = FALSE,
   args = list(),
+  mode = NULL,
   ...
 ) {
-  # Validate parameters
-  format <- match.arg(format, c("csv", "excel", "parquet", "feather"))
-  mode <- match.arg(mode, c("browse", "download"))
-
-  # Get default directory from options if not provided
-  # Default to tempdir() to comply with CRAN policies (no writing to home filespace)
-  if (directory == "") {
-    directory <- blockr_option("write_dir", tempdir())
+  if (!is.null(mode)) {
+    .Deprecated(
+      msg = paste(
+        "The 'mode' parameter of new_write_block() is deprecated.",
+        "Both download and server-save are now always available.",
+        "Use 'directory' to control server-save behavior."
+      )
+    )
   }
 
-  # Expand directory path
-  directory <- path.expand(directory)
+  # Validate parameters
+  format <- match.arg(format, c("csv", "excel", "parquet", "feather"))
+
+  # Expand directory path if non-empty
+  if (nzchar(directory)) {
+    directory <- path.expand(directory)
+  }
 
   new_transform_block(
     server = function(id, ...args) {
@@ -134,7 +143,6 @@ new_write_block <- function(
           r_directory <- reactiveVal(directory)
           r_filename <- reactiveVal(filename)
           r_format <- reactiveVal(format)
-          r_mode <- reactiveVal(mode)
           r_auto_write <- reactiveVal(auto_write)
           r_args <- reactiveVal(args)
           r_last_write <- reactiveVal(NULL) # Track last write time
@@ -171,12 +179,6 @@ new_write_block <- function(
           }, ignoreInit = TRUE)
 
           # Update state from inputs
-          observeEvent(input$mode_pills, {
-            if (!is.null(input$mode_pills)) {
-              r_mode(input$mode_pills)
-            }
-          })
-
           observeEvent(input$auto_write, {
             r_auto_write(input$auto_write)
           })
@@ -220,11 +222,10 @@ new_write_block <- function(
             )
           })
 
-          # Submit button for browse mode (only when auto_write is FALSE)
+          # Submit button for server save (only when auto_write is FALSE)
           observeEvent(input$submit_write, {
             req(length(arg_names()) > 0)
-            req(r_directory())
-            req(r_mode() == "browse")
+            req(nzchar(r_directory()))
             req(!r_auto_write()) # Only trigger when auto_write is disabled
 
             # Generate write expression
@@ -257,13 +258,12 @@ new_write_block <- function(
             r_write_status(sprintf("\u2713 Saved to %s at %s", full_path, timestamp))
           })
 
-          # Generate expression that adapts based on mode and auto_write setting
+          # Generate expression based on directory state and auto_write setting
           r_write_expression <- reactive({
-            if (r_mode() == "browse") {
+            if (nzchar(r_directory())) {
               if (r_auto_write()) {
-                # Auto-write enabled (default): Generate expression automatically
+                # Auto-write enabled: Generate expression automatically
                 req(length(arg_names()) > 0)
-                req(r_directory())
 
                 expr <- write_expr(
                   data_names = arg_names(),
@@ -284,14 +284,14 @@ new_write_block <- function(
                 r_write_expression_set()
               }
             } else {
-              # Download mode: Return NULL - download handler does the writing
+              # No directory set: Return NULL - download handler handles writing
               NULL
             }
           })
 
           # Update status when auto-write generates a new expression
           observe({
-            req(r_mode() == "browse")
+            req(nzchar(r_directory()))
             req(r_auto_write())
             req(r_write_expression())
 
@@ -314,52 +314,7 @@ new_write_block <- function(
           })
 
 
-          # # Execute write when in browse mode and data changes
-          # observeEvent(
-          #   {
-          #     list(r_write_expression(), ...args)
-          #   },
-          #   {
-          #     if (r_mode() == "browse") {
-          #       req(r_write_expression())
-
-          #       tryCatch(
-          #         {
-          #           # Ensure directory exists
-          #           dir.create(r_directory(), recursive = TRUE, showWarnings = FALSE)
-
-          #           # Create environment with actual data for evaluation
-          #           eval_env <- new.env(parent = parent.frame())
-          #           names_vec <- arg_names()
-          #           for (i in seq_along(...args)) {
-          #             data_val <- if (is.reactive(...args[[i]])) {
-          #               ...args[[i]]()
-          #             } else {
-          #               ...args[[i]]
-          #             }
-          #             assign(names_vec[i], data_val, envir = eval_env)
-          #           }
-
-          #           # Evaluate write expression in environment with data
-          #           eval(r_write_expression(), envir = eval_env)
-
-          #           # Update status
-          #           r_last_write(Sys.time())
-          #           r_write_status(sprintf(
-          #             "\u2713 Written at %s",
-          #             format(Sys.time(), "%H:%M:%S")
-          #           ))
-          #         },
-          #         error = function(e) {
-          #           r_write_status(sprintf("\u2717 Error: %s", conditionMessage(e)))
-          #         }
-          #       )
-          #     }
-          #   },
-          #   ignoreInit = TRUE
-          # )
-
-          # Download handler for download mode
+          # Download handler — always available
           output$download_data <- downloadHandler(
             filename = function() {
               base <- generate_filename(r_filename())
@@ -463,9 +418,9 @@ new_write_block <- function(
               directory = r_directory,
               filename = r_filename,
               format = r_format,
-              mode = r_mode,
               auto_write = r_auto_write,
-              args = r_args
+              args = r_args,
+              mode = reactiveVal(NULL)
             )
           )
         }
@@ -479,36 +434,16 @@ new_write_block <- function(
         div(
           class = "block-container write-block-container",
 
-          # Mode selector
+          # Output Location
           div(
-            class = "block-section",
-            tags$h4("Output Mode", class = "mb-3"),
+            class = "block-section blockr-file-location",
+            tags$h4("Output Location", class = "mb-3"),
+            tags$p(
+              class = "blockr-path-hint",
+              "Choose a server path to save, or download to browser"
+            ),
             tags$style(HTML(
               "
-              .nav-pills {
-                display: inline-flex;
-                overflow: hidden;
-              }
-              .nav-pills .nav-link {
-                background-color: rgb(249, 249, 250);
-                color: rgb(104, 107, 130);
-                border: none;
-                border-radius: 8px;
-                margin: 8px;
-                margin-left:0;
-                padding: 6px 10px;
-                font-size: 0.8rem;
-              }
-              .nav-pills .nav-link:hover {
-                background-color: #f8f9fa;
-                z-index: 1;
-              }
-              .nav-pills .nav-link.active {
-                background-color: rgb(236, 236, 236);
-                color: rgb(104, 107, 130);
-                border-color: rgb(236, 236, 236);
-                z-index: 2;
-              }
               /* Make inputs full width */
               .write-block-container .shiny-input-container {
                 width: 100% !important;
@@ -518,62 +453,41 @@ new_write_block <- function(
               }
             "
             )),
-            bslib::navset_pill(
-              id = NS(id, "mode_pills"),
-              selected = mode,
-              bslib::nav_panel(
-                title = "To Browser",
-                value = "download",
-                div(
-                  class = "mt-3",
-                  tags$h4("Export files to your computer", class = "mb-2"),
-                  div(
-                    class = "block-help-text mb-3",
-                    "Triggers a download to your browser's download folder."
-                  ),
-                  downloadButton(
-                    NS(id, "download_data"),
-                    "Download File",
-                    class = "btn-outline-secondary"
-                  )
+            path_input_ui(NS(id, "dir_path")),
+            div(
+              class = "block-help-text mt-2",
+              textOutput(NS(id, "current_directory"))
+            ),
+            div(
+              class = "mt-3",
+              checkboxInput(
+                NS(id, "auto_write"),
+                "Auto-write: automatically save when data changes",
+                value = auto_write
+              )
+            ),
+            conditionalPanel(
+              condition = "!input.auto_write",
+              ns = NS(id),
+              div(
+                class = "mt-2",
+                actionButton(
+                  NS(id, "submit_write"),
+                  "Save to File",
+                  class = "btn-outline-secondary"
                 )
-              ),
-              bslib::nav_panel(
-                title = "To Server",
-                value = "browse",
-                div(
-                  class = "mt-3",
-                  tags$h4("Save files to the server", class = "mb-2"),
-                  div(
-                    class = "block-help-text mb-3",
-                    "When running locally, this is your computer."
-                  ),
-                  path_input_ui(NS(id, "dir_path")),
-                  div(
-                    class = "block-help-text mt-2",
-                    textOutput(NS(id, "current_directory"))
-                  ),
-                  div(
-                    class = "mt-3",
-                    checkboxInput(
-                      NS(id, "auto_write"),
-                      "Auto-write: automatically save when data changes",
-                      value = auto_write
-                    )
-                  ),
-                  conditionalPanel(
-                    condition = "!input.auto_write",
-                    ns = NS(id),
-                    div(
-                      class = "mt-2",
-                      actionButton(
-                        NS(id, "submit_write"),
-                        "Save to File",
-                        class = "btn-outline-secondary"
-                      )
-                    )
-                  )
-                )
+              )
+            ),
+            div(
+              class = "block-help-text mt-2",
+              textOutput(NS(id, "write_status"))
+            ),
+            div(
+              class = "mt-3",
+              downloadButton(
+                NS(id, "download_data"),
+                "Download to Browser",
+                class = "btn-outline-secondary"
               )
             )
           ),
@@ -614,15 +528,6 @@ new_write_block <- function(
                     selected = format
                   )
                 )
-              )
-            ),
-
-            # Write status
-            div(
-              class = "block-section",
-              div(
-                class = "block-help-text",
-                textOutput(NS(id, "write_status"))
               )
             ),
 

@@ -3,17 +3,28 @@
 # Complete ETL pipeline: read -> transform -> write
 # Run with: source("dev/examples/workflow.R")
 
-library(blockr.core)
-library(blockr.dock)
+devtools::load_all("blockr.core")
+
+# library(blockr.core)
+# library(blockr.dock)
 library(blockr.dag)
 library(blockr.dplyr)
+library(blockr.extra)
 
+
+devtools::load_all("blockr.dock")
 devtools::load_all("blockr.session")
 devtools::load_all("blockr.io")
 
 # Create a sample CSV file
 temp_csv <- tempfile(fileext = ".csv")
 write.csv(mtcars, temp_csv, row.names = FALSE)
+
+
+options(
+  blockr.html_table_preview = TRUE
+)
+
 
 # Serve full ETL pipeline in dock board
 serve(
@@ -24,7 +35,7 @@ serve(
       data = new_read_block(
         path = temp_csv,
         source = "path"
-      )
+      ),
       # # Filter rows
       # filtered = new_filter_block(
       #   conditions = list(
@@ -36,16 +47,16 @@ serve(
       #   columns = c("mpg", "cyl", "hp", "wt")
       # ),
       # # Write output
-      # output = new_write_block(
-      #   mode = "download",
-      #   format = "excel",
-      #   filename = "filtered_cars"
-      # )
+      output = new_write_block(
+        mode = "download",
+        format = "excel",
+        filename = "filtered_cars"
+      )
     ),
     links = list(
-      # from = c("data", "filtered", "selected"),
-      # to = c("filtered", "selected", "output"),
-      # input = c("data", "data", "data")
+      from = c("data"),
+      to = c("output"),
+      input = c("data")
     ),
     extensions = new_dag_extension()
   ),

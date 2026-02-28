@@ -141,8 +141,11 @@ new_read_block <- function(
           } else {
             # Local path mode: r_path and r_file_paths are the same
             if (length(path) > 0) {
-              # Validate that provided paths exist
-              missing_files <- path[!file.exists(path)]
+              # Validate that provided paths exist (skip relative paths —
+              # they'll be resolved against data_dir at runtime)
+              is_absolute <- grepl("^(/|~|[A-Za-z]:)", path)
+              abs_paths <- path[is_absolute]
+              missing_files <- abs_paths[!file.exists(abs_paths)]
               if (length(missing_files) > 0) {
                 stop(
                   "File(s) not found: ",
@@ -248,6 +251,22 @@ new_read_block <- function(
             mode = "file"
           )
 
+          # Populate path text input on restore / init
+          if (length(path) > 0 && nzchar(path[[1]])) {
+            observe({
+              display_path <- if (is_valid_url(path[[1]])) {
+                path[[1]]
+              } else {
+                unname(path[1])
+              }
+              session$sendCustomMessage("blockr-path-set-value", list(
+                id = session$ns("file_path-path_text"),
+                value = display_path,
+                silent = TRUE
+              ))
+            })
+          }
+
           # Handle path input changes (paths or URLs)
           observeEvent(file_path(), {
             path_val <- file_path()
@@ -281,10 +300,13 @@ new_read_block <- function(
               }
 
               if (file.exists(resolved) && !dir.exists(resolved)) {
-                named_path <- set_names(resolved, basename(resolved))
+                named_path <- set_names(path_val, basename(resolved))
                 r_path(named_path)
                 r_file_paths(named_path)
                 detected_type(detect_file_category(resolved))
+              } else if (!dir.exists(resolved)) {
+                r_file_paths(character())
+                detected_type("unknown")
               }
             }
 
@@ -334,33 +356,18 @@ new_read_block <- function(
 
             # Update source to "upload" now that we have uploaded files
             r_source("upload")
-          })
 
-          # File info for display
-          output$file_info <- renderText({
-            current_file_paths <- r_file_paths()
-            if (length(current_file_paths) == 0) {
-              return("No files selected")
-            }
-
-            # Check if the stored path is a URL
-            path_val <- r_path()
-            if (length(path_val) == 1 && is_valid_url(path_val)) {
-              return(paste("URL:", path_val))
-            }
-
-            source_val <- r_source()
-            suffix <- if (identical(source_val, "upload")) " (uploaded)" else ""
-
-            if (length(current_file_paths) == 1) {
-              file_name <- names(current_file_paths)[1]
-              if (is.null(file_name) || file_name == "") {
-                file_name <- basename(current_file_paths[1])
-              }
-              paste0("Selected: ", file_name, suffix)
+            # Show uploaded file path in the text input
+            display_path <- if (length(permanent_paths) == 1) {
+              unname(permanent_paths[1])
             } else {
-              paste0("Selected ", length(current_file_paths), " files", suffix)
+              paste0(permanent_paths[1], " + ", length(permanent_paths) - 1, " more")
             }
+            session$sendCustomMessage("blockr-path-set-value", list(
+              id = session$ns("file_path-path_text"),
+              value = display_path,
+              silent = TRUE
+            ))
           })
 
           # Combination strategy info
@@ -379,31 +386,48 @@ new_read_block <- function(
             )
           })
 
-          # File type info
-          output$file_type_info <- renderText({
-            type <- detected_type()
-            if (type == "unknown") {
-              return("")
+          # Does the current path_text input resolve to an existing file?
+          path_resolved <- reactive({
+            val <- file_path()
+            if (!nzchar(val) || is_valid_url(val)) return(TRUE)
+            resolved <- val
+            data_dir <- data_dir_reactive()
+            if (nzchar(data_dir) && !grepl("^(/|~|[A-Za-z]:)", val)) {
+              resolved <- file.path(data_dir, val)
             }
+            file.exists(resolved) || dir.exists(resolved)
+          })
 
+          # Status badge for file type
+          observe({
+            type <- detected_type()
+            paths <- r_file_paths()
+            resolved <- path_resolved()
             type_labels <- c(
-              csv = "CSV/Text file",
-              excel = "Excel spreadsheet",
-              statistical = "Statistical software format",
-              arrow = "Arrow columnar format",
-              web = "Web data format",
-              r_format = "R data format",
-              other = "Other format"
+              csv = "CSV", excel = "Excel", arrow = "Parquet",
+              statistical = "Stats", web = "Web data",
+              r_format = "R data", other = "File"
             )
-
-            paste(
-              "Detected:",
-              if (is.null(type_labels[type])) {
-                "Unknown format"
-              } else {
-                type_labels[type]
-              }
-            )
+            if (length(paths) > 0 && type != "unknown") {
+              label <- unname(type_labels[type]) %||% "File"
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("file_path-path_text"),
+                text = label,
+                state = "success"
+              ))
+            } else if (!resolved && nzchar(file_path())) {
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("file_path-path_text"),
+                text = "Not found",
+                state = "error"
+              ))
+            } else {
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("file_path-path_text"),
+                text = "",
+                state = "none"
+              ))
+            }
           })
 
           # Show/hide format-specific options based on file type
@@ -477,8 +501,12 @@ new_read_block <- function(
         div(
           class = "block-container read-block-container",
           div(
-            class = "block-section",
+            class = "block-section blockr-file-location",
             tags$h4("File Location", class = "mb-3"),
+            tags$p(
+              "Browse server files, paste a URL, or drag & drop to upload",
+              class = "blockr-path-hint"
+            ),
 
             tags$style(HTML(
               "
@@ -510,26 +538,9 @@ new_read_block <- function(
             )
           ),
 
-          # Wrap File Information and Advanced Options in grid
+          # Wrap Advanced Options in grid
           div(
-            class = "block-form-grid",
-            div(
-              class = "block-section",
-              tags$h4("File Information", class = "mt-3"),
-
-              # File info display (gray info line)
-              div(
-                class = "block-section-grid",
-                div(
-                  class = "block-help-text",
-                  textOutput(NS(id, "file_info"))
-                ),
-                div(
-                  class = "block-help-text",
-                  textOutput(NS(id, "file_type_info"))
-                )
-              )
-            ),
+            class = "block-form-grid mt-3",
 
             # Advanced Options Toggle
             div(
@@ -555,6 +566,11 @@ new_read_block <- function(
             # Advanced Options Content
             div(
               id = NS(id, "advanced-options"),
+
+              tags$p(
+                "Change the global data directory in the sidebar",
+                class = "blockr-path-hint"
+              ),
 
               # Format-Specific Options Section
               div(

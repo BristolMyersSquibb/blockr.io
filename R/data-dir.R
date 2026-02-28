@@ -32,22 +32,17 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
               class = "blockr-path-text",
               placeholder = "e.g. /data/project",
               autocomplete = "off"
+            ),
+            div(
+              id = ns("data_dir_browse_dropdown"),
+              class = "blockr-path-dropdown"
             )
-          ),
-          div(
-            id = ns("data_dir_browse_dropdown"),
-            class = "blockr-path-dropdown"
           )
         ),
         div(
-          style = "margin-top: 6px; display: flex; align-items: center; gap: 8px;",
+          style = "margin-top: 6px;",
           actionButton(ns("data_dir_set"), "Set data directory",
-            class = "btn-sm btn-primary",
-            disabled = "disabled"
-          ),
-          tags$span(
-            id = ns("data_dir_feedback"),
-            class = "blockr-path-feedback"
+            class = "btn-sm blockr-datadir-btn"
           )
         )
       )
@@ -115,11 +110,15 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
         }
       )
 
-      # Send endpoint URL to JS for autocomplete
+      # Send endpoint URL to JS + disable button on init
       observe({
         session$sendCustomMessage("blockr-path-list-url", list(
           id = ns("data_dir_browse"),
           url = list_url
+        ))
+        session$sendCustomMessage("blockr-path-toggle-btn", list(
+          id = ns("data_dir_set"),
+          enabled = FALSE
         ))
       })
 
@@ -135,30 +134,40 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
             ))
           }
         ),
-        # Validate as user types: enable/disable button
+        # Validate as user types: enable when valid AND changed from saved
         observeEvent(
           session$input[["data_dir_browse"]],
           {
             val <- session$input[["data_dir_browse"]] %||% ""
+            saved <- tryCatch(
+              get_board_option_value("data_dir", session),
+              error = function(e) ""
+            )
+            norm_val <- normalizePath(val, winslash = "/", mustWork = FALSE)
             valid <- nzchar(val) && dir.exists(val)
+            changed <- !identical(norm_val, saved)
             session$sendCustomMessage("blockr-path-toggle-btn", list(
               id = ns("data_dir_set"),
-              enabled = valid
+              enabled = valid && changed
             ))
           },
           ignoreInit = TRUE
         ),
-        # Confirm button: set the value (only enabled when valid)
+        # Confirm button: set the value, show success state
         observeEvent(
           session$input[["data_dir_set"]],
           {
             val <- session$input[["data_dir_browse"]] %||% ""
             val <- normalizePath(val, winslash = "/")
             set_board_option_value("data_dir", val, session)
-            session$sendCustomMessage("blockr-path-feedback", list(
-              id = ns("data_dir_feedback"),
-              text = paste0("\u2714 Set to ", val),
-              cls = "text-success"
+            # Update input to normalized path
+            session$sendCustomMessage("blockr-path-set-value", list(
+              id = ns("data_dir_browse"),
+              value = val
+            ))
+            # Trigger success animation on button
+            session$sendCustomMessage("blockr-path-btn-success", list(
+              id = ns("data_dir_set")
             ))
           }
         )

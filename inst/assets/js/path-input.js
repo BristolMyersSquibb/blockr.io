@@ -23,14 +23,26 @@
     return state[inputId];
   }
 
+  function updatePrefixVisibility(inputId) {
+    var st = getState(inputId);
+    var input = document.getElementById(inputId);
+    var prefixEl = document.getElementById(inputId + "_prefix");
+    if (!input || !prefixEl) return;
+    var isAbsolute = /^(\/|~|[A-Za-z]:)/.test(input.value);
+    if (isAbsolute) {
+      prefixEl.textContent = "";
+      prefixEl.classList.remove("blockr-path-prefix-active");
+    } else {
+      prefixEl.textContent = st.prefix || "";
+      prefixEl.classList.toggle("blockr-path-prefix-active", !!st.prefix);
+    }
+  }
+
   // Custom message handler: update prefix text
   Shiny.addCustomMessageHandler("blockr-path-prefix", function(msg) {
-    var el = document.getElementById(msg.id + "_prefix");
-    if (el) {
-      el.textContent = msg.prefix || "";
-    }
     var st = getState(msg.id);
     st.prefix = msg.prefix || "";
+    updatePrefixVisibility(msg.id);
   });
 
   // Custom message handler: store list_dir endpoint URL
@@ -40,29 +52,56 @@
   });
 
   // Custom message handler: set input value programmatically
+  // msg.silent: if true, only update the display without triggering change
   Shiny.addCustomMessageHandler("blockr-path-set-value", function(msg) {
     var el = document.getElementById(msg.id);
     if (el) {
       el.value = msg.value || "";
-      $(el).trigger("change");
+      // Scroll to end so filename is visible
+      el.scrollLeft = el.scrollWidth;
+      updatePrefixVisibility(msg.id);
+      if (!msg.silent) {
+        $(el).trigger("change");
+      }
     }
   });
 
-  // Custom message handler: enable/disable a button
+  // Button state for success animation timers
+  var btnTimers = {};
+
+  function resetBtn(id) {
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    btn.classList.remove("blockr-datadir-btn-success");
+    btn.innerHTML = '<span class="action-label">Set data directory</span>';
+    btn.disabled = true;
+    btnTimers[id] = null;
+  }
+
+  // Custom message handler: enable/disable a button (clears success state)
   Shiny.addCustomMessageHandler("blockr-path-toggle-btn", function(msg) {
     var el = document.getElementById(msg.id);
-    if (el) {
-      el.disabled = !msg.enabled;
-    }
+    if (!el) return;
+    // Don't interrupt success animation — let the timer handle the reset
+    if (btnTimers[msg.id]) return;
+    el.disabled = !msg.enabled;
+    el.classList.remove("blockr-datadir-btn-success");
   });
 
-  // Custom message handler: display feedback text
-  Shiny.addCustomMessageHandler("blockr-path-feedback", function(msg) {
-    var el = document.getElementById(msg.id);
-    if (el) {
-      el.textContent = msg.text || "";
-      el.className = "blockr-path-feedback " + (msg.cls || "");
-    }
+  // Custom message handler: button success animation
+  Shiny.addCustomMessageHandler("blockr-path-btn-success", function(msg) {
+    var btn = document.getElementById(msg.id);
+    if (!btn) return;
+    // Clear any pending timer
+    if (btnTimers[msg.id]) clearTimeout(btnTimers[msg.id]);
+    // Switch to success state
+    btn.disabled = true;
+    btn.classList.add("blockr-datadir-btn-success");
+    btn.innerHTML = '<span class="blockr-path-check"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Set successfully';
+    // Reset after 3 seconds
+    btnTimers[msg.id] = setTimeout(function() {
+      resetBtn(msg.id);
+    }, 3000);
   });
 
   // Format file size
@@ -83,6 +122,7 @@
       .then(function(resp) { return resp.json(); })
       .then(function(data) {
         st.items = data.items || [];
+        st.queryBase = data.base || "";
         renderDropdown(inputId);
       })
       .catch(function() {
@@ -116,6 +156,31 @@
     }
 
     dropdown.innerHTML = html;
+
+    // Use fixed positioning so the dropdown escapes overflow:auto ancestors
+    // (e.g. the board-settings offcanvas body).  Per CSS spec, a transform
+    // on any ancestor creates a new containing block for position:fixed, so
+    // we compensate for the nearest transformed ancestor's viewport offset.
+    var field = dropdown.closest(".blockr-path-input-field");
+    if (field) {
+      var rect = field.getBoundingClientRect();
+      var offsetTop = 0, offsetLeft = 0;
+      var anc = dropdown.parentElement;
+      while (anc) {
+        var cs = window.getComputedStyle(anc);
+        if (cs.transform !== "none") {
+          var ar = anc.getBoundingClientRect();
+          offsetTop = ar.top;
+          offsetLeft = ar.left;
+          break;
+        }
+        anc = anc.parentElement;
+      }
+      dropdown.style.position = "fixed";
+      dropdown.style.top = (rect.bottom - offsetTop) + "px";
+      dropdown.style.left = (rect.left - offsetLeft) + "px";
+      dropdown.style.width = rect.width + "px";
+    }
     dropdown.style.display = "block";
 
     // Attach click handlers
@@ -145,7 +210,10 @@
     if (lastSlash >= 0) {
       return value.substring(0, lastSlash + 1);
     }
-    return value.length > 0 ? value + "/" : "";
+    if (/^(~|[A-Za-z]:)$/.test(value)) {
+      return value + "/";
+    }
+    return "";
   }
 
   // Select an item from the dropdown
@@ -157,7 +225,7 @@
     var input = document.getElementById(inputId);
     if (!input) return;
 
-    var base = getBase(input.value);
+    var base = st.queryBase || getBase(input.value);
 
     if (item.isdir) {
       // Folder: set base + name + "/" and re-query
@@ -180,6 +248,11 @@
     var dropdown = document.getElementById(inputId + "_dropdown");
     if (dropdown) {
       dropdown.style.display = "none";
+      // Reset fixed positioning so CSS defaults apply on next open
+      dropdown.style.position = "";
+      dropdown.style.top = "";
+      dropdown.style.left = "";
+      dropdown.style.width = "";
     }
     var st = getState(inputId);
     st.activeIndex = -1;
@@ -196,6 +269,7 @@
 
       // Input change with debounce
       input.addEventListener("input", function() {
+        updatePrefixVisibility(inputId);
         var st = getState(inputId);
         clearTimeout(st.debounceTimer);
         st.debounceTimer = setTimeout(function() {
@@ -205,14 +279,16 @@
 
       // Focus: trigger listing if URL available
       input.addEventListener("focus", function() {
+        input.scrollLeft = 0;
         var st = getState(inputId);
         if (st.listUrl) {
           fetchListing(inputId, input.value);
         }
       });
 
-      // Blur: close dropdown (with small delay to allow click)
+      // Blur: scroll to end so filename is visible, then close dropdown
       input.addEventListener("blur", function() {
+        input.scrollLeft = input.scrollWidth;
         setTimeout(function() {
           closeDropdown(inputId);
         }, 200);
@@ -292,6 +368,21 @@
       });
     });
   }
+
+  // Custom message handler: file-type status badge
+  Shiny.addCustomMessageHandler("blockr-path-status", function(msg) {
+    var el = document.getElementById(msg.id + "_status");
+    if (!el) return;
+    if (msg.state === "success" && msg.text) {
+      el.innerHTML = '<span class="blockr-path-badge blockr-path-badge-success">' +
+        escapeHtml(msg.text) + '</span>';
+    } else if (msg.state === "error" && msg.text) {
+      el.innerHTML = '<span class="blockr-path-badge blockr-path-badge-error">' +
+        escapeHtml(msg.text) + '</span>';
+    } else {
+      el.innerHTML = "";
+    }
+  });
 
   // Run on DOM ready
   if (document.readyState === "loading") {

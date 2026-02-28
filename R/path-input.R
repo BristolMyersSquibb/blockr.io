@@ -66,11 +66,11 @@ path_input_ui <- function(id, prefix = NULL, upload_id = NULL) {
           },
           autocomplete = "off"
         ),
-        upload_btn
-      ),
-      div(
-        id = ns("path_text_dropdown"),
-        class = "blockr-path-dropdown"
+        upload_btn,
+        div(
+          id = ns("path_text_dropdown"),
+          class = "blockr-path-dropdown"
+        )
       ),
       div(
         id = ns("path_text_status"),
@@ -115,9 +115,24 @@ path_input_server <- function(id, data_dir = reactive(""),
       if (grepl("/$", full_path) || dir.exists(full_path)) {
         dir_to_list <- full_path
         name_filter <- ""
+        # Base for JS item selection: the input value as a directory
+        query_base <- if (!nzchar(path_val) || grepl("/$", path_val)) {
+          path_val
+        } else {
+          paste0(path_val, "/")
+        }
       } else {
         dir_to_list <- dirname(full_path)
         name_filter <- tolower(basename(full_path))
+        # Base for JS item selection: directory portion of the input value
+        slash_pos <- regexpr("^.*/", path_val)
+        query_base <- if (slash_pos > 0) {
+          regmatches(path_val, slash_pos)
+        } else if (grepl("^(~|[A-Za-z]:)$", path_val)) {
+          paste0(path_val, "/")
+        } else {
+          ""
+        }
       }
 
       if (!nzchar(dir_to_list)) {
@@ -171,7 +186,7 @@ path_input_server <- function(id, data_dir = reactive(""),
       httpResponse(
         200,
         "application/json",
-        jsonlite::toJSON(list(items = items), auto_unbox = TRUE)
+        jsonlite::toJSON(list(items = items, base = query_base), auto_unbox = TRUE)
       )
     })
 
