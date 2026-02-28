@@ -16,47 +16,153 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
   new_board_option(
     id = "data_dir",
     default = value,
+    update_trigger = NULL,
     ui = function(id) {
+      ns <- NS(id)
       tagList(
-        path_input_ui(NS(id, "data_dir_path"), prefix = NULL),
-        uiOutput(NS(id, "data_dir_status"))
+        path_input_dep(),
+        tags$label("Data directory"),
+        div(
+          class = "blockr-path-input",
+          div(
+            class = "blockr-path-input-field",
+            tags$input(
+              id = ns("data_dir_browse"),
+              type = "text",
+              class = "blockr-path-text",
+              placeholder = "e.g. /data/project",
+              autocomplete = "off"
+            )
+          ),
+          div(
+            id = ns("data_dir_browse_dropdown"),
+            class = "blockr-path-dropdown"
+          )
+        ),
+        div(
+          style = "margin-top: 6px; display: flex; align-items: center; gap: 8px;",
+          actionButton(ns("data_dir_set"), "Set data directory",
+            class = "btn-sm btn-primary",
+            disabled = "disabled"
+          ),
+          tags$span(
+            id = ns("data_dir_feedback"),
+            class = "blockr-path-feedback"
+          )
+        )
       )
     },
     server = function(..., session) {
-      dir_val <- path_input_server(
-        "data_dir_path",
-        data_dir = reactive(""),
-        mode = "directory"
-      )
+      ns <- session$ns
 
-      # Update board option when path changes
-      observeEvent(dir_val(), {
-        val <- dir_val()
-        set_board_option_value("data_dir", val, session = session)
-      }, ignoreInit = TRUE)
+      # Register directory listing endpoint (directories only)
+      list_url <- session$registerDataObj(
+        "list_dir_opt", NULL,
+        function(data, req) {
+          query <- parseQueryString(req$QUERY_STRING)
+          path_val <- query$path %||% ""
 
-      # Sync UI when option value changes externally
-      observeEvent(
-        get_board_option_or_null("data_dir", session),
-        {
-          current <- get_board_option_value("data_dir", session)
-          updateTextInput(session, NS("data_dir_path", "path_text"),
-                          value = current)
+          if (grepl("/$", path_val) || dir.exists(path_val)) {
+            dir_to_list <- path_val
+            name_filter <- ""
+          } else {
+            dir_to_list <- dirname(path_val)
+            name_filter <- tolower(basename(path_val))
+          }
+
+          if (!nzchar(dir_to_list)) {
+            dir_to_list <- "."
+          }
+
+          items <- list()
+
+          if (nzchar(dir_to_list) && dir.exists(dir_to_list)) {
+            entries <- list.files(
+              dir_to_list, all.files = FALSE, full.names = FALSE
+            )
+
+            if (nzchar(name_filter)) {
+              entries <- entries[
+                grepl(name_filter, tolower(entries), fixed = TRUE)
+              ]
+            }
+
+            for (entry in entries) {
+              full <- file.path(dir_to_list, entry)
+              if (!dir.exists(full)) next
+              items[[length(items) + 1]] <- list(
+                name = entry,
+                isdir = TRUE,
+                size = NULL
+              )
+            }
+
+            names_vec <- vapply(items, function(x) x$name, character(1))
+            if (length(names_vec)) {
+              items <- items[order(tolower(names_vec))]
+            }
+
+            if (length(items) > 50) {
+              items <- items[seq_len(50)]
+            }
+          }
+
+          httpResponse(
+            200,
+            "application/json",
+            jsonlite::toJSON(list(items = items), auto_unbox = TRUE)
+          )
         }
       )
 
-      # Status output
-      output$data_dir_status <- renderUI({
-        val <- get_board_option_or_null("data_dir", session)
-        if (is.null(val) || !nzchar(val)) {
-          tags$small(class = "text-muted", "No data directory set")
-        } else if (!dir.exists(val)) {
-          tags$small(class = "text-warning", paste("Directory not found:", val))
-        } else {
-          n <- length(list.files(val))
-          tags$small(class = "text-muted", paste0(val, " (", n, " files)"))
-        }
+      # Send endpoint URL to JS for autocomplete
+      observe({
+        session$sendCustomMessage("blockr-path-list-url", list(
+          id = ns("data_dir_browse"),
+          url = list_url
+        ))
       })
+
+      list(
+        # Sync input when option changes externally (e.g. session restore)
+        observeEvent(
+          get_board_option_or_null("data_dir", session),
+          {
+            val <- get_board_option_value("data_dir", session)
+            session$sendCustomMessage("blockr-path-set-value", list(
+              id = ns("data_dir_browse"),
+              value = val
+            ))
+          }
+        ),
+        # Validate as user types: enable/disable button
+        observeEvent(
+          session$input[["data_dir_browse"]],
+          {
+            val <- session$input[["data_dir_browse"]] %||% ""
+            valid <- nzchar(val) && dir.exists(val)
+            session$sendCustomMessage("blockr-path-toggle-btn", list(
+              id = ns("data_dir_set"),
+              enabled = valid
+            ))
+          },
+          ignoreInit = TRUE
+        ),
+        # Confirm button: set the value (only enabled when valid)
+        observeEvent(
+          session$input[["data_dir_set"]],
+          {
+            val <- session$input[["data_dir_browse"]] %||% ""
+            val <- normalizePath(val, winslash = "/")
+            set_board_option_value("data_dir", val, session)
+            session$sendCustomMessage("blockr-path-feedback", list(
+              id = ns("data_dir_feedback"),
+              text = paste0("\u2714 Set to ", val),
+              cls = "text-success"
+            ))
+          }
+        )
+      )
     },
     category = category,
     ...

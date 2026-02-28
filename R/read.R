@@ -281,7 +281,7 @@ new_read_block <- function(
                 resolved <- file.path(data_dir, path_val)
               }
 
-              if (file.exists(resolved)) {
+              if (file.exists(resolved) && !dir.exists(resolved)) {
                 named_path <- set_names(resolved, basename(resolved))
                 r_path(named_path)
                 r_file_paths(named_path)
@@ -506,11 +506,6 @@ new_read_block <- function(
                   color: rgb(104, 107, 130);
                   border-color: rgb(236, 236, 236);
                   z-index: 2;
-                }
-
-                /* Fix file input styling */
-                .blockr-file-input .input-group>.form-control {
-                  height: 44px !important;
                 }
                 .blockr-file-input .form-group {
                   margin-bottom: 0;

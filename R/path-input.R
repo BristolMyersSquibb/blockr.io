@@ -33,7 +33,7 @@ path_input_ui <- function(id, prefix = NULL) {
         tags$input(
           id = ns("path_text"),
           type = "text",
-          class = "blockr-path-text shiny-bound-input",
+          class = "blockr-path-text",
           placeholder = "Enter file path...",
           autocomplete = "off"
         )
@@ -65,12 +65,14 @@ path_input_server <- function(id, data_dir = reactive(""),
     ns <- session$ns
 
     # Register directory listing data object endpoint
+    # NOTE: registerDataObj callbacks run in HTTP context, not reactive context.
+    # All reactive reads MUST be wrapped in isolate().
     list_url <- session$registerDataObj("list_dir", NULL, function(data, req) {
       query <- parseQueryString(req$QUERY_STRING)
       path_val <- query$path %||% ""
 
-      # Resolve the browse root
-      dir_root <- data_dir()
+      # Resolve the browse root (isolate — no reactive context in HTTP handler)
+      dir_root <- isolate(data_dir())
 
       # Build the full path to list
       if (nzchar(dir_root) && !grepl("^(/|~|[A-Za-z]:)", path_val)) {
@@ -86,6 +88,10 @@ path_input_server <- function(id, data_dir = reactive(""),
       } else {
         dir_to_list <- dirname(full_path)
         name_filter <- tolower(basename(full_path))
+      }
+
+      if (!nzchar(dir_to_list)) {
+        dir_to_list <- "."
       }
 
       items <- list()

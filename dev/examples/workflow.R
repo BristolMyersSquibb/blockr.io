@@ -8,6 +8,7 @@ library(blockr.dock)
 library(blockr.dag)
 library(blockr.dplyr)
 
+devtools::load_all("blockr.session")
 devtools::load_all("blockr.io")
 
 # Create a sample CSV file
@@ -46,5 +47,6 @@ serve(
       input = c("data", "data", "data")
     ),
     extensions = new_dag_extension()
-  )
+  ),
+  plugins = custom_plugins(manage_project())
 )

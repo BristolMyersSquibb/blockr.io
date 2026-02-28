@@ -39,6 +39,32 @@
     st.listUrl = msg.url;
   });
 
+  // Custom message handler: set input value programmatically
+  Shiny.addCustomMessageHandler("blockr-path-set-value", function(msg) {
+    var el = document.getElementById(msg.id);
+    if (el) {
+      el.value = msg.value || "";
+      $(el).trigger("change");
+    }
+  });
+
+  // Custom message handler: enable/disable a button
+  Shiny.addCustomMessageHandler("blockr-path-toggle-btn", function(msg) {
+    var el = document.getElementById(msg.id);
+    if (el) {
+      el.disabled = !msg.enabled;
+    }
+  });
+
+  // Custom message handler: display feedback text
+  Shiny.addCustomMessageHandler("blockr-path-feedback", function(msg) {
+    var el = document.getElementById(msg.id);
+    if (el) {
+      el.textContent = msg.text || "";
+      el.className = "blockr-path-feedback " + (msg.cls || "");
+    }
+  });
+
   // Format file size
   function formatSize(bytes) {
     if (bytes == null) return "";
@@ -110,6 +136,18 @@
     return div.innerHTML;
   }
 
+  // Compute the directory base from the current input value.
+  // If the value contains "/", base is everything up to and including the last
+  // "/".  Otherwise, if the value is non-empty the server treated the whole
+  // value as a directory name (e.g. "~"), so the base is value + "/".
+  function getBase(value) {
+    var lastSlash = value.lastIndexOf("/");
+    if (lastSlash >= 0) {
+      return value.substring(0, lastSlash + 1);
+    }
+    return value.length > 0 ? value + "/" : "";
+  }
+
   // Select an item from the dropdown
   function selectItem(inputId, idx) {
     var st = getState(inputId);
@@ -119,12 +157,10 @@
     var input = document.getElementById(inputId);
     if (!input) return;
 
+    var base = getBase(input.value);
+
     if (item.isdir) {
-      // Folder: append name + "/" and re-query
-      var currentVal = input.value;
-      // Find the last "/" and replace everything after it with the folder name
-      var lastSlash = currentVal.lastIndexOf("/");
-      var base = lastSlash >= 0 ? currentVal.substring(0, lastSlash + 1) : "";
+      // Folder: set base + name + "/" and re-query
       input.value = base + item.name + "/";
       $(input).trigger("change");
       // Re-query with new path
@@ -133,11 +169,8 @@
         fetchListing(inputId, input.value);
       }, 100);
     } else {
-      // File: set full name and close dropdown
-      var currentVal2 = input.value;
-      var lastSlash2 = currentVal2.lastIndexOf("/");
-      var base2 = lastSlash2 >= 0 ? currentVal2.substring(0, lastSlash2 + 1) : "";
-      input.value = base2 + item.name;
+      // File: set base + name and close dropdown
+      input.value = base + item.name;
       $(input).trigger("change");
       closeDropdown(inputId);
     }

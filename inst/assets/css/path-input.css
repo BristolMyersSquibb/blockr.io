@@ -97,3 +97,8 @@
   margin-top: 4px;
   min-height: 1.2em;
 }
+
+.blockr-path-feedback {
+  font-size: 0.85rem;
+  min-height: 1.2em;
+}
