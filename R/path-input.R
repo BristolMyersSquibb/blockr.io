@@ -7,22 +7,47 @@
 #' @param id Module namespace ID.
 #' @param prefix Optional initial prefix text shown before the input
 #'   (typically the data directory path).
+#' @param upload_id Optional ID of a hidden Shiny `fileInput` to wire up
+#'   for upload-icon click and drag-and-drop. When non-NULL, an upload icon
+#'   button is rendered inside the input field and the container gets a
+#'   `data-upload-target` attribute pointing to this ID.
 #'
 #' @return `path_input_ui()` returns a `tagList` with the widget HTML.
 #'   `path_input_server()` returns a `reactive` containing the current
 #'   path text value.
 #'
-#' @importFrom htmltools htmlDependency
+#' @importFrom htmltools htmlDependency HTML
 #' @importFrom jsonlite toJSON
 #' @name path_input
 #' @export
-path_input_ui <- function(id, prefix = NULL) {
+path_input_ui <- function(id, prefix = NULL, upload_id = NULL) {
   ns <- NS(id)
+
+  upload_btn <- if (!is.null(upload_id)) {
+    tags$button(
+      class = "blockr-path-upload-btn",
+      type = "button",
+      title = "Upload file",
+      `aria-label` = "Upload file from computer",
+      HTML(paste0(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" ',
+        'fill="currentColor" viewBox="0 0 16 16">',
+        '<path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 ',
+        '1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5',
+        'a.5.5 0 0 1 .5-.5"/>',
+        '<path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708',
+        'L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1',
+        '-.708-.708z"/>',
+        '</svg>'
+      ))
+    )
+  }
 
   tagList(
     path_input_dep(),
     div(
       class = "blockr-path-input",
+      `data-upload-target` = upload_id,
       div(
         class = "blockr-path-input-field",
         tags$span(
@@ -34,9 +59,14 @@ path_input_ui <- function(id, prefix = NULL) {
           id = ns("path_text"),
           type = "text",
           class = "blockr-path-text",
-          placeholder = "Enter file path...",
+          placeholder = if (!is.null(upload_id)) {
+            "Browse server or upload file..."
+          } else {
+            "Enter file path..."
+          },
           autocomplete = "off"
-        )
+        ),
+        upload_btn
       ),
       div(
         id = ns("path_text_dropdown"),

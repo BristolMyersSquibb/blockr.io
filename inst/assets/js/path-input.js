@@ -218,6 +218,55 @@
         }, 200);
       });
 
+      // Upload integration: wire icon click + drag-and-drop to hidden fileInput
+      var container = input.closest(".blockr-path-input");
+      var uploadTarget = container && container.getAttribute("data-upload-target");
+
+      if (uploadTarget && container) {
+        var uploadBtn = container.querySelector(".blockr-path-upload-btn");
+        if (uploadBtn) {
+          uploadBtn.addEventListener("click", function(e) {
+            e.preventDefault();
+            var fileEl = document.getElementById(uploadTarget);
+            var wrapper = fileEl ? fileEl.closest(".shiny-input-container") : null;
+            var realInput = wrapper ? wrapper.querySelector('input[type="file"]') : null;
+            if (realInput) realInput.click();
+          });
+        }
+
+        var field = container.querySelector(".blockr-path-input-field");
+
+        field.addEventListener("dragover", function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          field.classList.add("blockr-path-dragover");
+        });
+
+        field.addEventListener("dragleave", function(e) {
+          e.preventDefault();
+          field.classList.remove("blockr-path-dragover");
+        });
+
+        field.addEventListener("drop", function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          field.classList.remove("blockr-path-dragover");
+
+          var files = e.dataTransfer.files;
+          if (!files.length) return;
+
+          var fileEl = document.getElementById(uploadTarget);
+          var wrapper = fileEl ? fileEl.closest(".shiny-input-container") : null;
+          var realInput = wrapper ? wrapper.querySelector('input[type="file"]') : null;
+          if (realInput) {
+            var dt = new DataTransfer();
+            for (var i = 0; i < files.length; i++) dt.items.add(files[i]);
+            realInput.files = dt.files;
+            $(realInput).trigger("change");
+          }
+        });
+      }
+
       // Keyboard navigation
       input.addEventListener("keydown", function(e) {
         var st = getState(inputId);

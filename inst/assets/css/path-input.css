@@ -91,6 +91,38 @@
   color: #999;
 }
 
+/* Upload icon button inside path input */
+.blockr-path-upload-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  border: none;
+  border-left: 1px solid #ced4da;
+  background: #f9f9fa;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.blockr-path-upload-btn:hover {
+  color: #0d6efd;
+  background: #ececec;
+}
+
+/* Drag-over state */
+.blockr-path-input-field.blockr-path-dragover {
+  border: 2px dashed #0d6efd;
+  background: #f0f4ff;
+}
+
+.blockr-path-input-field.blockr-path-dragover .blockr-path-upload-btn {
+  color: #0d6efd;
+  border-left-color: #0d6efd;
+}
+
 .blockr-path-status {
   font-size: 0.8rem;
   color: #6c757d;

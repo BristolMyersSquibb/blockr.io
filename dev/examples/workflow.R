@@ -20,31 +20,32 @@ serve(
   new_dock_board(
     blocks = c(
       # Read data
+      #
       data = new_read_block(
         path = temp_csv,
         source = "path"
-      ),
-      # Filter rows
-      filtered = new_filter_block(
-        conditions = list(
-          list(column = "cyl", values = c(4, 6), mode = "include")
-        )
-      ),
-      # Select columns
-      selected = new_select_block(
-        columns = c("mpg", "cyl", "hp", "wt")
-      ),
-      # Write output
-      output = new_write_block(
-        mode = "download",
-        format = "excel",
-        filename = "filtered_cars"
       )
+      # # Filter rows
+      # filtered = new_filter_block(
+      #   conditions = list(
+      #     list(column = "cyl", values = c(4, 6), mode = "include")
+      #   )
+      # ),
+      # # Select columns
+      # selected = new_select_block(
+      #   columns = c("mpg", "cyl", "hp", "wt")
+      # ),
+      # # Write output
+      # output = new_write_block(
+      #   mode = "download",
+      #   format = "excel",
+      #   filename = "filtered_cars"
+      # )
     ),
     links = list(
-      from = c("data", "filtered", "selected"),
-      to = c("filtered", "selected", "output"),
-      input = c("data", "data", "data")
+      # from = c("data", "filtered", "selected"),
+      # to = c("filtered", "selected", "output"),
+      # input = c("data", "data", "data")
     ),
     extensions = new_dag_extension()
   ),

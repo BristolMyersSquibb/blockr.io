@@ -6,7 +6,7 @@
 \alias{path_input_server}
 \title{Path input widget}
 \usage{
-path_input_ui(id, prefix = NULL)
+path_input_ui(id, prefix = NULL, upload_id = NULL)
 
 path_input_server(id, data_dir = reactive(""), mode = c("file", "directory"))
 }
@@ -15,6 +15,11 @@ path_input_server(id, data_dir = reactive(""), mode = c("file", "directory"))
 
 \item{prefix}{Optional initial prefix text shown before the input
 (typically the data directory path).}
+
+\item{upload_id}{Optional ID of a hidden Shiny \code{fileInput} to wire up
+for upload-icon click and drag-and-drop. When non-NULL, an upload icon
+button is rendered inside the input field and the container gets a
+\code{data-upload-target} attribute pointing to this ID.}
 
 \item{data_dir}{Reactive returning the current data directory path
 (from board options). Empty string means no data directory.}

@@ -77,7 +77,6 @@
 #'   serve(new_read_block())
 #' }
 #'
-#' @importFrom bslib navset_pill nav_panel
 #' @importFrom shinyjs useShinyjs
 #' @rdname read
 #' @export
@@ -350,14 +349,17 @@ new_read_block <- function(
               return(paste("URL:", path_val))
             }
 
+            source_val <- r_source()
+            suffix <- if (identical(source_val, "upload")) " (uploaded)" else ""
+
             if (length(current_file_paths) == 1) {
               file_name <- names(current_file_paths)[1]
               if (is.null(file_name) || file_name == "") {
                 file_name <- basename(current_file_paths[1])
               }
-              paste("Selected:", file_name)
+              paste0("Selected: ", file_name, suffix)
             } else {
-              paste("Selected", length(current_file_paths), "files")
+              paste0("Selected ", length(current_file_paths), " files", suffix)
             }
           })
 
@@ -476,87 +478,35 @@ new_read_block <- function(
           class = "block-container read-block-container",
           div(
             class = "block-section",
-            tags$h4("Source", class = "mb-3"),
+            tags$h4("File Location", class = "mb-3"),
 
-            # File Source Button Group (full-width, outside grid)
-            div(
-              class = "mb-3",
-              tags$style(HTML(
-                "
-                .nav-pills {
-                  display: inline-flex;
-                  overflow: hidden;
-                }
-                .nav-pills .nav-link {
-                  background-color: rgb(249, 249, 250);
-                  color: rgb(104, 107, 130);
-                  border: none;
-                  border-radius: 8px;
-                  margin: 8px;
-                  margin-left:0;
-                  padding: 6px 10px;;
-                  font-size: 0.8rem;
-                }
-                .nav-pills .nav-link:hover {
-                  background-color: #f8f9fa;
-                  z-index: 1;
-                }
-                .nav-pills .nav-link.active {
-                  background-color: rgb(236, 236, 236);
-                  color: rgb(104, 107, 130);
-                  border-color: rgb(236, 236, 236);
-                  z-index: 2;
-                }
-                .blockr-file-input .form-group {
-                  margin-bottom: 0;
-                }
-                /* Make inputs full width */
-                .read-block-container .shiny-input-container {
-                  width: 100% !important;
-                }
-                .read-block-container .selectize-control {
-                  width: 100% !important;
-                }
+            tags$style(HTML(
               "
-              )),
-              bslib::navset_pill(
-                id = NS(id, "source_pills"),
-                selected = source,
-                bslib::nav_panel(
-                  title = "From Browser",
-                  value = "upload",
-                  div(
-                    class = "block-input-wrapper mt-3",
-                    tags$h4("Drag and drop files", class = "mb-2"),
-                    div(
-                      class = "block-help-text mb-3",
-                      "Or click to select. Creates a copy in the app's storage that persists across sessions."
-                    ),
-                    div(
-                      class = "blockr-file-input",
-                      fileInput(
-                        inputId = NS(id, "file_upload"),
-                        label = NULL,
-                        multiple = TRUE,
-                        accept = paste0(".", get_rio_extensions())
-                      )
-                    )
-                  )
-                ),
-                bslib::nav_panel(
-                  title = "Location",
-                  value = "path",
-                  div(
-                    class = "block-input-wrapper mt-3",
-                    tags$h4("Enter a file path or URL", class = "mb-2"),
-                    div(
-                      class = "block-help-text mb-3",
-                      "Type a server path (with autocomplete) or paste a URL."
-                    ),
-                    path_input_ui(NS(id, "file_path"))
-                  )
-                )
+              .blockr-file-input { display: none; }
+              .read-block-container .shiny-input-container {
+                width: 100% !important;
+              }
+              .read-block-container .selectize-control {
+                width: 100% !important;
+              }
+            "
+            )),
+
+            # Hidden fileInput (Shiny handles upload mechanics)
+            div(
+              class = "blockr-file-input",
+              fileInput(
+                inputId = NS(id, "file_upload"),
+                label = NULL,
+                multiple = TRUE,
+                accept = paste0(".", get_rio_extensions())
               )
+            ),
+
+            # Unified path input with upload icon
+            path_input_ui(
+              NS(id, "file_path"),
+              upload_id = NS(id, "file_upload")
             )
           ),
 
