@@ -157,28 +157,21 @@
 
     dropdown.innerHTML = html;
 
-    // Use fixed positioning so the dropdown escapes overflow:auto ancestors
-    // (e.g. the board-settings offcanvas body).  Per CSS spec, a transform
-    // on any ancestor creates a new containing block for position:fixed, so
-    // we compensate for the nearest transformed ancestor's viewport offset.
-    var field = dropdown.closest(".blockr-path-input-field");
+    // Move dropdown to document.body so it escapes any overflow:auto/hidden
+    // ancestors (e.g. dockview panels). Position with fixed coords relative
+    // to the input field.
+    if (dropdown.parentElement !== document.body) {
+      document.body.appendChild(dropdown);
+    }
+    var field = document.getElementById(inputId)
+      ? document.getElementById(inputId).closest(".blockr-path-input-field")
+      : null;
     if (field) {
       var rect = field.getBoundingClientRect();
-      var offsetTop = 0, offsetLeft = 0;
-      var anc = dropdown.parentElement;
-      while (anc) {
-        var cs = window.getComputedStyle(anc);
-        if (cs.transform !== "none") {
-          var ar = anc.getBoundingClientRect();
-          offsetTop = ar.top;
-          offsetLeft = ar.left;
-          break;
-        }
-        anc = anc.parentElement;
-      }
       dropdown.style.position = "fixed";
-      dropdown.style.top = (rect.bottom - offsetTop) + "px";
-      dropdown.style.left = (rect.left - offsetLeft) + "px";
+      dropdown.style.top = rect.bottom + "px";
+      dropdown.style.left = rect.left + "px";
+      dropdown.style.right = "auto";
       dropdown.style.width = rect.width + "px";
     }
     dropdown.style.display = "block";
@@ -378,6 +371,9 @@
         escapeHtml(msg.text) + '</span>';
     } else if (msg.state === "error" && msg.text) {
       el.innerHTML = '<span class="blockr-path-badge blockr-path-badge-error">' +
+        escapeHtml(msg.text) + '</span>';
+    } else if (msg.state === "info" && msg.text) {
+      el.innerHTML = '<span class="blockr-path-badge blockr-path-badge-info">' +
         escapeHtml(msg.text) + '</span>';
     } else {
       el.innerHTML = "";

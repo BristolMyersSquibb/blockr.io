@@ -119,7 +119,7 @@ new_write_block <- function(
   }
 
   # Validate parameters
-  format <- match.arg(format, c("csv", "excel", "parquet", "feather"))
+  format <- match.arg(format, unname(write_formats()))
 
   # Expand directory path if non-empty
   if (nzchar(directory)) {
@@ -160,6 +160,26 @@ new_write_block <- function(
             mode = "directory"
           )
 
+          # Populate path text input on restore / init
+          if (nzchar(directory)) {
+            observe({
+              # Strip data_dir prefix for display if applicable
+              display_path <- directory
+              dd <- data_dir_reactive()
+              if (nzchar(dd)) {
+                prefix <- paste0(dd, "/")
+                if (startsWith(directory, prefix)) {
+                  display_path <- substr(directory, nchar(prefix) + 1, nchar(directory))
+                }
+              }
+              session$sendCustomMessage("blockr-path-set-value", list(
+                id = session$ns("dir_path-path_text"),
+                value = display_path,
+                silent = TRUE
+              ))
+            }) |> bindEvent(TRUE, once = TRUE)
+          }
+
           # Handle directory path changes
           observeEvent(dir_path(), {
             path_val <- dir_path()
@@ -179,8 +199,8 @@ new_write_block <- function(
           }, ignoreInit = TRUE)
 
           # Update state from inputs
-          observeEvent(input$auto_write, {
-            r_auto_write(input$auto_write)
+          observeEvent(input$write_mode, {
+            r_auto_write(identical(input$write_mode, "auto"))
           })
 
           observeEvent(input$filename, r_filename(input$filename))
@@ -206,20 +226,33 @@ new_write_block <- function(
           # Reactive to store the write expression (set when submit clicked)
           r_write_expression_set <- reactiveVal(NULL)
 
+          # Track whether directory existed before we created it
+          r_dir_existed <- reactiveVal(
+            nzchar(directory) && dir.exists(path.expand(directory))
+          )
+
           # Directory creation - create when directory path is set
           observeEvent(r_directory(), {
             req(r_directory())
-            tryCatch(
-              {
-                dir.create(r_directory(), recursive = TRUE, showWarnings = FALSE)
-                if (!dir.exists(r_directory())) {
-                  r_write_status(sprintf("\u2717 Cannot create directory: %s", r_directory()))
+            existed <- dir.exists(r_directory())
+            r_dir_existed(existed)
+            if (!existed) {
+              tryCatch(
+                {
+                  dir.create(r_directory(), recursive = TRUE, showWarnings = FALSE)
+                  if (!dir.exists(r_directory())) {
+                    r_write_status(sprintf(
+                      "\u2717 Cannot create directory: %s", r_directory()
+                    ))
+                  }
+                },
+                error = function(e) {
+                  r_write_status(sprintf(
+                    "\u2717 Directory error: %s", conditionMessage(e)
+                  ))
                 }
-              },
-              error = function(e) {
-                r_write_status(sprintf("\u2717 Directory error: %s", conditionMessage(e)))
-              }
-            )
+              )
+            }
           })
 
           # Submit button for server save (only when auto_write is FALSE)
@@ -390,13 +423,28 @@ new_write_block <- function(
           )
 
 
-          # Output: Current directory display
-          output$current_directory <- renderText({
+          # Status badge for directory validation
+          observe({
             dir <- r_directory()
-            if (!is.null(dir) && nzchar(dir)) {
-              paste("Current directory:", dir)
+            existed <- r_dir_existed()
+            if (nzchar(dir) && existed) {
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("dir_path-path_text"),
+                text = "Directory",
+                state = "success"
+              ))
+            } else if (nzchar(dir)) {
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("dir_path-path_text"),
+                text = "New directory",
+                state = "info"
+              ))
             } else {
-              "No directory selected"
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("dir_path-path_text"),
+                text = "",
+                state = "none"
+              ))
             }
           })
 
@@ -434,70 +482,99 @@ new_write_block <- function(
         div(
           class = "block-container write-block-container",
 
-          # Output Location
+          tags$style(HTML("
+            /* Make inputs full width */
+            .write-block-container .shiny-input-container {
+              width: 100% !important;
+            }
+            .write-block-container .selectize-control {
+              width: 100% !important;
+            }
+            /* Execution mode toggle */
+            .blockr-exec-toggle {
+              display: inline-flex;
+              align-items: center;
+              gap: 2px;
+              background-color: #f3f4f6;
+              border-radius: 8px;
+              padding: 2px;
+            }
+            .blockr-exec-toggle button {
+              padding: 0.25rem 0.5rem;
+              font-size: 0.875rem;
+              line-height: 1.5;
+              font-weight: 500;
+              color: #6b7280;
+              background: transparent;
+              border: none;
+              border-radius: 6px;
+              cursor: pointer;
+              transition: all 0.15s ease;
+              white-space: nowrap;
+            }
+            .blockr-exec-toggle button:hover {
+              color: #374151;
+              background-color: #e5e7eb;
+            }
+            .blockr-exec-toggle button.active {
+              color: #111827;
+              background-color: #fff;
+              box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+            }
+            /* Auto-save info banner */
+            .blockr-exec-auto-hint {
+              font-size: 0.8rem;
+              color: #0d6efd;
+              background: #e7f1ff;
+              border: 1px solid #b6d4fe;
+              border-radius: 6px;
+              padding: 8px 12px;
+            }
+            /* Status text */
+            .blockr-exec-status {
+              font-size: 0.8rem;
+              color: #6b7280;
+              min-height: 1.2em;
+            }
+            /* OR divider */
+            .blockr-or-divider {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              margin: 16px 0;
+            }
+            .blockr-or-divider::before,
+            .blockr-or-divider::after {
+              content: '';
+              flex: 1;
+              border-top: 1px solid #e5e7eb;
+            }
+            .blockr-or-divider span {
+              font-size: 0.75rem;
+              font-weight: 500;
+              color: #9ca3af;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+            }
+          ")),
+
+          # Hidden input to track mode
           div(
-            class = "block-section blockr-file-location",
-            tags$h4("Output Location", class = "mb-3"),
-            tags$p(
-              class = "blockr-path-hint",
-              "Choose a server path to save, or download to browser"
-            ),
-            tags$style(HTML(
-              "
-              /* Make inputs full width */
-              .write-block-container .shiny-input-container {
-                width: 100% !important;
-              }
-              .write-block-container .selectize-control {
-                width: 100% !important;
-              }
-            "
-            )),
-            path_input_ui(NS(id, "dir_path")),
-            div(
-              class = "block-help-text mt-2",
-              textOutput(NS(id, "current_directory"))
-            ),
-            div(
-              class = "mt-3",
-              checkboxInput(
-                NS(id, "auto_write"),
-                "Auto-write: automatically save when data changes",
-                value = auto_write
-              )
-            ),
-            conditionalPanel(
-              condition = "!input.auto_write",
-              ns = NS(id),
-              div(
-                class = "mt-2",
-                actionButton(
-                  NS(id, "submit_write"),
-                  "Save to File",
-                  class = "btn-outline-secondary"
-                )
-              )
-            ),
-            div(
-              class = "block-help-text mt-2",
-              textOutput(NS(id, "write_status"))
-            ),
-            div(
-              class = "mt-3",
-              downloadButton(
-                NS(id, "download_data"),
-                "Download to Browser",
-                class = "btn-outline-secondary"
-              )
+            style = "display:none;",
+            textInput(
+              NS(id, "write_mode"),
+              label = NULL,
+              value = if (auto_write) "auto" else "manual"
             )
           ),
 
-          # File Configuration
+          # --- File Configuration (shared) ---
           div(
             class = "block-form-grid",
+            style = "padding-bottom: 0;",
             div(
               class = "block-section",
-              tags$h4("File Configuration", class = "mt-3"),
+              tags$h4("File Configuration", class = "mb-3"),
               div(
                 class = "block-section-grid",
                 div(
@@ -511,7 +588,8 @@ new_write_block <- function(
                   div(
                     class = "block-help-text",
                     style = "font-size: 0.75rem;",
-                    "Fixed filename overwrites on each change. Empty generates unique timestamped files."
+                    "Fixed filename overwrites on each change.",
+                    "Empty generates unique timestamped files."
                   )
                 ),
                 div(
@@ -519,90 +597,171 @@ new_write_block <- function(
                   selectInput(
                     inputId = NS(id, "format"),
                     label = "Format",
-                    choices = c(
-                      "CSV" = "csv",
-                      "Excel" = "excel",
-                      "Parquet" = "parquet",
-                      "Feather" = "feather"
-                    ),
+                    choices = write_formats(),
                     selected = format
                   )
                 )
               )
-            ),
+            )
+          ),
 
-            # Advanced Options Toggle
+          # --- Separator ---
+          tags$hr(style = "border-top: 1px solid #e5e7eb; margin: 16px 0;"),
+
+          # --- Download to Browser ---
+          div(
+            class = "block-section",
+            tags$h4("Download to Browser", class = "mb-3"),
+            tags$p(
+              class = "blockr-path-hint",
+              "Download directly without saving to server"
+            ),
+            downloadButton(
+              NS(id, "download_data"),
+              "Download",
+              class = "btn-outline-secondary btn-sm"
+            )
+          ),
+
+          # --- OR divider ---
+          div(
+            class = "blockr-or-divider",
+            tags$span("or")
+          ),
+
+          # --- Save to Server ---
+          div(
+            class = "block-section blockr-file-location",
+            tags$h4("Save to Server", class = "mb-3"),
+            tags$p(
+              class = "blockr-path-hint",
+              "Choose a server path to save"
+            ),
+            path_input_ui(NS(id, "dir_path")),
+            # Mode toggle + save button row
             div(
-              class = "block-section",
+              class = "mt-2",
+              style = "display: flex; align-items: center; gap: 8px;",
               div(
-                class = "block-advanced-toggle text-muted",
-                id = NS(id, "advanced-toggle"),
-                onclick = sprintf(
-                  "
-                  const section = document.getElementById('%s');
-                  const chevron = document.querySelector('#%s .block-chevron');
-                  section.classList.toggle('expanded');
-                  chevron.classList.toggle('rotated');
-                  ",
-                  NS(id, "advanced-options"),
-                  NS(id, "advanced-toggle")
+                class = "blockr-exec-toggle",
+                tags$button(
+                  "Manual",
+                  class = if (!auto_write) "active" else "",
+                  onclick = sprintf(
+                    "
+                    document.getElementById('%s').value = 'manual';
+                    document.getElementById('%s').dispatchEvent(new Event('change'));
+                    this.classList.add('active');
+                    this.nextElementSibling.classList.remove('active');
+                    ",
+                    NS(id, "write_mode"), NS(id, "write_mode")
+                  )
                 ),
-                tags$span(class = "block-chevron", "\u203A"),
-                "Advanced Options"
+                tags$button(
+                  "Auto",
+                  class = if (auto_write) "active" else "",
+                  onclick = sprintf(
+                    "
+                    document.getElementById('%s').value = 'auto';
+                    document.getElementById('%s').dispatchEvent(new Event('change'));
+                    this.classList.add('active');
+                    this.previousElementSibling.classList.remove('active');
+                    ",
+                    NS(id, "write_mode"), NS(id, "write_mode")
+                  )
+                )
+              ),
+              conditionalPanel(
+                condition = "input.write_mode === 'manual'",
+                ns = NS(id),
+                actionButton(
+                  NS(id, "submit_write"),
+                  "Save to Server",
+                  class = "btn-primary btn-sm"
+                )
               )
             ),
-
-            # Advanced Options Content
-            div(
-              id = NS(id, "advanced-options"),
-
-              # Format-Specific Options Section
+            # Auto-save info box
+            conditionalPanel(
+              condition = "input.write_mode === 'auto'",
+              ns = NS(id),
               div(
-                class = "block-section",
-                tags$h4("Format-Specific Options"),
+                class = "blockr-exec-auto-hint mt-2",
+                "Auto-save enabled. File updates automatically on data changes."
+              )
+            ),
+            # Status message
+            div(
+              class = "blockr-exec-status mt-2",
+              textOutput(NS(id, "write_status"))
+            )
+          ),
 
-                # CSV Options (conditional)
-                div(
-                  class = "block-section-grid",
-                  conditionalPanel(
-                    condition = "output['show_csv_options']",
-                    ns = NS(id),
-                    div(
-                      class = "block-input-wrapper",
-                      selectizeInput(
-                        inputId = NS(id, "csv_sep"),
-                        label = "Delimiter",
-                        choices = c(
-                          "Comma (,)" = ",",
-                          "Semicolon (;)" = ";",
-                          "Tab (\\t)" = "\t",
-                          "Pipe (|)" = "|"
-                        ),
-                        selected = if (!is.null(args$sep)) args$sep else ",",
-                        options = list(create = TRUE)
+          # --- Advanced Options ---
+          div(
+            class = "block-section mt-3",
+            div(
+              class = "block-advanced-toggle text-muted",
+              id = NS(id, "advanced-toggle"),
+              onclick = sprintf(
+                "
+                const section = document.getElementById('%s');
+                const chevron = document.querySelector('#%s .block-chevron');
+                section.classList.toggle('expanded');
+                chevron.classList.toggle('rotated');
+                ",
+                NS(id, "advanced-options"),
+                NS(id, "advanced-toggle")
+              ),
+              tags$span(class = "block-chevron", "\u203A"),
+              "Advanced Options"
+            )
+          ),
+          div(
+            id = NS(id, "advanced-options"),
+            div(
+              class = "block-section",
+              tags$h4("Format-Specific Options"),
+              div(
+                class = "block-section-grid",
+                conditionalPanel(
+                  condition = "output['show_csv_options']",
+                  ns = NS(id),
+                  div(
+                    class = "block-input-wrapper",
+                    selectizeInput(
+                      inputId = NS(id, "csv_sep"),
+                      label = "Delimiter",
+                      choices = c(
+                        "Comma (,)" = ",",
+                        "Semicolon (;)" = ";",
+                        "Tab (\\t)" = "\t",
+                        "Pipe (|)" = "|"
                       ),
-                      div(
-                        class = "block-help-text",
-                        style = "font-size: 0.75rem;",
-                        "Type to add custom delimiter"
-                      )
+                      selected = if (!is.null(args$sep)) args$sep else ",",
+                      options = list(create = TRUE)
                     ),
                     div(
-                      class = "block-input-wrapper",
-                      checkboxInput(
-                        inputId = NS(id, "csv_quote"),
-                        label = "Quote strings",
-                        value = if (!is.null(args$quote)) args$quote else TRUE
-                      )
-                    ),
-                    div(
-                      class = "block-input-wrapper",
-                      textInput(
-                        inputId = NS(id, "csv_na"),
-                        label = "NA representation",
-                        value = if (!is.null(args$na)) args$na else "",
-                        placeholder = "default: empty string"
-                      )
+                      class = "block-help-text",
+                      style = "font-size: 0.75rem;",
+                      "Type to add custom delimiter"
+                    )
+                  ),
+                  div(
+                    class = "block-input-wrapper",
+                    checkboxInput(
+                      inputId = NS(id, "csv_quote"),
+                      label = "Quote strings",
+                      value = if (!is.null(args$quote)) args$quote else TRUE
+                    )
+                  ),
+                  div(
+                    class = "block-input-wrapper",
+                    textInput(
+                      inputId = NS(id, "csv_na"),
+                      label = "NA representation",
+                      value = if (!is.null(args$na)) args$na else "",
+                      placeholder = "default: empty string"
                     )
                   )
                 )

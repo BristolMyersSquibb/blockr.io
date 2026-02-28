@@ -10,7 +10,7 @@
 #' @return A language object (unevaluated call) that, when evaluated, reads the
 #'   file into a data frame.
 #' @export
-file_expr <- function(path, ...) {
+read_file_expr <- function(path, ...) {
   stopifnot(is_string(path), nzchar(path))
   file_type <- file_category(path)
   read_expr_single(path, file_type, ...)
