@@ -13,11 +13,12 @@ new_read_block(
 )
 }
 \arguments{
-\item{path}{Character vector of file paths to pre-load. When provided,
-automatically switches to "path" mode regardless of the source parameter.}
+\item{path}{Character vector of file paths to pre-load. Accepts local paths
+and URLs. When provided, automatically switches to "path" mode regardless
+of the source parameter.}
 
-\item{source}{Either "upload" for file upload widget, "path" for file browser,
-or "url" for URL download. Default: "upload". Automatically set based on path parameter.}
+\item{source}{Either "upload" for file upload widget or "path" for path/URL
+input. Default: "upload". Automatically set based on path parameter.}
 
 \item{combine}{Strategy for combining multiple files: "auto", "rbind", "cbind", "first"}
 
@@ -38,13 +39,13 @@ A blockr data block that reads file(s) and returns a data.frame.
 }
 \description{
 A single block for reading files in various formats with smart UI that adapts
-based on detected file type. Supports "From Browser" (upload) and "From Server"
-(browse) modes with persistent storage for uploaded files.
+based on detected file type. Supports "From Browser" (upload) and "Location"
+(path/URL input) modes with persistent storage for uploaded files.
 }
 \details{
 \subsection{File Handling Modes}{
 
-The block supports three modes:
+The block supports two modes:
 
 \strong{From Browser mode} (upload):
 \itemize{
@@ -54,20 +55,12 @@ The block supports three modes:
 \item Works across R sessions with state restoration
 }
 
-\strong{From Server mode} (path):
+\strong{Location mode} (path):
 \itemize{
-\item User picks files that already exist on the server
-\item No file copying, reads directly from original location
-\item State stores selected file paths
-\item When running locally, this is your computer's file system
-}
-
-\strong{URL mode:}
-\itemize{
-\item User provides a URL to a data file
-\item File is downloaded to temporary location each time
-\item Always fetches fresh data from URL
-\item State stores the URL (not file path)
+\item User enters a file path or URL in a text input with autocomplete
+\item For server paths: reads directly from original location
+\item For URLs: downloads to a temporary file each time
+\item When a board-level data directory is set, paths are resolved relative to it
 }
 }
 
@@ -96,11 +89,9 @@ When multiple files are selected:
 
 The following settings are retrieved from options and not stored in block state:
 \itemize{
-\item \strong{volumes}: File browser mount points. Set via \code{options(blockr.volumes = c(name = "path"))}
-or environment variable \code{BLOCKR_VOLUMES}. Default: \code{c(temp = tempdir())}
 \item \strong{upload_path}: Directory for persistent file storage. Set via
 \code{options(blockr.upload_path = "/path")} or environment variable \code{BLOCKR_UPLOAD_PATH}.
-Default: \code{rappdirs::user_data_dir("blockr")}
+Default: \code{tools::R_user_dir("blockr", "data")}
 }
 }
 

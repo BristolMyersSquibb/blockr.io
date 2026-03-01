@@ -1,13 +1,14 @@
 #' Unified file reading block
 #'
 #' A single block for reading files in various formats with smart UI that adapts
-#' based on detected file type. Supports "From Browser" (upload) and "From Server"
-#' (browse) modes with persistent storage for uploaded files.
+#' based on detected file type. Supports "From Browser" (upload) and "Location"
+#' (path/URL input) modes with persistent storage for uploaded files.
 #'
-#' @param path Character vector of file paths to pre-load. When provided,
-#'   automatically switches to "path" mode regardless of the source parameter.
-#' @param source Either "upload" for file upload widget, "path" for file browser,
-#'   or "url" for URL download. Default: "upload". Automatically set based on path parameter.
+#' @param path Character vector of file paths to pre-load. Accepts local paths
+#'   and URLs. When provided, automatically switches to "path" mode regardless
+#'   of the source parameter.
+#' @param source Either "upload" for file upload widget or "path" for path/URL
+#'   input. Default: "upload". Automatically set based on path parameter.
 #' @param combine Strategy for combining multiple files: "auto", "rbind", "cbind", "first"
 #' @param args Named list of format-specific reading parameters. Only specify values
 #'   that differ from defaults. Available parameters:
@@ -20,16 +21,14 @@
 #'
 #' @section Configuration:
 #' The following settings are retrieved from options and not stored in block state:
-#' - **volumes**: File browser mount points. Set via `options(blockr.volumes = c(name = "path"))`
-#'   or environment variable `BLOCKR_VOLUMES`. Default: `c(temp = tempdir())`
 #' - **upload_path**: Directory for persistent file storage. Set via
 #'   `options(blockr.upload_path = "/path")` or environment variable `BLOCKR_UPLOAD_PATH`.
-#'   Default: `rappdirs::user_data_dir("blockr")`
+#'   Default: `tools::R_user_dir("blockr", "data")`
 #'
 #' @details
 #' ## File Handling Modes
 #'
-#' The block supports three modes:
+#' The block supports two modes:
 #'
 #' **From Browser mode** (upload):
 #' - User uploads files from their computer via the browser
@@ -37,17 +36,11 @@
 #' - State stores permanent file paths
 #' - Works across R sessions with state restoration
 #'
-#' **From Server mode** (path):
-#' - User picks files that already exist on the server
-#' - No file copying, reads directly from original location
-#' - State stores selected file paths
-#' - When running locally, this is your computer's file system
-#'
-#' **URL mode:**
-#' - User provides a URL to a data file
-#' - File is downloaded to temporary location each time
-#' - Always fetches fresh data from URL
-#' - State stores the URL (not file path)
+#' **Location mode** (path):
+#' - User enters a file path or URL in a text input with autocomplete
+#' - For server paths: reads directly from original location
+#' - For URLs: downloads to a temporary file each time
+#' - When a board-level data directory is set, paths are resolved relative to it
 #'
 #' ## Smart Adaptive UI
 #'
@@ -84,8 +77,6 @@
 #'   serve(new_read_block())
 #' }
 #'
-#' @importFrom rappdirs user_data_dir
-#' @importFrom bslib navset_pill nav_panel
 #' @importFrom shinyjs useShinyjs
 #' @rdname read
 #' @export
@@ -97,32 +88,15 @@ new_read_block <- function(
   ...
 ) {
   # Validate parameters
-  source <- match.arg(source, c("upload", "path", "url"))
+  source <- match.arg(source, c("upload", "path"))
   combine <- match.arg(combine, c("auto", "rbind", "cbind", "first"))
 
-  # Get volumes and upload_path from options (not constructor parameters)
-  # These are runtime configuration, not persisted state
-  # Evaluated once at construction time and captured in closure
-  # Default to tempdir() to comply with CRAN policies
-  volumes <- blockr_option("volumes", c(temp = tempdir()))
-  upload_path <- blockr_option("upload_path", rappdirs::user_data_dir("blockr"))
-
-  # Handle volumes parameter
-  if (is.character(volumes)) {
-    volumes <- path.expand(volumes)
-  }
-
-  if (is_string(volumes) && grepl(":", volumes)) {
-    volumes <- strsplit(volumes, ":", fixed = TRUE)[[1L]]
-  }
-
-  if (is.null(names(volumes))) {
-    if (length(volumes) == 1L) {
-      names(volumes) <- "volume"
-    } else if (length(volumes) > 1L) {
-      names(volumes) <- paste0("volume", seq_along(volumes))
-    }
-  }
+  # Get upload_path from options (not constructor parameter)
+  # Runtime configuration, not persisted state
+  upload_path <- blockr_option(
+    "upload_path",
+    tools::R_user_dir("blockr", "data")
+  )
 
   # Expand and validate upload path
   upload_path <- path.expand(upload_path)
@@ -132,7 +106,7 @@ new_read_block <- function(
       moduleServer(
         id,
         function(input, output, session) {
-          # volumes and upload_path available here via closure
+          # upload_path available here via closure
 
           # Reactive values for state (only constructor parameters)
           r_source <- reactiveVal(source)
@@ -141,11 +115,12 @@ new_read_block <- function(
           # File type-specific options stored as a single list
           r_args <- reactiveVal(args)
 
-          # Path storage - unified field for both URLs and file paths
-          # r_path: State-persisted value (URL string when source="url", file paths otherwise)
-          # r_file_paths: Actual file paths for reading (temp file when URL, same as r_path for upload/browse)
+          # Path storage
+          # r_path: State-persisted value (URL or file path string)
+          # r_file_paths: Actual file paths for reading (temp file when URL)
 
-          if (source == "url" && length(path) > 0 && nzchar(path[[1]])) {
+          # Handle URL paths at init time
+          if (length(path) > 0 && nzchar(path[[1]]) && is_valid_url(path[[1]])) {
             # URL mode: r_path stores the URL string for state persistence
             r_path <- reactiveVal(path[[1]])
 
@@ -164,10 +139,13 @@ new_read_block <- function(
             )
             r_file_paths <- reactiveVal(initial_file_paths)
           } else {
-            # Upload/Browse mode: r_path and r_file_paths are the same
+            # Local path mode: r_path and r_file_paths are the same
             if (length(path) > 0) {
-              # Validate that provided paths exist
-              missing_files <- path[!file.exists(path)]
+              # Validate that provided paths exist (skip relative paths —
+              # they'll be resolved against data_dir at runtime)
+              is_absolute <- grepl("^(/|~|[A-Za-z]:)", path)
+              abs_paths <- path[is_absolute]
+              missing_files <- abs_paths[!file.exists(abs_paths)]
               if (length(missing_files) > 0) {
                 stop(
                   "File(s) not found: ",
@@ -183,28 +161,23 @@ new_read_block <- function(
             r_file_paths <- reactiveVal(initial_path)
           }
 
-          # Detected file type - detect on initialization from actual file paths
-          # Don't call r_file_paths() here - it's a reactive and we're not in a reactive context yet
-          # Use the initial values we just set above instead
+          # Detected file type
           initial_type <- if (
-            source == "url" && length(path) > 0 && nzchar(path[[1]])
+            length(path) > 0 && nzchar(path[[1]]) && is_valid_url(path[[1]])
           ) {
-            # For URL mode, detect from temp file if download succeeded
-            if (length(initial_file_paths) > 0) {
-              detect_file_category(initial_file_paths[1])
+            if (exists("initial_file_paths") && length(initial_file_paths) > 0) {
+              file_category(initial_file_paths[1])
             } else {
               "unknown"
             }
           } else if (length(path) > 0) {
-            # For upload/browse mode with initial path
-            detect_file_category(path[1])
+            file_category(path[1])
           } else {
             "unknown"
           }
           detected_type <- reactiveVal(initial_type)
 
           # Update state from inputs
-          # Note: source is updated when user actually selects/uploads data, not when accordion changes
           observeEvent(input$combine, r_combine(input$combine))
 
           # CSV parameter updates - collect into args list
@@ -266,81 +239,79 @@ new_read_block <- function(
             r_args(current)
           })
 
-          # Handle URL input - download to temp file and treat like a path
-          observeEvent(input$url_input, {
-            url_val <- input$url_input
-            req(nzchar(url_val))
-
-            # Validate URL
-            if (!is_valid_url(url_val)) {
-              return()
-            }
-
-            # Store URL in r_path for state persistence
-            r_path(url_val)
-
-            # Download to temp file and store in r_file_paths for reading
-            tryCatch(
-              {
-                temp_file <- download_url_to_temp(url_val)
-
-                # Set file path - use URL basename for display
-                url_display <- basename(strsplit(url_val, "?", fixed = TRUE)[[
-                  1
-                ]][1])
-                r_file_paths(set_names(temp_file, url_display))
-
-                # Detect file type from actual file path
-                detected_type(detect_file_category(temp_file))
-
-                # Update source to "url" now that we have a URL
-                r_source("url")
-              },
-              error = function(e) {
-                # Download failed - clear both
-                r_path(character())
-                r_file_paths(character())
-              }
-            )
+          # Data directory from board options
+          data_dir_reactive <- reactive({
+            coal(get_board_option_or_null("data_dir", session), "")
           })
 
-          # Initialize shinyFiles browser
-          shinyFiles::shinyFileChoose(
-            input,
-            "file_browser",
-            roots = volumes,
-            session = session,
-            filetypes = get_rio_extensions()
+          # Path input module for "Location" tab
+          file_path <- path_input_server(
+            "file_path",
+            data_dir = data_dir_reactive,
+            mode = "file"
           )
 
-          # Handle file browser selection
-          selected_files <- reactive({
-            if (
-              !is.null(input$file_browser) && !identical(input$file_browser, "")
-            ) {
-              shinyFiles::parseFilePaths(volumes, input$file_browser)$datapath
-            } else {
-              character()
-            }
-          })
+          # Populate path text input on restore / init
+          if (length(path) > 0 && nzchar(path[[1]])) {
+            observe({
+              display_path <- if (is_valid_url(path[[1]])) {
+                path[[1]]
+              } else {
+                unname(path[1])
+              }
+              session$sendCustomMessage("blockr-path-set-value", list(
+                id = session$ns("file_path-path_text"),
+                value = display_path,
+                silent = TRUE
+              ))
+            })
+          }
 
-          observeEvent(selected_files(), {
-            if (length(selected_files()) > 0) {
-              selected_paths <- set_names(
-                selected_files(),
-                basename(selected_files())
+          # Handle path input changes (paths or URLs)
+          observeEvent(file_path(), {
+            path_val <- file_path()
+            req(nzchar(path_val))
+
+            if (is_valid_url(path_val)) {
+              # URL: download to temp file
+              r_path(path_val)
+              tryCatch(
+                {
+                  temp_file <- download_url_to_temp(path_val)
+                  url_display <- basename(
+                    strsplit(path_val, "?", fixed = TRUE)[[1]][1]
+                  )
+                  r_file_paths(set_names(temp_file, url_display))
+                  detected_type(file_category(temp_file))
+                },
+                error = function(e) {
+                  r_file_paths(character())
+                }
               )
-              # For browse mode, r_path and r_file_paths are the same
-              r_path(selected_paths)
-              r_file_paths(selected_paths)
+            } else {
+              # Local path: resolve relative to data directory
+              resolved <- path_val
+              data_dir <- data_dir_reactive()
+              if (
+                nzchar(data_dir) &&
+                !grepl("^(/|~|[A-Za-z]:)", path_val)
+              ) {
+                resolved <- file.path(data_dir, path_val)
+              }
 
-              # Detect file type from first file
-              detected_type(detect_file_category(selected_files()[1]))
-
-              # Update source to "path" now that we have browsed files
-              r_source("path")
+              if (file.exists(resolved) && !dir.exists(resolved)) {
+                named_path <- set_names(path_val, basename(resolved))
+                r_path(named_path)
+                r_file_paths(named_path)
+                detected_type(file_category(resolved))
+              } else if (!dir.exists(resolved)) {
+                r_file_paths(character())
+                detected_type("unknown")
+              }
             }
-          })
+
+            r_source("path")
+          }, ignoreInit = TRUE)
 
           # Handle file upload with persistence
           observeEvent(input$file_upload, {
@@ -349,6 +320,9 @@ new_read_block <- function(
             # Create upload directory if it doesn't exist
             upload_dir <- upload_path
             dir.create(upload_dir, recursive = TRUE, showWarnings = FALSE)
+
+            # Clean up old uploads
+            cleanup_uploads(upload_dir)
 
             # Process each uploaded file
             temp_paths <- input$file_upload$datapath
@@ -378,39 +352,22 @@ new_read_block <- function(
             r_file_paths(permanent_paths)
 
             # Detect file type from first file
-            detected_type(detect_file_category(permanent_paths[1]))
+            detected_type(file_category(permanent_paths[1]))
 
             # Update source to "upload" now that we have uploaded files
             r_source("upload")
-          })
 
-          # File info for display
-          output$file_info <- renderText({
-            # Check if URL mode - show the URL string from r_path
-            if (identical(r_source(), "url")) {
-              url_val <- r_path()
-              if (length(url_val) > 0 && any(nzchar(url_val))) {
-                return(paste("URL:", url_val))
-              } else {
-                return("No URL provided")
-              }
-            }
-
-            # Upload/Browse mode - show file names from r_file_paths
-            current_file_paths <- r_file_paths()
-            if (length(current_file_paths) == 0) {
-              return("No files selected")
-            }
-
-            if (length(current_file_paths) == 1) {
-              file_name <- names(current_file_paths)[1]
-              if (is.null(file_name) || file_name == "") {
-                file_name <- basename(current_file_paths[1])
-              }
-              paste("Selected:", file_name)
+            # Show uploaded file path in the text input
+            display_path <- if (length(permanent_paths) == 1) {
+              unname(permanent_paths[1])
             } else {
-              paste("Selected", length(current_file_paths), "files")
+              paste0(permanent_paths[1], " + ", length(permanent_paths) - 1, " more")
             }
+            session$sendCustomMessage("blockr-path-set-value", list(
+              id = session$ns("file_path-path_text"),
+              value = display_path,
+              silent = TRUE
+            ))
           })
 
           # Combination strategy info
@@ -429,31 +386,48 @@ new_read_block <- function(
             )
           })
 
-          # File type info
-          output$file_type_info <- renderText({
-            type <- detected_type()
-            if (type == "unknown") {
-              return("")
+          # Does the current path_text input resolve to an existing file?
+          path_resolved <- reactive({
+            val <- file_path()
+            if (!nzchar(val) || is_valid_url(val)) return(TRUE)
+            resolved <- val
+            data_dir <- data_dir_reactive()
+            if (nzchar(data_dir) && !grepl("^(/|~|[A-Za-z]:)", val)) {
+              resolved <- file.path(data_dir, val)
             }
+            file.exists(resolved) || dir.exists(resolved)
+          })
 
+          # Status badge for file type
+          observe({
+            type <- detected_type()
+            paths <- r_file_paths()
+            resolved <- path_resolved()
             type_labels <- c(
-              csv = "CSV/Text file",
-              excel = "Excel spreadsheet",
-              statistical = "Statistical software format",
-              arrow = "Arrow columnar format",
-              web = "Web data format",
-              r_format = "R data format",
-              other = "Other format"
+              csv = "CSV", excel = "Excel", arrow = "Parquet",
+              statistical = "Stats", web = "Web data",
+              r_format = "R data", other = "File"
             )
-
-            paste(
-              "Detected:",
-              if (is.null(type_labels[type])) {
-                "Unknown format"
-              } else {
-                type_labels[type]
-              }
-            )
+            if (length(paths) > 0 && type != "unknown") {
+              label <- unname(type_labels[type]) %||% "File"
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("file_path-path_text"),
+                text = label,
+                state = "success"
+              ))
+            } else if (!resolved && nzchar(file_path())) {
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("file_path-path_text"),
+                text = "Not found",
+                state = "error"
+              ))
+            } else {
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("file_path-path_text"),
+                text = "",
+                state = "none"
+              ))
+            }
           })
 
           # Show/hide format-specific options based on file type
@@ -479,12 +453,27 @@ new_read_block <- function(
 
           list(
             expr = reactive({
+              # Resolve data directory for relative paths
+              file_paths <- r_file_paths()
+              if (length(file_paths) > 0) {
+                data_dir <- data_dir_reactive()
+                if (nzchar(data_dir)) {
+                  file_paths <- vapply(file_paths, function(p) {
+                    if (!grepl("^(/|~|[A-Za-z]:)", p) && !is_valid_url(p)) {
+                      file.path(data_dir, p)
+                    } else {
+                      p
+                    }
+                  }, character(1))
+                }
+              }
+
               # Use read_expr() to generate expression, passing args via do.call
               do.call(
                 read_expr,
                 c(
                   list(
-                    paths = r_file_paths(),
+                    paths = file_paths,
                     file_type = detected_type(),
                     combine = r_combine()
                   ),
@@ -493,11 +482,10 @@ new_read_block <- function(
               )
             }),
             state = list(
-              path = r_path, # Reactive itself, not called
+              path = r_path,
               source = r_source,
               combine = r_combine,
               args = r_args
-              # Note: volumes and upload_path are runtime configuration, not persisted state
             )
           )
         }
@@ -513,144 +501,46 @@ new_read_block <- function(
         div(
           class = "block-container read-block-container",
           div(
-            class = "block-section",
-            tags$h4("Source", class = "mb-3"),
+            class = "block-section blockr-file-location",
+            tags$h4("File Location", class = "mb-3"),
+            tags$p(
+              "Browse server files, paste a URL, or drag & drop to upload",
+              class = "blockr-path-hint"
+            ),
 
-            # File Source Button Group (full-width, outside grid)
-            div(
-              class = "mb-3", # Add spacing below buttons
-              tags$style(HTML(
-                "
-                .nav-pills {
-                  display: inline-flex;
-                  overflow: hidden;
-                }
-                .nav-pills .nav-link {
-                  background-color: rgb(249, 249, 250);
-                  color: rgb(104, 107, 130);
-                  border: none;
-                  border-radius: 8px;
-                  margin: 8px;
-                  margin-left:0;
-                  padding: 6px 10px;;
-                  font-size: 0.8rem;
-                }
-                .nav-pills .nav-link:hover {
-                  background-color: #f8f9fa;
-                  z-index: 1;
-                }
-                .nav-pills .nav-link.active {
-                  background-color: rgb(236, 236, 236);
-                  color: rgb(104, 107, 130);
-                  border-color: rgb(236, 236, 236);
-                  z-index: 2;
-                }
-
-                /* Fix file input styling */
-                .blockr-file-input .input-group>.form-control {
-                  height: 44px !important;
-                }
-                .blockr-file-input .form-group {
-                  margin-bottom: 0;
-                }
-                /* Make inputs full width */
-                .read-block-container .shiny-input-container {
-                  width: 100% !important;
-                }
-                .read-block-container .selectize-control {
-                  width: 100% !important;
-                }
+            tags$style(HTML(
               "
-              )),
-              bslib::navset_pill(
-                id = NS(id, "source_pills"),
-                selected = source,
-                bslib::nav_panel(
-                  title = "From Browser",
-                  value = "upload",
-                  div(
-                    class = "block-input-wrapper mt-3",
-                    tags$h4("Drag and drop files", class = "mb-2"),
-                    div(
-                      class = "block-help-text mb-3",
-                      "Or click to select. Creates a copy in the app's storage that persists across sessions."
-                    ),
-                    div(
-                      class = "blockr-file-input",
-                      fileInput(
-                        inputId = NS(id, "file_upload"),
-                        label = NULL,
-                        multiple = TRUE,
-                        accept = paste0(".", get_rio_extensions())
-                      )
-                    )
-                  )
-                ),
-                bslib::nav_panel(
-                  title = "From Server",
-                  value = "path",
-                  div(
-                    class = "block-input-wrapper mt-3",
-                    tags$h4("Pick files from the server", class = "mb-2"),
-                    div(
-                      class = "block-help-text mb-3",
-                      "Reads directly from the file path; when running locally, this is your computer."
-                    ),
-                    shinyFiles::shinyFilesButton(
-                      NS(id, "file_browser"),
-                      label = "Browse...",
-                      title = "Select files to read",
-                      multiple = TRUE
-                    )
-                  )
-                ),
-                bslib::nav_panel(
-                  title = "From URL",
-                  value = "url",
-                  div(
-                    class = "block-input-wrapper mt-3",
-                    tags$h4("Fetch data from a web URL", class = "mb-2"),
-                    div(
-                      class = "block-help-text mb-3",
-                      "Downloaded fresh each time the app starts."
-                    ),
-                    textInput(
-                      inputId = NS(id, "url_input"),
-                      label = NULL,
-                      width = "100%",
-                      value = if (source == "url" && length(path) > 0) {
-                        path[[1]]
-                      } else {
-                        ""
-                      },
-                      placeholder = "https://example.com/data.csv"
-                    )
-                  )
-                )
+              .blockr-file-input { display: none; }
+              .read-block-container .shiny-input-container {
+                width: 100% !important;
+              }
+              .read-block-container .selectize-control {
+                width: 100% !important;
+              }
+            "
+            )),
+
+            # Hidden fileInput (Shiny handles upload mechanics)
+            div(
+              class = "blockr-file-input",
+              fileInput(
+                inputId = NS(id, "file_upload"),
+                label = NULL,
+                multiple = TRUE,
+                accept = paste0(".", get_rio_extensions())
               )
+            ),
+
+            # Unified path input with upload icon
+            path_input_ui(
+              NS(id, "file_path"),
+              upload_id = NS(id, "file_upload")
             )
           ),
 
-          # Wrap File Information and Advanced Options in grid
+          # Wrap Advanced Options in grid
           div(
-            class = "block-form-grid",
-            div(
-              class = "block-section",
-              tags$h4("File Information", class = "mt-3"),
-
-              # File info display (gray info line)
-              div(
-                class = "block-section-grid",
-                div(
-                  class = "block-help-text",
-                  textOutput(NS(id, "file_info"))
-                ),
-                div(
-                  class = "block-help-text",
-                  textOutput(NS(id, "file_type_info"))
-                )
-              )
-            ),
+            class = "block-form-grid mt-3",
 
             # Advanced Options Toggle
             div(
@@ -676,6 +566,11 @@ new_read_block <- function(
             # Advanced Options Content
             div(
               id = NS(id, "advanced-options"),
+
+              tags$p(
+                "Change the global data directory in the sidebar",
+                class = "blockr-path-hint"
+              ),
 
               # Format-Specific Options Section
               div(
@@ -850,7 +745,7 @@ new_read_block <- function(
       )
     },
     class = "read_block",
-    allow_empty_state = TRUE, # Allow all state to be empty (format-specific options only used when relevant)
+    allow_empty_state = TRUE,
     ...
   )
 }

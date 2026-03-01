@@ -1,3 +1,21 @@
+#' Create a read expression for a single file
+#'
+#' Convenience wrapper that detects the file category from the path and
+#' returns an unevaluated R expression for reading the file. Useful for
+#' sibling packages that construct pipelines programmatically.
+#'
+#' @param path Character. Path to a single file.
+#' @param ... Additional parameters forwarded to the reader (e.g. `sep`,
+#'   `sheet`, `skip`).
+#' @return A language object (unevaluated call) that, when evaluated, reads the
+#'   file into a data frame.
+#' @export
+read_file_expr <- function(path, ...) {
+  stopifnot(is_string(path), nzchar(path))
+  file_type <- file_category(path)
+  read_expr_single(path, file_type, ...)
+}
+
 # Internal function - not exported
 read_expr <- function(
   paths,
@@ -60,7 +78,7 @@ read_expr <- function(
 #' @keywords internal
 read_expr_single <- function(path, file_type, ...) {
   # Dispatch to appropriate builder
-  if (file_type == "csv") {
+  inner <- if (file_type == "csv") {
     read_expr_csv(path, ...)
   } else if (file_type == "excel") {
     read_expr_excel(path, ...)
@@ -69,6 +87,24 @@ read_expr_single <- function(path, file_type, ...) {
   } else {
     read_expr_rio(path, ...)
   }
+
+  ext <- tolower(tools::file_ext(path))
+
+  # Wrap: ensure result is a data frame, with a helpful error on failure
+  bquote(local({
+    .res <- tryCatch(.(inner), error = function(e) {
+      stop("Cannot read .", .(ext), " file: ", conditionMessage(e), call. = FALSE)
+    })
+    if (!is.data.frame(.res)) {
+      .res <- tryCatch(as.data.frame(.res), error = function(e) {
+        stop(
+          "The .", .(ext), " file was read but could not be converted to a table.",
+          call. = FALSE
+        )
+      })
+    }
+    .res
+  }))
 }
 
 

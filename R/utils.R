@@ -155,15 +155,15 @@ get_rio_extensions <- function() {
   )
 }
 
-#' Detect file category for UI adaptation
+#' File category from extension
 #'
-#' Categorizes files by extension into broad categories that determine which
-#' UI options to show (csv/excel/arrow/other).
+#' Categorizes a file by its extension into a broad format family that
+#' determines reader dispatch and UI adaptation.
 #'
 #' @param path Character. File path.
-#' @return Character. One of: "csv", "excel", "arrow", "other"
-#' @keywords internal
-detect_file_category <- function(path) {
+#' @return One of `"csv"`, `"excel"`, `"arrow"`, `"other"`.
+#' @export
+file_category <- function(path) {
   ext <- tolower(tools::file_ext(path))
 
   if (ext %in% c("csv", "tsv", "txt", "dat", "tab")) {
@@ -207,4 +207,46 @@ dot_args_names <- function(x) {
 
   # All named - return as-is
   res
+}
+
+#' Supported file extensions
+#'
+#' Returns a character vector of file extensions (without dots) supported by
+#' the read block. Useful for sibling packages that need to filter or validate
+#' file paths before passing them to blockr.io.
+#'
+#' @return Character vector of file extensions (without dots)
+#' @export
+file_extensions <- function() {
+  get_rio_extensions()
+}
+
+#' Clean up old uploaded files
+#'
+#' Removes files older than a given age from an upload directory.
+#'
+#' @param upload_dir Character. Path to the upload directory.
+#' @param max_age_days Numeric. Maximum age in days. Files older than this
+#'   are removed. Default: 30.
+#' @return Invisible NULL.
+#' @keywords internal
+cleanup_uploads <- function(upload_dir, max_age_days = 30) {
+  if (!dir.exists(upload_dir)) {
+    return(invisible(NULL))
+  }
+
+  files <- list.files(upload_dir, full.names = TRUE)
+  if (length(files) == 0) {
+    return(invisible(NULL))
+  }
+
+  info <- file.info(files)
+  cutoff <- Sys.time() - as.difftime(max_age_days, units = "days")
+  old_files <- files[!is.na(info$mtime) & info$mtime < cutoff]
+
+  if (length(old_files) > 0) {
+    unlink(old_files)
+  }
+
+  invisible(NULL)
 }

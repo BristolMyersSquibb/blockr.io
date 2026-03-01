@@ -1,3 +1,20 @@
+#' Supported write formats
+#'
+#' Returns a named character vector of supported output formats for writing
+#' data frames. Names are display labels, values are format identifiers.
+#' Used to populate format dropdowns in the write block UI.
+#'
+#' @return A named character vector.
+#' @export
+write_formats <- function() {
+  c(
+    "CSV" = "csv",
+    "Excel" = "excel",
+    "Parquet" = "parquet",
+    "Feather" = "feather"
+  )
+}
+
 #' Generate filename for write operations
 #'
 #' @param filename Character. User-specified filename (without extension).
@@ -181,12 +198,51 @@ write_expr_arrow <- function(data_names, path, format = "parquet") {
 }
 
 
+#' Create a write expression for a single file
+#'
+#' Convenience wrapper that detects the file format from the path extension and
+#' returns an unevaluated R expression for writing the data. Useful for
+#' sibling packages that construct pipelines programmatically (e.g. DM blocks).
+#'
+#' @param data Character. Name of the data object to write.
+#' @param path Character. Output file path (extension determines format).
+#' @param ... Additional parameters forwarded to the writer (e.g. `sep`,
+#'   `quote`, `na` for CSV files).
+#' @return A language object (unevaluated call) that, when evaluated, writes
+#'   the data frame to the file.
+#'
+#' @examples
+#' write_file_expr("mtcars", "/tmp/cars.csv")
+#' write_file_expr("iris", "/tmp/flowers.xlsx")
+#' write_file_expr("df", "/tmp/data.parquet")
+#'
+#' @export
+write_file_expr <- function(data, path, ...) {
+  stopifnot(is_string(data), nzchar(data), is_string(path), nzchar(path))
+
+  category <- file_category(path)
+  data_names <- stats::setNames(data, data)
+
+  args <- list(...)
+
+  switch(category,
+    csv = write_expr_csv(data_names, path, args),
+    excel = write_expr_excel(data_names, path),
+    arrow = {
+      ext <- tolower(tools::file_ext(path))
+      fmt <- if (ext == "feather") "feather" else "parquet"
+      write_expr_arrow(data_names, path, format = fmt)
+    },
+    stop(sprintf("Unsupported file format: '%s'", tools::file_ext(path)))
+  )
+}
+
 # Internal function - not exported
 write_expr <- function(
   data_names,
   directory,
   filename = "",
-  format = c("csv", "excel", "parquet", "feather"),
+  format = unname(write_formats()),
   args = list()
 ) {
   format <- match.arg(format)

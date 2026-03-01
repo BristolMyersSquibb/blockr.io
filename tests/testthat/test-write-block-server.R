@@ -8,7 +8,6 @@ test_that("write_block expr_server with auto_write=FALSE starts with NULL expres
     directory = temp_dir,
     filename = "output",
     format = "csv",
-    mode = "browse",
     auto_write = FALSE
   )
 
@@ -53,7 +52,6 @@ test_that("write_block expr_server handles submit button click with auto_write=F
     directory = temp_dir,
     filename = "iris_submit",
     format = "csv",
-    mode = "browse",
     auto_write = FALSE
   )
 
@@ -127,7 +125,6 @@ test_that("write_block expr_server handles multiple inputs for Excel", {
     directory = temp_dir,
     filename = "report",
     format = "excel",
-    mode = "browse",
     auto_write = TRUE
   )
 
@@ -171,7 +168,6 @@ test_that("write_block expr_server respects CSV delimiter parameter", {
     directory = temp_dir,
     filename = "data",
     format = "csv",
-    mode = "browse",
     auto_write = TRUE,
     args = list(sep = ";")
   )
@@ -212,7 +208,6 @@ test_that("write_block expr_server generates ZIP for multiple CSV inputs", {
     directory = temp_dir,
     filename = "multi",
     format = "csv",
-    mode = "browse",
     auto_write = TRUE
   )
 
@@ -253,7 +248,6 @@ test_that("write_block expr_server handles Parquet format", {
     directory = temp_dir,
     filename = "data",
     format = "parquet",
-    mode = "browse",
     auto_write = TRUE
   )
 
@@ -291,7 +285,6 @@ test_that("write_block expr_server state returns reactive values", {
     directory = temp_dir,
     filename = "output",
     format = "csv",
-    mode = "browse",
     auto_write = TRUE,
     args = list(sep = ",")
   )
@@ -336,7 +329,6 @@ test_that("write_block expr_server generates expression in browse mode", {
     directory = temp_dir,
     filename = "test_output",
     format = "csv",
-    mode = "browse",
     auto_write = TRUE
   )
 
@@ -380,7 +372,6 @@ test_that("write_block expr_server handles auto-timestamp filename", {
     directory = temp_dir,
     filename = "",  # Empty = auto-timestamp
     format = "csv",
-    mode = "browse",
     auto_write = TRUE
   )
 
@@ -409,45 +400,6 @@ test_that("write_block expr_server handles auto-timestamp filename", {
   unlink(temp_dir, recursive = TRUE)
 })
 
-test_that("write_block expr_server handles mode changes", {
-  temp_dir <- tempfile("write_test_")
-  dir.create(temp_dir)
-
-  blk <- new_write_block(
-    directory = temp_dir,
-    filename = "output",
-    format = "csv",
-    mode = "browse",
-    auto_write = TRUE
-  )
-
-  shiny::testServer(
-    blockr.core:::get_s3_method("block_server", blk),
-    args = list(
-      x = blk,
-      data = list(
-        ...args = reactiveValues(
-          `1` = mtcars[1:3, ]
-        )
-      )
-    ),
-    {
-      session$flushReact()
-
-      result <- session$returned
-
-      # Initial mode
-      expect_equal(result$state$mode(), "browse")
-
-      # Change mode (simulating UI input)
-      # Note: In actual usage, this would be done via the UI
-      # Here we're just testing the state is tracked
-      expect_true(is.reactive(result$state$mode))
-    }
-  )
-
-  unlink(temp_dir, recursive = TRUE)
-})
 
 test_that("write_block expr_server handles variadic inputs correctly", {
   temp_dir <- tempfile("write_test_")
@@ -457,7 +409,6 @@ test_that("write_block expr_server handles variadic inputs correctly", {
     directory = temp_dir,
     filename = "multi",
     format = "excel",
-    mode = "browse",
     auto_write = TRUE
   )
 
@@ -500,7 +451,6 @@ test_that("write_block expr_server handles single Excel sheet", {
     directory = temp_dir,
     filename = "single_sheet",
     format = "excel",
-    mode = "browse",
     auto_write = TRUE
   )
 
@@ -542,7 +492,6 @@ test_that("write_block expr_server handles Feather format", {
     directory = temp_dir,
     filename = "data",
     format = "feather",
-    mode = "browse",
     auto_write = TRUE
   )
 
@@ -577,15 +526,11 @@ test_that("write_block expr_server handles Feather format", {
 # HIGH PRIORITY: Comprehensive argument testing
 # ============================================================================
 
-test_that("write_block expr_server handles mode=download", {
-  temp_dir <- tempfile("write_test_")
-  dir.create(temp_dir)
-
+test_that("write_block expr_server returns NULL expr with empty directory", {
   blk <- new_write_block(
-    directory = temp_dir,
+    directory = "",
     filename = "download_test",
-    format = "csv",
-    mode = "download"  # Download mode instead of browse
+    format = "csv"
   )
 
   shiny::testServer(
@@ -603,16 +548,14 @@ test_that("write_block expr_server handles mode=download", {
 
       result <- session$returned
 
-      # In download mode, expression should be NULL (handled by downloadHandler)
+      # With empty directory, expression should be NULL (download handler handles writing)
       expr_result <- result$expr()
-      expect_null(expr_result, info = "Download mode should return NULL expr")
+      expect_null(expr_result, info = "Empty directory should return NULL expr")
 
-      # Verify state reflects download mode
-      expect_equal(result$state$mode(), "download")
+      # Verify state reflects empty directory
+      expect_equal(result$state$directory(), "")
     }
   )
-
-  unlink(temp_dir, recursive = TRUE)
 })
 
 test_that("write_block expr_server respects CSV quote parameter", {
@@ -623,7 +566,6 @@ test_that("write_block expr_server respects CSV quote parameter", {
     directory = temp_dir,
     filename = "quoted",
     format = "csv",
-    mode = "browse",
     auto_write = TRUE,
     args = list(quote = TRUE)  # Quote all fields (use TRUE, not "all" string)
   )
@@ -662,7 +604,6 @@ test_that("write_block expr_server respects CSV na parameter", {
     directory = temp_dir,
     filename = "with_na",
     format = "csv",
-    mode = "browse",
     auto_write = TRUE,
     args = list(na = "MISSING")  # Custom NA string
   )
@@ -709,7 +650,6 @@ test_that("write_block expr_server handles format UI changes", {
     directory = temp_dir,
     filename = "format_change",
     format = "csv",  # Start with CSV
-    mode = "browse",
     auto_write = TRUE
   )
 
@@ -764,7 +704,6 @@ test_that("write_block actually writes CSV file in browse mode", {
     directory = temp_dir,
     filename = "actual_output",
     format = "csv",
-    mode = "browse",
     auto_write = TRUE
   )
 
@@ -817,7 +756,6 @@ test_that("write_block actually writes Excel file in browse mode", {
     directory = temp_dir,
     filename = "actual_excel",
     format = "excel",
-    mode = "browse",
     auto_write = TRUE
   )
 
@@ -867,7 +805,6 @@ test_that("write_block actually writes Parquet file in browse mode", {
     directory = temp_dir,
     filename = "actual_parquet",
     format = "parquet",
-    mode = "browse",
     auto_write = TRUE
   )
 
@@ -915,7 +852,6 @@ test_that("write_block actually writes multi-sheet Excel in browse mode", {
     directory = temp_dir,
     filename = "multi_sheet",
     format = "excel",
-    mode = "browse",
     auto_write = TRUE
   )
 
@@ -970,7 +906,6 @@ test_that("write_block with auto_write=FALSE only writes after submit", {
     directory = temp_dir,
     filename = "manual_submit",
     format = "csv",
-    mode = "browse",
     auto_write = FALSE
   )
 
@@ -1022,18 +957,13 @@ test_that("write_block with auto_write=FALSE only writes after submit", {
 # manually (issue #9 fix confirmed working).
 # ============================================================================
 
-test_that("download mode returns NULL expr and correct state", {
-  # This test verifies that download mode is set up correctly
-  # The actual download functionality was tested manually and works
-
-  temp_dir <- tempfile("download_test_")
-  dir.create(temp_dir)
+test_that("empty directory returns NULL expr (download-only mode)", {
+  # With no directory set, expression is NULL — download handler handles writing
 
   blk <- new_write_block(
-    directory = temp_dir,
+    directory = "",
     filename = "test_file",
-    format = "csv",
-    mode = "download"
+    format = "csv"
   )
 
   test_data <- data.frame(x = 1:5, y = letters[1:5], stringsAsFactors = FALSE)
@@ -1053,31 +983,25 @@ test_that("download mode returns NULL expr and correct state", {
 
       result <- session$returned
 
-      # In download mode, expr should be NULL (download handler handles writing)
+      # With empty directory, expr should be NULL (download handler handles writing)
       expect_null(result$expr())
 
-      # Verify state reflects download mode
-      expect_equal(result$state$mode(), "download")
+      # Verify state reflects empty directory
+      expect_equal(result$state$directory(), "")
       expect_equal(result$state$filename(), "test_file")
       expect_equal(result$state$format(), "csv")
     }
   )
-
-  unlink(temp_dir, recursive = TRUE)
 })
 
-test_that("download mode with auto-timestamp has correct state (issue #9 scenario)", {
+test_that("empty directory with auto-timestamp has correct state (issue #9 scenario)", {
   # This tests the scenario that caused issue #9 (empty filename = auto-timestamp)
   # The actual fix (consistent timestamp in downloadHandler) was verified manually
 
-  temp_dir <- tempfile("download_test_")
-  dir.create(temp_dir)
-
   blk <- new_write_block(
-    directory = temp_dir,
+    directory = "",
     filename = "",  # Empty = auto-timestamp (this was the issue #9 trigger)
-    format = "csv",
-    mode = "download"
+    format = "csv"
   )
 
   test_data <- data.frame(id = 1:10, value = rnorm(10))
@@ -1097,12 +1021,10 @@ test_that("download mode with auto-timestamp has correct state (issue #9 scenari
 
       result <- session$returned
 
-      # Verify download mode is active
+      # With empty directory, expr is NULL (download-only)
       expect_null(result$expr())
-      expect_equal(result$state$mode(), "download")
+      expect_equal(result$state$directory(), "")
       expect_equal(result$state$filename(), "")  # Empty = auto-timestamp
     }
   )
-
-  unlink(temp_dir, recursive = TRUE)
 })

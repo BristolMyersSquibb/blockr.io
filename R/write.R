@@ -4,24 +4,27 @@
 #' Accepts multiple input dataframes and handles single files, multi-sheet
 #' Excel, or ZIP archives depending on format and number of inputs.
 #'
-#' @param directory Character. Default directory for file output (browse mode only).
-#'   Can be configured via `options(blockr.write_dir = "/path")` or environment
-#'   variable `BLOCKR_WRITE_DIR`. Default: `tempdir()`.
+#' @param directory Character. Default directory for file output. When non-empty,
+#'   enables server-side writing. Can be configured via
+#'   `options(blockr.write_dir = "/path")` or environment variable
+#'   `BLOCKR_WRITE_DIR`. Default: `""` (empty — download-only until user sets a path).
 #' @param filename Character. Optional fixed filename (without extension).
 #'   - **If provided**: Writes to same file path on every upstream change (auto-overwrite)
 #'   - **If empty** (default): Generates timestamped filename (e.g., `data_20250127_143022.csv`)
 #' @param format Character. Output format: "csv", "excel", "parquet", or "feather".
 #'   Default: "csv"
-#' @param mode Character. Either "download" for "To Browser" (triggers browser download),
-#'   or "browse" for "To Server" (writes to server filesystem). Default: "download"
 #' @param auto_write Logical. When TRUE, automatically writes files when data changes
-#'   (browse mode only). When FALSE (default), user must click "Submit" button to save.
-#'   Has no effect in download mode.
+#'   (requires a non-empty directory). When FALSE (default), user must click
+#'   "Save to File" button.
 #' @param args Named list of format-specific writing parameters. Only specify values
 #'   that differ from defaults. Available parameters:
 #'   - **For CSV files:** `sep` (default: ","), `quote` (default: TRUE),
 #'     `na` (default: "")
 #'   - **For Excel/Arrow:** Minimal options needed (handled by underlying packages)
+#' @param mode `r lifecycle::badge("deprecated")` Previously selected between
+#'   "browse" and "download" tabs. Now ignored — both download and server-save
+#'   are always available. Kept for backwards compatibility; emits a deprecation
+#'   warning when non-NULL.
 #' @param ... Forwarded to [blockr.core::new_transform_block()]
 #'
 #' @details
@@ -57,16 +60,17 @@
 #' - Preserves history, prevents accidental overwrites
 #' - Safe default behavior
 #'
-#' ## Mode: To Browser vs To Server
+#' ## Download vs Server Save
 #'
-#' **To Browser mode** (download):
-#' - Exports files to your computer
+#' Both options are always available in a flat layout (no tabs):
+#'
+#' **Download to Browser:**
+#' - Always available via the download button
 #' - Triggers a download to your browser's download folder
-#' - Useful for exporting results
 #'
-#' **To Server mode** (browse):
-#' - Saves files directly on the server
-#' - User selects directory with file browser
+#' **Save to Server:**
+#' - Active when a server directory path is set (non-empty)
+#' - User enters a directory path in the path input
 #' - Files persist on server
 #' - When running locally, this is your computer's file system
 #'
@@ -93,58 +97,41 @@
 #'   serve(new_write_block())
 #' }
 #'
-#' @importFrom shinyFiles shinyDirButton shinyDirChoose parseDirPath
 #' @rdname write
 #' @export
 new_write_block <- function(
   directory = "",
   filename = "",
   format = "csv",
-  mode = "download",
   auto_write = FALSE,
   args = list(),
+  mode = NULL,
   ...
 ) {
+  if (!is.null(mode)) {
+    .Deprecated(
+      msg = paste(
+        "The 'mode' parameter of new_write_block() is deprecated.",
+        "Both download and server-save are now always available.",
+        "Use 'directory' to control server-save behavior."
+      )
+    )
+  }
+
   # Validate parameters
-  format <- match.arg(format, c("csv", "excel", "parquet", "feather"))
-  mode <- match.arg(mode, c("browse", "download"))
+  format <- match.arg(format, unname(write_formats()))
 
-  # Get default directory from options if not provided
-  # Default to tempdir() to comply with CRAN policies (no writing to home filespace)
-  if (directory == "") {
-    directory <- blockr_option("write_dir", tempdir())
+  # Expand directory path if non-empty
+  if (nzchar(directory)) {
+    directory <- path.expand(directory)
   }
-
-  # Get volumes for directory browser
-  # Default to tempdir() to comply with CRAN policies
-  volumes <- blockr_option("volumes", c(temp = tempdir()))
-
-  # Handle volumes parameter
-  if (is.character(volumes)) {
-    volumes <- path.expand(volumes)
-  }
-
-  if (is_string(volumes) && grepl(":", volumes)) {
-    volumes <- strsplit(volumes, ":", fixed = TRUE)[[1L]]
-  }
-
-  if (is.null(names(volumes))) {
-    if (length(volumes) == 1L) {
-      names(volumes) <- "volume"
-    } else if (length(volumes) > 1L) {
-      names(volumes) <- paste0("volume", seq_along(volumes))
-    }
-  }
-
-  # Expand directory path
-  directory <- path.expand(directory)
 
   new_transform_block(
     server = function(id, ...args) {
       moduleServer(
         id,
         function(input, output, session) {
-          # volumes, directory, auto_write available here via closure
+          # directory, auto_write available here via closure
 
           # Extract arg names for variadic inputs
           arg_names <- reactive({
@@ -156,45 +143,64 @@ new_write_block <- function(
           r_directory <- reactiveVal(directory)
           r_filename <- reactiveVal(filename)
           r_format <- reactiveVal(format)
-          r_mode <- reactiveVal(mode)
           r_auto_write <- reactiveVal(auto_write)
           r_args <- reactiveVal(args)
           r_last_write <- reactiveVal(NULL) # Track last write time
           r_write_status <- reactiveVal("") # Status message
 
-          # Initialize shinyFiles directory browser
-          shinyFiles::shinyDirChoose(
-            input,
-            "dir_browser",
-            roots = volumes,
-            session = session
+          # Data directory from board options
+          data_dir_reactive <- reactive({
+            coal(get_board_option_or_null("data_dir", session), "")
+          })
+
+          # Path input module for directory selection
+          dir_path <- path_input_server(
+            "dir_path",
+            data_dir = data_dir_reactive,
+            mode = "directory"
           )
 
-          # Handle directory browser selection
-          selected_dir <- reactive({
-            if (!is.null(input$dir_browser) && !identical(input$dir_browser, "")) {
-              path <- shinyFiles::parseDirPath(volumes, input$dir_browser)
-              if (length(path) > 0) path else NULL
-            } else {
-              NULL
-            }
-          })
+          # Populate path text input on restore / init
+          if (nzchar(directory)) {
+            observe({
+              # Strip data_dir prefix for display if applicable
+              display_path <- directory
+              dd <- data_dir_reactive()
+              if (nzchar(dd)) {
+                prefix <- paste0(dd, "/")
+                if (startsWith(directory, prefix)) {
+                  display_path <- substr(directory, nchar(prefix) + 1, nchar(directory))
+                }
+              }
+              session$sendCustomMessage("blockr-path-set-value", list(
+                id = session$ns("dir_path-path_text"),
+                value = display_path,
+                silent = TRUE
+              ))
+            }) |> bindEvent(TRUE, once = TRUE)
+          }
 
-          observeEvent(selected_dir(), {
-            if (!is.null(selected_dir())) {
-              r_directory(selected_dir())
+          # Handle directory path changes
+          observeEvent(dir_path(), {
+            path_val <- dir_path()
+            req(nzchar(path_val))
+
+            # Resolve relative paths against data directory
+            resolved <- path_val
+            data_dir <- data_dir_reactive()
+            if (
+              nzchar(data_dir) &&
+              !grepl("^(/|~|[A-Za-z]:)", path_val)
+            ) {
+              resolved <- file.path(data_dir, path_val)
             }
-          })
+
+            r_directory(resolved)
+          }, ignoreInit = TRUE)
 
           # Update state from inputs
-          observeEvent(input$mode_pills, {
-            if (!is.null(input$mode_pills)) {
-              r_mode(input$mode_pills)
-            }
-          })
-
-          observeEvent(input$auto_write, {
-            r_auto_write(input$auto_write)
+          observeEvent(input$write_mode, {
+            r_auto_write(identical(input$write_mode, "auto"))
           })
 
           observeEvent(input$filename, r_filename(input$filename))
@@ -220,27 +226,39 @@ new_write_block <- function(
           # Reactive to store the write expression (set when submit clicked)
           r_write_expression_set <- reactiveVal(NULL)
 
+          # Track whether directory existed before we created it
+          r_dir_existed <- reactiveVal(
+            nzchar(directory) && dir.exists(path.expand(directory))
+          )
+
           # Directory creation - create when directory path is set
           observeEvent(r_directory(), {
             req(r_directory())
-            tryCatch(
-              {
-                dir.create(r_directory(), recursive = TRUE, showWarnings = FALSE)
-                if (!dir.exists(r_directory())) {
-                  r_write_status(sprintf("\u2717 Cannot create directory: %s", r_directory()))
+            existed <- dir.exists(r_directory())
+            r_dir_existed(existed)
+            if (!existed) {
+              tryCatch(
+                {
+                  dir.create(r_directory(), recursive = TRUE, showWarnings = FALSE)
+                  if (!dir.exists(r_directory())) {
+                    r_write_status(sprintf(
+                      "\u2717 Cannot create directory: %s", r_directory()
+                    ))
+                  }
+                },
+                error = function(e) {
+                  r_write_status(sprintf(
+                    "\u2717 Directory error: %s", conditionMessage(e)
+                  ))
                 }
-              },
-              error = function(e) {
-                r_write_status(sprintf("\u2717 Directory error: %s", conditionMessage(e)))
-              }
-            )
+              )
+            }
           })
 
-          # Submit button for browse mode (only when auto_write is FALSE)
+          # Submit button for server save (only when auto_write is FALSE)
           observeEvent(input$submit_write, {
             req(length(arg_names()) > 0)
-            req(r_directory())
-            req(r_mode() == "browse")
+            req(nzchar(r_directory()))
             req(!r_auto_write()) # Only trigger when auto_write is disabled
 
             # Generate write expression
@@ -273,13 +291,12 @@ new_write_block <- function(
             r_write_status(sprintf("\u2713 Saved to %s at %s", full_path, timestamp))
           })
 
-          # Generate expression that adapts based on mode and auto_write setting
+          # Generate expression based on directory state and auto_write setting
           r_write_expression <- reactive({
-            if (r_mode() == "browse") {
+            if (nzchar(r_directory())) {
               if (r_auto_write()) {
-                # Auto-write enabled (default): Generate expression automatically
+                # Auto-write enabled: Generate expression automatically
                 req(length(arg_names()) > 0)
-                req(r_directory())
 
                 expr <- write_expr(
                   data_names = arg_names(),
@@ -300,14 +317,14 @@ new_write_block <- function(
                 r_write_expression_set()
               }
             } else {
-              # Download mode: Return NULL - download handler does the writing
+              # No directory set: Return NULL - download handler handles writing
               NULL
             }
           })
 
           # Update status when auto-write generates a new expression
           observe({
-            req(r_mode() == "browse")
+            req(nzchar(r_directory()))
             req(r_auto_write())
             req(r_write_expression())
 
@@ -330,52 +347,7 @@ new_write_block <- function(
           })
 
 
-          # # Execute write when in browse mode and data changes
-          # observeEvent(
-          #   {
-          #     list(r_write_expression(), ...args)
-          #   },
-          #   {
-          #     if (r_mode() == "browse") {
-          #       req(r_write_expression())
-
-          #       tryCatch(
-          #         {
-          #           # Ensure directory exists
-          #           dir.create(r_directory(), recursive = TRUE, showWarnings = FALSE)
-
-          #           # Create environment with actual data for evaluation
-          #           eval_env <- new.env(parent = parent.frame())
-          #           names_vec <- arg_names()
-          #           for (i in seq_along(...args)) {
-          #             data_val <- if (is.reactive(...args[[i]])) {
-          #               ...args[[i]]()
-          #             } else {
-          #               ...args[[i]]
-          #             }
-          #             assign(names_vec[i], data_val, envir = eval_env)
-          #           }
-
-          #           # Evaluate write expression in environment with data
-          #           eval(r_write_expression(), envir = eval_env)
-
-          #           # Update status
-          #           r_last_write(Sys.time())
-          #           r_write_status(sprintf(
-          #             "\u2713 Written at %s",
-          #             format(Sys.time(), "%H:%M:%S")
-          #           ))
-          #         },
-          #         error = function(e) {
-          #           r_write_status(sprintf("\u2717 Error: %s", conditionMessage(e)))
-          #         }
-          #       )
-          #     }
-          #   },
-          #   ignoreInit = TRUE
-          # )
-
-          # Download handler for download mode
+          # Download handler — always available
           output$download_data <- downloadHandler(
             filename = function() {
               base <- generate_filename(r_filename())
@@ -451,13 +423,28 @@ new_write_block <- function(
           )
 
 
-          # Output: Current directory display
-          output$current_directory <- renderText({
+          # Status badge for directory validation
+          observe({
             dir <- r_directory()
-            if (!is.null(dir) && nzchar(dir)) {
-              paste("Current directory:", dir)
+            existed <- r_dir_existed()
+            if (nzchar(dir) && existed) {
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("dir_path-path_text"),
+                text = "Directory",
+                state = "success"
+              ))
+            } else if (nzchar(dir)) {
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("dir_path-path_text"),
+                text = "New directory",
+                state = "info"
+              ))
             } else {
-              "No directory selected"
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("dir_path-path_text"),
+                text = "",
+                state = "none"
+              ))
             }
           })
 
@@ -479,9 +466,9 @@ new_write_block <- function(
               directory = r_directory,
               filename = r_filename,
               format = r_format,
-              mode = r_mode,
               auto_write = r_auto_write,
-              args = r_args
+              args = r_args,
+              mode = reactiveVal(NULL)
             )
           )
         }
@@ -495,117 +482,106 @@ new_write_block <- function(
         div(
           class = "block-container write-block-container",
 
-          # Mode selector
+          tags$style(HTML("
+            /* Make inputs full width */
+            .write-block-container .shiny-input-container {
+              width: 100% !important;
+            }
+            .write-block-container .selectize-control {
+              width: 100% !important;
+            }
+            /* Tighten spacing in file config grid */
+            .write-block-container .block-form-grid .shiny-input-container {
+              margin-bottom: 0;
+            }
+            .write-block-container .block-help-text {
+              margin-top: 8px;
+            }
+            /* Execution mode toggle */
+            .blockr-exec-toggle {
+              display: inline-flex;
+              align-items: center;
+              gap: 2px;
+              background-color: #f3f4f6;
+              border-radius: 8px;
+              padding: 2px;
+            }
+            .blockr-exec-toggle button {
+              padding: 0.25rem 0.5rem;
+              font-size: 0.875rem;
+              line-height: 1.5;
+              font-weight: 500;
+              color: #6b7280;
+              background: transparent;
+              border: none;
+              border-radius: 6px;
+              cursor: pointer;
+              transition: all 0.15s ease;
+              white-space: nowrap;
+            }
+            .blockr-exec-toggle button:hover {
+              color: #374151;
+              background-color: #e5e7eb;
+            }
+            .blockr-exec-toggle button.active {
+              color: #111827;
+              background-color: #fff;
+              box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+            }
+            /* Auto-save info banner */
+            .blockr-exec-auto-hint {
+              font-size: 0.8rem;
+              color: #0d6efd;
+              background: #e7f1ff;
+              border: 1px solid #b6d4fe;
+              border-radius: 6px;
+              padding: 8px 12px;
+            }
+            /* Status text */
+            .blockr-exec-status {
+              font-size: 0.8rem;
+              color: #6b7280;
+              min-height: 1.2em;
+            }
+            /* OR divider */
+            .blockr-or-divider {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              margin: 16px 0;
+            }
+            .blockr-or-divider::before,
+            .blockr-or-divider::after {
+              content: '';
+              flex: 1;
+              border-top: 1px solid #e5e7eb;
+            }
+            .blockr-or-divider span {
+              font-size: 0.75rem;
+              font-weight: 500;
+              color: #9ca3af;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+            }
+          ")),
+
+          # Hidden input to track mode
           div(
-            class = "block-section",
-            tags$h4("Output Mode", class = "mb-3"),
-            tags$style(HTML(
-              "
-              .nav-pills {
-                display: inline-flex;
-                overflow: hidden;
-              }
-              .nav-pills .nav-link {
-                background-color: rgb(249, 249, 250);
-                color: rgb(104, 107, 130);
-                border: none;
-                border-radius: 8px;
-                margin: 8px;
-                margin-left:0;
-                padding: 6px 10px;
-                font-size: 0.8rem;
-              }
-              .nav-pills .nav-link:hover {
-                background-color: #f8f9fa;
-                z-index: 1;
-              }
-              .nav-pills .nav-link.active {
-                background-color: rgb(236, 236, 236);
-                color: rgb(104, 107, 130);
-                border-color: rgb(236, 236, 236);
-                z-index: 2;
-              }
-              /* Make inputs full width */
-              .write-block-container .shiny-input-container {
-                width: 100% !important;
-              }
-              .write-block-container .selectize-control {
-                width: 100% !important;
-              }
-            "
-            )),
-            bslib::navset_pill(
-              id = NS(id, "mode_pills"),
-              selected = mode,
-              bslib::nav_panel(
-                title = "To Browser",
-                value = "download",
-                div(
-                  class = "mt-3",
-                  tags$h4("Export files to your computer", class = "mb-2"),
-                  div(
-                    class = "block-help-text mb-3",
-                    "Triggers a download to your browser's download folder."
-                  ),
-                  downloadButton(
-                    NS(id, "download_data"),
-                    "Download File",
-                    class = "btn-outline-secondary"
-                  )
-                )
-              ),
-              bslib::nav_panel(
-                title = "To Server",
-                value = "browse",
-                div(
-                  class = "mt-3",
-                  tags$h4("Save files to the server", class = "mb-2"),
-                  div(
-                    class = "block-help-text mb-3",
-                    "When running locally, this is your computer."
-                  ),
-                  shinyFiles::shinyDirButton(
-                    NS(id, "dir_browser"),
-                    label = "Select Directory...",
-                    title = "Choose output directory",
-                    multiple = FALSE,
-                    class = "btn-outline-secondary"
-                  ),
-                  div(
-                    class = "block-help-text mt-2",
-                    textOutput(NS(id, "current_directory"))
-                  ),
-                  div(
-                    class = "mt-3",
-                    checkboxInput(
-                      NS(id, "auto_write"),
-                      "Auto-write: automatically save when data changes",
-                      value = auto_write
-                    )
-                  ),
-                  conditionalPanel(
-                    condition = "!input.auto_write",
-                    ns = NS(id),
-                    div(
-                      class = "mt-2",
-                      actionButton(
-                        NS(id, "submit_write"),
-                        "Save to File",
-                        class = "btn-outline-secondary"
-                      )
-                    )
-                  )
-                )
-              )
+            style = "display:none;",
+            textInput(
+              NS(id, "write_mode"),
+              label = NULL,
+              value = if (auto_write) "auto" else "manual"
             )
           ),
 
-          # File Configuration
+          # --- File Configuration (shared) ---
           div(
             class = "block-form-grid",
+            style = "padding-bottom: 0; margin-bottom: 0;",
             div(
               class = "block-section",
-              tags$h4("File Configuration", class = "mt-3"),
+              tags$h4("File Configuration", ),
               div(
                 class = "block-section-grid",
                 div(
@@ -619,7 +595,8 @@ new_write_block <- function(
                   div(
                     class = "block-help-text",
                     style = "font-size: 0.75rem;",
-                    "Fixed filename overwrites on each change. Empty generates unique timestamped files."
+                    "Fixed filename overwrites on each change.",
+                    "Empty generates unique timestamped files."
                   )
                 ),
                 div(
@@ -627,99 +604,171 @@ new_write_block <- function(
                   selectInput(
                     inputId = NS(id, "format"),
                     label = "Format",
-                    choices = c(
-                      "CSV" = "csv",
-                      "Excel" = "excel",
-                      "Parquet" = "parquet",
-                      "Feather" = "feather"
-                    ),
+                    choices = write_formats(),
                     selected = format
                   )
                 )
               )
-            ),
+            )
+          ),
 
-            # Write status
-            div(
-              class = "block-section",
-              div(
-                class = "block-help-text",
-                textOutput(NS(id, "write_status"))
-              )
-            ),
+          # --- Separator ---
+          tags$hr(style = "border-top: 1px solid #e5e7eb; margin: 16px 0;"),
 
-            # Advanced Options Toggle
+          # --- Download to Browser ---
+          div(
+            class = "block-section",
+            tags$h4("Download to Browser", class = "mb-3"),
+            tags$p(
+              class = "blockr-path-hint",
+              "Download directly without saving to server"
+            ),
+            downloadButton(
+              NS(id, "download_data"),
+              "Download",
+              class = "btn-outline-secondary btn-sm"
+            )
+          ),
+
+          # --- OR divider ---
+          div(
+            class = "blockr-or-divider",
+            tags$span("or")
+          ),
+
+          # --- Save to Server ---
+          div(
+            class = "block-section blockr-file-location",
+            tags$h4("Save to Server", class = "mb-3"),
+            tags$p(
+              class = "blockr-path-hint",
+              "Choose a server path to save"
+            ),
+            path_input_ui(NS(id, "dir_path")),
+            # Mode toggle + save button row
             div(
-              class = "block-section",
+              class = "mt-2",
+              style = "display: flex; align-items: center; gap: 8px;",
               div(
-                class = "block-advanced-toggle text-muted",
-                id = NS(id, "advanced-toggle"),
-                onclick = sprintf(
-                  "
-                  const section = document.getElementById('%s');
-                  const chevron = document.querySelector('#%s .block-chevron');
-                  section.classList.toggle('expanded');
-                  chevron.classList.toggle('rotated');
-                  ",
-                  NS(id, "advanced-options"),
-                  NS(id, "advanced-toggle")
+                class = "blockr-exec-toggle",
+                tags$button(
+                  "Manual",
+                  class = if (!auto_write) "active" else "",
+                  onclick = sprintf(
+                    "
+                    document.getElementById('%s').value = 'manual';
+                    document.getElementById('%s').dispatchEvent(new Event('change'));
+                    this.classList.add('active');
+                    this.nextElementSibling.classList.remove('active');
+                    ",
+                    NS(id, "write_mode"), NS(id, "write_mode")
+                  )
                 ),
-                tags$span(class = "block-chevron", "\u203A"),
-                "Advanced Options"
+                tags$button(
+                  "Auto",
+                  class = if (auto_write) "active" else "",
+                  onclick = sprintf(
+                    "
+                    document.getElementById('%s').value = 'auto';
+                    document.getElementById('%s').dispatchEvent(new Event('change'));
+                    this.classList.add('active');
+                    this.previousElementSibling.classList.remove('active');
+                    ",
+                    NS(id, "write_mode"), NS(id, "write_mode")
+                  )
+                )
+              ),
+              conditionalPanel(
+                condition = "input.write_mode === 'manual'",
+                ns = NS(id),
+                actionButton(
+                  NS(id, "submit_write"),
+                  "Save to Server",
+                  class = "btn-primary btn-sm"
+                )
               )
             ),
-
-            # Advanced Options Content
-            div(
-              id = NS(id, "advanced-options"),
-
-              # Format-Specific Options Section
+            # Auto-save info box
+            conditionalPanel(
+              condition = "input.write_mode === 'auto'",
+              ns = NS(id),
               div(
-                class = "block-section",
-                tags$h4("Format-Specific Options"),
+                class = "blockr-exec-auto-hint mt-2",
+                "Auto-save enabled. File updates automatically on data changes."
+              )
+            ),
+            # Status message
+            div(
+              class = "blockr-exec-status mt-2",
+              textOutput(NS(id, "write_status"))
+            )
+          ),
 
-                # CSV Options (conditional)
-                div(
-                  class = "block-section-grid",
-                  conditionalPanel(
-                    condition = "output['show_csv_options']",
-                    ns = NS(id),
-                    div(
-                      class = "block-input-wrapper",
-                      selectizeInput(
-                        inputId = NS(id, "csv_sep"),
-                        label = "Delimiter",
-                        choices = c(
-                          "Comma (,)" = ",",
-                          "Semicolon (;)" = ";",
-                          "Tab (\\t)" = "\t",
-                          "Pipe (|)" = "|"
-                        ),
-                        selected = if (!is.null(args$sep)) args$sep else ",",
-                        options = list(create = TRUE)
+          # --- Advanced Options ---
+          div(
+            class = "block-section mt-3",
+            div(
+              class = "block-advanced-toggle text-muted",
+              id = NS(id, "advanced-toggle"),
+              onclick = sprintf(
+                "
+                const section = document.getElementById('%s');
+                const chevron = document.querySelector('#%s .block-chevron');
+                section.classList.toggle('expanded');
+                chevron.classList.toggle('rotated');
+                ",
+                NS(id, "advanced-options"),
+                NS(id, "advanced-toggle")
+              ),
+              tags$span(class = "block-chevron", "\u203A"),
+              "Advanced Options"
+            )
+          ),
+          div(
+            id = NS(id, "advanced-options"),
+            div(
+              class = "block-section",
+              tags$h4("Format-Specific Options"),
+              div(
+                class = "block-section-grid",
+                conditionalPanel(
+                  condition = "output['show_csv_options']",
+                  ns = NS(id),
+                  div(
+                    class = "block-input-wrapper",
+                    selectizeInput(
+                      inputId = NS(id, "csv_sep"),
+                      label = "Delimiter",
+                      choices = c(
+                        "Comma (,)" = ",",
+                        "Semicolon (;)" = ";",
+                        "Tab (\\t)" = "\t",
+                        "Pipe (|)" = "|"
                       ),
-                      div(
-                        class = "block-help-text",
-                        style = "font-size: 0.75rem;",
-                        "Type to add custom delimiter"
-                      )
+                      selected = if (!is.null(args$sep)) args$sep else ",",
+                      options = list(create = TRUE)
                     ),
                     div(
-                      class = "block-input-wrapper",
-                      checkboxInput(
-                        inputId = NS(id, "csv_quote"),
-                        label = "Quote strings",
-                        value = if (!is.null(args$quote)) args$quote else TRUE
-                      )
-                    ),
-                    div(
-                      class = "block-input-wrapper",
-                      textInput(
-                        inputId = NS(id, "csv_na"),
-                        label = "NA representation",
-                        value = if (!is.null(args$na)) args$na else "",
-                        placeholder = "default: empty string"
-                      )
+                      class = "block-help-text",
+                      style = "font-size: 0.75rem;",
+                      "Type to add custom delimiter"
+                    )
+                  ),
+                  div(
+                    class = "block-input-wrapper",
+                    checkboxInput(
+                      inputId = NS(id, "csv_quote"),
+                      label = "Quote strings",
+                      value = if (!is.null(args$quote)) args$quote else TRUE
+                    )
+                  ),
+                  div(
+                    class = "block-input-wrapper",
+                    textInput(
+                      inputId = NS(id, "csv_na"),
+                      label = "NA representation",
+                      value = if (!is.null(args$na)) args$na else "",
+                      placeholder = "default: empty string"
                     )
                   )
                 )

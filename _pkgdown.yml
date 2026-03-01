@@ -4,14 +4,8 @@ template:
 
 navbar:
   structure:
-    left: [intro, reference, articles, news]
+    left: [intro, reference, news]
     right: [search, github]
-  components:
-    articles:
-      text: Articles
-      menu:
-      - text: Showcase
-        href: articles/blockr-io-showcase.html
 
 reference:
 - title: File I/O Blocks
@@ -20,8 +14,13 @@ reference:
   - new_read_block
   - new_write_block
 
-articles:
-- title: Getting Started
-  navbar: ~
+- title: Utilities
+  desc: Helper functions for file handling and configuration
   contents:
-  - blockr-io-showcase
+  - file_category
+  - file_extensions
+  - new_data_dir_option
+  - path_input
+  - read_file_expr
+  - write_file_expr
+  - write_formats

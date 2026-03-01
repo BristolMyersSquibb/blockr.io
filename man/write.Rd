@@ -8,16 +8,17 @@ new_write_block(
   directory = "",
   filename = "",
   format = "csv",
-  mode = "download",
   auto_write = FALSE,
   args = list(),
+  mode = NULL,
   ...
 )
 }
 \arguments{
-\item{directory}{Character. Default directory for file output (browse mode only).
-Can be configured via \code{options(blockr.write_dir = "/path")} or environment
-variable \code{BLOCKR_WRITE_DIR}. Default: \code{tempdir()}.}
+\item{directory}{Character. Default directory for file output. When non-empty,
+enables server-side writing. Can be configured via
+\code{options(blockr.write_dir = "/path")} or environment variable
+\code{BLOCKR_WRITE_DIR}. Default: \code{""} (empty — download-only until user sets a path).}
 
 \item{filename}{Character. Optional fixed filename (without extension).
 \itemize{
@@ -28,12 +29,9 @@ variable \code{BLOCKR_WRITE_DIR}. Default: \code{tempdir()}.}
 \item{format}{Character. Output format: "csv", "excel", "parquet", or "feather".
 Default: "csv"}
 
-\item{mode}{Character. Either "download" for "To Browser" (triggers browser download),
-or "browse" for "To Server" (writes to server filesystem). Default: "download"}
-
 \item{auto_write}{Logical. When TRUE, automatically writes files when data changes
-(browse mode only). When FALSE (default), user must click "Submit" button to save.
-Has no effect in download mode.}
+(requires a non-empty directory). When FALSE (default), user must click
+"Save to File" button.}
 
 \item{args}{Named list of format-specific writing parameters. Only specify values
 that differ from defaults. Available parameters:
@@ -42,6 +40,11 @@ that differ from defaults. Available parameters:
 \code{na} (default: "")
 \item \strong{For Excel/Arrow:} Minimal options needed (handled by underlying packages)
 }}
+
+\item{mode}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Previously selected between
+"browse" and "download" tabs. Now ignored — both download and server-save
+are always available. Kept for backwards compatibility; emits a deprecation
+warning when non-NULL.}
 
 \item{...}{Forwarded to \code{\link[blockr.core:new_transform_block]{blockr.core::new_transform_block()}}}
 }
@@ -99,19 +102,20 @@ Input names are used for sheet names (Excel) or filenames (multi-file ZIP).
 }
 }
 
-\subsection{Mode: To Browser vs To Server}{
+\subsection{Download vs Server Save}{
 
-\strong{To Browser mode} (download):
+Both options are always available in a flat layout (no tabs):
+
+\strong{Download to Browser:}
 \itemize{
-\item Exports files to your computer
+\item Always available via the download button
 \item Triggers a download to your browser's download folder
-\item Useful for exporting results
 }
 
-\strong{To Server mode} (browse):
+\strong{Save to Server:}
 \itemize{
-\item Saves files directly on the server
-\item User selects directory with file browser
+\item Active when a server directory path is set (non-empty)
+\item User enters a directory path in the path input
 \item Files persist on server
 \item When running locally, this is your computer's file system
 }
