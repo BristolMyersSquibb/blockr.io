@@ -494,6 +494,9 @@ new_write_block <- function(
             .write-block-container .block-form-grid .shiny-input-container {
               margin-bottom: 0;
             }
+            .write-block-container .block-help-text {
+              margin-top: 8px;
+            }
             /* Execution mode toggle */
             .blockr-exec-toggle {
               display: inline-flex;
@@ -578,7 +581,7 @@ new_write_block <- function(
             style = "padding-bottom: 0; margin-bottom: 0;",
             div(
               class = "block-section",
-              tags$h4("File Configuration", class = "mb-3"),
+              tags$h4("File Configuration", ),
               div(
                 class = "block-section-grid",
                 div(
