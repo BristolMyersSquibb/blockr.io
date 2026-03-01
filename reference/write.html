@@ -20,10 +20,6 @@ Excel, or ZIP archives depending on format and number of inputs."></head><body>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/blockr-io-showcase.html">Showcase</a></li>
-  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -53,9 +49,9 @@ Excel, or ZIP archives depending on format and number of inputs.</p>
 <span>  directory <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  filename <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  format <span class="op">=</span> <span class="st">"csv"</span>,</span>
-<span>  mode <span class="op">=</span> <span class="st">"download"</span>,</span>
 <span>  auto_write <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  mode <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -65,9 +61,10 @@ Excel, or ZIP archives depending on format and number of inputs.</p>
 
 
 <dl><dt id="arg-directory">directory<a class="anchor" aria-label="anchor" href="#arg-directory"></a></dt>
-<dd><p>Character. Default directory for file output (browse mode only).
-Can be configured via <code>options(blockr.write_dir = "/path")</code> or environment
-variable <code>BLOCKR_WRITE_DIR</code>. Default: <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>.</p></dd>
+<dd><p>Character. Default directory for file output. When non-empty,
+enables server-side writing. Can be configured via
+<code>options(blockr.write_dir = "/path")</code> or environment variable
+<code>BLOCKR_WRITE_DIR</code>. Default: <code>""</code> (empty — download-only until user sets a path).</p></dd>
 
 
 <dt id="arg-filename">filename<a class="anchor" aria-label="anchor" href="#arg-filename"></a></dt>
@@ -81,15 +78,10 @@ variable <code>BLOCKR_WRITE_DIR</code>. Default: <code><a href="https://rdrr.io/
 Default: "csv"</p></dd>
 
 
-<dt id="arg-mode">mode<a class="anchor" aria-label="anchor" href="#arg-mode"></a></dt>
-<dd><p>Character. Either "download" for "To Browser" (triggers browser download),
-or "browse" for "To Server" (writes to server filesystem). Default: "download"</p></dd>
-
-
 <dt id="arg-auto-write">auto_write<a class="anchor" aria-label="anchor" href="#arg-auto-write"></a></dt>
 <dd><p>Logical. When TRUE, automatically writes files when data changes
-(browse mode only). When FALSE (default), user must click "Submit" button to save.
-Has no effect in download mode.</p></dd>
+(requires a non-empty directory). When FALSE (default), user must click
+"Save to File" button.</p></dd>
 
 
 <dt id="arg-args">args<a class="anchor" aria-label="anchor" href="#arg-args"></a></dt>
@@ -98,6 +90,13 @@ that differ from defaults. Available parameters:</p><ul><li><p><strong>For CSV f
 <code>na</code> (default: "")</p></li>
 <li><p><strong>For Excel/Arrow:</strong> Minimal options needed (handled by underlying packages)</p></li>
 </ul></dd>
+
+
+<dt id="arg-mode">mode<a class="anchor" aria-label="anchor" href="#arg-mode"></a></dt>
+<dd><p><a href="https://lifecycle.r-lib.org/articles/stages.html#deprecated" class="external-link"><img src="figures/lifecycle-deprecated.svg" alt="[Deprecated]"></a> Previously selected between
+"browse" and "download" tabs. Now ignored — both download and server-save
+are always available. Kept for backwards compatibility; emits a deprecation
+warning when non-NULL.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -145,14 +144,14 @@ Input names are used for sheet names (Excel) or filenames (multi-file ZIP).</p>
 </ul></div>
 
 <div class="section">
-<h3 id="mode-to-browser-vs-to-server">Mode: To Browser vs To Server<a class="anchor" aria-label="anchor" href="#mode-to-browser-vs-to-server"></a></h3>
+<h3 id="download-vs-server-save">Download vs Server Save<a class="anchor" aria-label="anchor" href="#download-vs-server-save"></a></h3>
 
 
-<p><strong>To Browser mode</strong> (download):</p><ul><li><p>Exports files to your computer</p></li>
+<p>Both options are always available in a flat layout (no tabs):</p>
+<p><strong>Download to Browser:</strong></p><ul><li><p>Always available via the download button</p></li>
 <li><p>Triggers a download to your browser's download folder</p></li>
-<li><p>Useful for exporting results</p></li>
-</ul><p><strong>To Server mode</strong> (browse):</p><ul><li><p>Saves files directly on the server</p></li>
-<li><p>User selects directory with file browser</p></li>
+</ul><p><strong>Save to Server:</strong></p><ul><li><p>Active when a server directory path is set (non-empty)</p></li>
+<li><p>User enters a directory path in the path input</p></li>
 <li><p>Files persist on server</p></li>
 <li><p>When running locally, this is your computer's file system</p></li>
 </ul></div>
@@ -172,12 +171,12 @@ Input names are used for sheet names (Excel) or filenames (multi-file ZIP).</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Name: "Write"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Indefinite arity</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Initial block state:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ directory : chr "/tmp/Rtmpd5bz9b"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  $ directory : chr "/tmp/Rtmp0bjCP4"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ filename  : chr "output"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ format    : chr "csv"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ mode      : chr "download"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ auto_write: logi FALSE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ args      : list()</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  $ mode      : NULL</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Constructor: blockr.io::new_write_block()</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Write block for Excel with auto-timestamp</span></span></span>

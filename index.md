@@ -52,9 +52,8 @@ sheets or ZIP archives.
 
 ## Learn More
 
-See
-[`vignette("blockr-io-showcase")`](https://bristolmyerssquibb.github.io/blockr.io/articles/blockr-io-showcase.md)
-for screenshots and detailed examples.
+See `vignette("blockr-io-showcase")` for screenshots and detailed
+examples.
 
 The [blockr.io website](https://bristolmyerssquibb.github.io/blockr.io/)
 includes full documentation. For the workflow engine, see

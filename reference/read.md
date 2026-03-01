@@ -2,7 +2,8 @@
 
 A single block for reading files in various formats with smart UI that
 adapts based on detected file type. Supports "From Browser" (upload) and
-"From Server" (browse) modes with persistent storage for uploaded files.
+"Location" (path/URL input) modes with persistent storage for uploaded
+files.
 
 ## Usage
 
@@ -20,15 +21,14 @@ new_read_block(
 
 - path:
 
-  Character vector of file paths to pre-load. When provided,
-  automatically switches to "path" mode regardless of the source
-  parameter.
+  Character vector of file paths to pre-load. Accepts local paths and
+  URLs. When provided, automatically switches to "path" mode regardless
+  of the source parameter.
 
 - source:
 
-  Either "upload" for file upload widget, "path" for file browser, or
-  "url" for URL download. Default: "upload". Automatically set based on
-  path parameter.
+  Either "upload" for file upload widget or "path" for path/URL input.
+  Default: "upload". Automatically set based on path parameter.
 
 - combine:
 
@@ -61,7 +61,7 @@ A blockr data block that reads file(s) and returns a data.frame.
 
 ### File Handling Modes
 
-The block supports three modes:
+The block supports two modes:
 
 **From Browser mode** (upload):
 
@@ -73,25 +73,16 @@ The block supports three modes:
 
 - Works across R sessions with state restoration
 
-**From Server mode** (path):
+**Location mode** (path):
 
-- User picks files that already exist on the server
+- User enters a file path or URL in a text input with autocomplete
 
-- No file copying, reads directly from original location
+- For server paths: reads directly from original location
 
-- State stores selected file paths
+- For URLs: downloads to a temporary file each time
 
-- When running locally, this is your computer's file system
-
-**URL mode:**
-
-- User provides a URL to a data file
-
-- File is downloaded to temporary location each time
-
-- Always fetches fresh data from URL
-
-- State stores the URL (not file path)
+- When a board-level data directory is set, paths are resolved relative
+  to it
 
 ### Smart Adaptive UI
 
@@ -121,13 +112,9 @@ When multiple files are selected:
 The following settings are retrieved from options and not stored in
 block state:
 
-- **volumes**: File browser mount points. Set via
-  `options(blockr.volumes = c(name = "path"))` or environment variable
-  `BLOCKR_VOLUMES`. Default: `c(temp = tempdir())`
-
 - **upload_path**: Directory for persistent file storage. Set via
   `options(blockr.upload_path = "/path")` or environment variable
-  `BLOCKR_UPLOAD_PATH`. Default: `rappdirs::user_data_dir("blockr")`
+  `BLOCKR_UPLOAD_PATH`. Default: `tools::R_user_dir("blockr", "data")`
 
 ## Examples
 
@@ -141,7 +128,7 @@ block
 #> Name: "Read"
 #> No data inputs
 #> Initial block state:
-#>  $ path   : chr "/tmp/Rtmpd5bz9b/file1c3018c1d13f.csv"
+#>  $ path   : chr "/tmp/Rtmp0bjCP4/file1a6d514becc7.csv"
 #>  $ source : chr "upload"
 #>  $ combine: chr "auto"
 #>  $ args   : list()

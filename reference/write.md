@@ -11,9 +11,9 @@ new_write_block(
   directory = "",
   filename = "",
   format = "csv",
-  mode = "download",
   auto_write = FALSE,
   args = list(),
+  mode = NULL,
   ...
 )
 ```
@@ -22,10 +22,11 @@ new_write_block(
 
 - directory:
 
-  Character. Default directory for file output (browse mode only). Can
-  be configured via `options(blockr.write_dir = "/path")` or environment
-  variable `BLOCKR_WRITE_DIR`. Default:
-  [`tempdir()`](https://rdrr.io/r/base/tempfile.html).
+  Character. Default directory for file output. When non-empty, enables
+  server-side writing. Can be configured via
+  `options(blockr.write_dir = "/path")` or environment variable
+  `BLOCKR_WRITE_DIR`. Default: `""` (empty — download-only until user
+  sets a path).
 
 - filename:
 
@@ -42,17 +43,11 @@ new_write_block(
   Character. Output format: "csv", "excel", "parquet", or "feather".
   Default: "csv"
 
-- mode:
-
-  Character. Either "download" for "To Browser" (triggers browser
-  download), or "browse" for "To Server" (writes to server filesystem).
-  Default: "download"
-
 - auto_write:
 
   Logical. When TRUE, automatically writes files when data changes
-  (browse mode only). When FALSE (default), user must click "Submit"
-  button to save. Has no effect in download mode.
+  (requires a non-empty directory). When FALSE (default), user must
+  click "Save to File" button.
 
 - args:
 
@@ -64,6 +59,13 @@ new_write_block(
 
   - **For Excel/Arrow:** Minimal options needed (handled by underlying
     packages)
+
+- mode:
+
+  **\[deprecated\]** Previously selected between "browse" and "download"
+  tabs. Now ignored — both download and server-save are always
+  available. Kept for backwards compatibility; emits a deprecation
+  warning when non-NULL.
 
 - ...:
 
@@ -121,21 +123,21 @@ This block accepts multiple dataframe inputs (1 or more) similar to
 
 - Safe default behavior
 
-### Mode: To Browser vs To Server
+### Download vs Server Save
 
-**To Browser mode** (download):
+Both options are always available in a flat layout (no tabs):
 
-- Exports files to your computer
+**Download to Browser:**
+
+- Always available via the download button
 
 - Triggers a download to your browser's download folder
 
-- Useful for exporting results
+**Save to Server:**
 
-**To Server mode** (browse):
+- Active when a server directory path is set (non-empty)
 
-- Saves files directly on the server
-
-- User selects directory with file browser
+- User enters a directory path in the path input
 
 - Files persist on server
 
@@ -155,12 +157,12 @@ block
 #> Name: "Write"
 #> Indefinite arity
 #> Initial block state:
-#>  $ directory : chr "/tmp/Rtmpd5bz9b"
+#>  $ directory : chr "/tmp/Rtmp0bjCP4"
 #>  $ filename  : chr "output"
 #>  $ format    : chr "csv"
-#>  $ mode      : chr "download"
 #>  $ auto_write: logi FALSE
 #>  $ args      : list()
+#>  $ mode      : NULL
 #> Constructor: blockr.io::new_write_block()
 
 # Write block for Excel with auto-timestamp
