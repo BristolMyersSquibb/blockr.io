@@ -222,7 +222,12 @@ path_input_server <- function(id, data_dir = reactive(""),
         dir_prefix <- paste0(dir_val, "/")
         if (startsWith(val, dir_prefix)) {
           stripped <- substr(val, nchar(dir_prefix) + 1, nchar(val))
-          updateTextInput(session, "path_text", value = stripped)
+          # Use sendCustomMessage so JS updatePrefixVisibility re-runs
+          # (updateTextInput doesn't fire DOM input event, leaving prefix hidden)
+          session$sendCustomMessage("blockr-path-set-value", list(
+            id = ns("path_text"),
+            value = stripped
+          ))
         }
       }
     }, ignoreInit = TRUE)
