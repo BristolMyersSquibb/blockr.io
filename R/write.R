@@ -121,9 +121,10 @@ new_write_block <- function(
   # Validate parameters
   format <- match.arg(format, unname(write_formats()))
 
-  # Expand directory path if non-empty
+  # Strip trailing slashes for consistency, but preserve the path as-is
+  # (relative paths are resolved against data_dir at runtime)
   if (nzchar(directory)) {
-    directory <- path.expand(directory)
+    directory <- sub("/+$", "", directory)
   }
 
   new_transform_block(
@@ -180,23 +181,24 @@ new_write_block <- function(
             }) |> bindEvent(TRUE, once = TRUE)
           }
 
-          # Handle directory path changes
+          # Handle directory path changes — store relative path in state
           observeEvent(dir_path(), {
             path_val <- dir_path()
             req(nzchar(path_val))
-
-            # Resolve relative paths against data directory
-            resolved <- path_val
-            data_dir <- data_dir_reactive()
-            if (
-              nzchar(data_dir) &&
-              !grepl("^(/|~|[A-Za-z]:)", path_val)
-            ) {
-              resolved <- file.path(data_dir, path_val)
-            }
-
-            r_directory(resolved)
+            r_directory(path_val)
           }, ignoreInit = TRUE)
+
+          # Resolve r_directory() against data_dir for I/O operations
+          resolved_directory <- reactive({
+            dir_val <- r_directory()
+            if (!nzchar(dir_val)) return("")
+            data_dir <- data_dir_reactive()
+            if (nzchar(data_dir) && !grepl("^(/|~|[A-Za-z]:)", dir_val)) {
+              file.path(data_dir, dir_val)
+            } else {
+              dir_val
+            }
+          })
 
           # Update state from inputs
           observeEvent(input$write_mode, {
@@ -227,22 +229,21 @@ new_write_block <- function(
           r_write_expression_set <- reactiveVal(NULL)
 
           # Track whether directory existed before we created it
-          r_dir_existed <- reactiveVal(
-            nzchar(directory) && dir.exists(path.expand(directory))
-          )
+          # Initial check deferred to resolved_directory observer
+          r_dir_existed <- reactiveVal(FALSE)
 
-          # Directory creation - create when directory path is set
-          observeEvent(r_directory(), {
-            req(r_directory())
-            existed <- dir.exists(r_directory())
+          # Directory creation - create when resolved directory path changes
+          observeEvent(resolved_directory(), {
+            req(nzchar(resolved_directory()))
+            existed <- dir.exists(resolved_directory())
             r_dir_existed(existed)
             if (!existed) {
               tryCatch(
                 {
-                  dir.create(r_directory(), recursive = TRUE, showWarnings = FALSE)
-                  if (!dir.exists(r_directory())) {
+                  dir.create(resolved_directory(), recursive = TRUE, showWarnings = FALSE)
+                  if (!dir.exists(resolved_directory())) {
                     r_write_status(sprintf(
-                      "\u2717 Cannot create directory: %s", r_directory()
+                      "\u2717 Cannot create directory: %s", resolved_directory()
                     ))
                   }
                 },
@@ -264,7 +265,7 @@ new_write_block <- function(
             # Generate write expression
             expr <- write_expr(
               data_names = arg_names(),
-              directory = r_directory(),
+              directory = resolved_directory(),
               filename = r_filename(),
               format = r_format(),
               args = r_args()
@@ -286,7 +287,7 @@ new_write_block <- function(
               "parquet" = ".parquet",
               ".csv"
             )
-            full_path <- file.path(r_directory(), paste0(base_filename, ext))
+            full_path <- file.path(resolved_directory(), paste0(base_filename, ext))
             timestamp <- format(Sys.time(), "%H:%M:%S")
             r_write_status(sprintf("\u2713 Saved to %s at %s", full_path, timestamp))
           })
@@ -300,7 +301,7 @@ new_write_block <- function(
 
                 expr <- write_expr(
                   data_names = arg_names(),
-                  directory = r_directory(),
+                  directory = resolved_directory(),
                   filename = r_filename(),
                   format = r_format(),
                   args = r_args()
@@ -341,7 +342,7 @@ new_write_block <- function(
               "parquet" = ".parquet",
               ".csv"
             )
-            full_path <- file.path(r_directory(), paste0(base_filename, ext))
+            full_path <- file.path(resolved_directory(), paste0(base_filename, ext))
             timestamp <- format(Sys.time(), "%H:%M:%S")
             r_write_status(sprintf("\u2713 Saved to %s at %s", full_path, timestamp))
           })

@@ -84,11 +84,15 @@ path_input_ui <- function(id, prefix = NULL, upload_id = NULL) {
 #'   (from board options). Empty string means no data directory.
 #' @param mode Either `"file"` or `"directory"`. Controls which entries
 #'   are selectable in the autocomplete dropdown.
+#' @param extensions Optional character vector of file extensions (without dots)
+#'   to show in autocomplete. Defaults to `NULL`, which shows all
+#'   rio-supported formats. Use e.g. `"rtf"` to restrict to RTF files only.
 #'
 #' @rdname path_input
 #' @export
 path_input_server <- function(id, data_dir = reactive(""),
-                              mode = c("file", "directory")) {
+                              mode = c("file", "directory"),
+                              extensions = NULL) {
   mode <- match.arg(mode)
 
   moduleServer(id, function(input, output, session) {
@@ -160,7 +164,8 @@ path_input_server <- function(id, data_dir = reactive(""),
           # In file mode, show both but only data files + directories
           if (mode == "file" && !is_dir) {
             ext <- tolower(tools::file_ext(entry))
-            if (!ext %in% get_rio_extensions()) next
+            allowed <- extensions %||% get_rio_extensions()
+            if (!ext %in% allowed) next
           }
 
           fi <- file.info(full)
@@ -217,7 +222,12 @@ path_input_server <- function(id, data_dir = reactive(""),
         dir_prefix <- paste0(dir_val, "/")
         if (startsWith(val, dir_prefix)) {
           stripped <- substr(val, nchar(dir_prefix) + 1, nchar(val))
-          updateTextInput(session, "path_text", value = stripped)
+          # Use sendCustomMessage so JS updatePrefixVisibility re-runs
+          # (updateTextInput doesn't fire DOM input event, leaving prefix hidden)
+          session$sendCustomMessage("blockr-path-set-value", list(
+            id = ns("path_text"),
+            value = stripped
+          ))
         }
       }
     }, ignoreInit = TRUE)

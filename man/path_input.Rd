@@ -8,7 +8,12 @@
 \usage{
 path_input_ui(id, prefix = NULL, upload_id = NULL)
 
-path_input_server(id, data_dir = reactive(""), mode = c("file", "directory"))
+path_input_server(
+  id,
+  data_dir = reactive(""),
+  mode = c("file", "directory"),
+  extensions = NULL
+)
 }
 \arguments{
 \item{id}{Module namespace ID.}
@@ -26,6 +31,10 @@ button is rendered inside the input field and the container gets a
 
 \item{mode}{Either \code{"file"} or \code{"directory"}. Controls which entries
 are selectable in the autocomplete dropdown.}
+
+\item{extensions}{Optional character vector of file extensions (without dots)
+to show in autocomplete. Defaults to \code{NULL}, which shows all
+rio-supported formats. Use e.g. \code{"rtf"} to restrict to RTF files only.}
 }
 \value{
 \code{path_input_ui()} returns a \code{tagList} with the widget HTML.
