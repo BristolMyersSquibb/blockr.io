@@ -9,7 +9,12 @@ replace shinyFiles browser widgets.
 ``` r
 path_input_ui(id, prefix = NULL, upload_id = NULL)
 
-path_input_server(id, data_dir = reactive(""), mode = c("file", "directory"))
+path_input_server(
+  id,
+  data_dir = reactive(""),
+  mode = c("file", "directory"),
+  extensions = NULL
+)
 ```
 
 ## Arguments
@@ -39,6 +44,12 @@ path_input_server(id, data_dir = reactive(""), mode = c("file", "directory"))
 
   Either `"file"` or `"directory"`. Controls which entries are
   selectable in the autocomplete dropdown.
+
+- extensions:
+
+  Optional character vector of file extensions (without dots) to show in
+  autocomplete. Defaults to `NULL`, which shows all rio-supported
+  formats. Use e.g. `"rtf"` to restrict to RTF files only.
 
 ## Value
 
