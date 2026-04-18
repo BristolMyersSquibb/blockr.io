@@ -15,6 +15,33 @@ write_formats <- function() {
   )
 }
 
+#' File extension for a write format
+#'
+#' Single source of truth mapping a `write_formats()` value to its output file
+#' extension. Used by the internal `write_expr()` builder and by the download
+#' handlers of [`new_write_block()`] and [`new_download_block()`].
+#'
+#' @param format Character. One of the values in [`write_formats()`].
+#' @param needs_zip Logical. If `TRUE`, returns `".zip"` regardless of format
+#'   (for multi-input non-Excel downloads). Default: `FALSE`.
+#'
+#' @return Character scalar, e.g. `".csv"`, `".xlsx"`, `".parquet"`,
+#'   `".feather"`, or `".zip"`.
+#' @keywords internal
+format_extension <- function(format, needs_zip = FALSE) {
+  if (isTRUE(needs_zip) && format != "excel") {
+    return(".zip")
+  }
+  switch(format,
+    csv = ".csv",
+    excel = ".xlsx",
+    parquet = ".parquet",
+    feather = ".feather",
+    stop(sprintf("Unsupported write format: '%s'", format))
+  )
+}
+
+
 #' Generate filename for write operations
 #'
 #' @param filename Character. User-specified filename (without extension).
@@ -262,18 +289,7 @@ write_expr <- function(
 
   # Determine file extension and whether we need ZIP
   needs_zip <- length(data_names) > 1 && format != "excel"
-
-  if (needs_zip) {
-    ext <- ".zip"
-  } else {
-    ext <- switch(
-      format,
-      csv = ".csv",
-      excel = ".xlsx",
-      parquet = ".parquet",
-      feather = ".feather"
-    )
-  }
+  ext <- format_extension(format, needs_zip = needs_zip)
 
   # Build full path
   full_filename <- paste0(base_filename, ext)

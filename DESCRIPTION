@@ -1,6 +1,6 @@
 Package: blockr.io
 Title: Interactive File Import and Export Blocks
-Version: 0.1.0
+Version: 0.1.0.9000
 Authors@R:
     c(person(given = "Christoph",
              family = "Sax",
@@ -36,8 +36,10 @@ Language: en-US
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 VignetteBuilder: knitr
+Remotes:
+    BristolMyersSquibb/blockr.core
 Imports:
-    blockr.core (>= 0.1.1),
+    blockr.core (>= 0.1.2),
     htmltools,
     jsonlite,
     readxl,

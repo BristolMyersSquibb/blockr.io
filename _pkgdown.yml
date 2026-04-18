@@ -13,12 +13,14 @@ reference:
   contents:
   - new_read_block
   - new_write_block
+  - new_download_block
 
 - title: Utilities
   desc: Helper functions for file handling and configuration
   contents:
   - file_category
   - file_extensions
+  - format_extension
   - new_data_dir_option
   - path_input
   - read_file_expr
