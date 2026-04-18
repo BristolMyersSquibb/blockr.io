@@ -42,7 +42,7 @@ download_block_css <- function() {
       .download-block-main .btn {
         flex: 0 0 auto;
       }
-      /* Download button — aligned to the format select on its right.
+      /* Download button - aligned to the format select on its right.
          Target values measured from the selectize-input computed style:
          height 42px, padding 5px 12px, radius 8px, bg #f9fafb. */
       .download-block-container .download-block-main-left .btn {
@@ -83,7 +83,7 @@ download_block_css <- function() {
       .download-block-format .selectize-control {
         margin-bottom: 0;
       }
-      /* Gear button — matches blockr.dplyr */
+      /* Gear button - matches blockr.dplyr */
       .download-block-container .blockr-gear-btn {
         display: inline-flex;
         align-items: center;
@@ -107,7 +107,7 @@ download_block_css <- function() {
         border-color: rgba(37, 99, 235, 0.3);
         background: rgba(37, 99, 235, 0.08);
       }
-      /* Popover — matches blockr.dplyr */
+      /* Popover - matches blockr.dplyr */
       .download-block-container .blockr-popover {
         position: absolute;
         right: 14px;
@@ -144,7 +144,7 @@ download_block_css <- function() {
         margin-bottom: 0;
       }
     ")),
-    # Idempotent toggle helper — safe to include in multiple block instances.
+    # Idempotent toggle helper - safe to include in multiple block instances.
     tags$script(HTML("
       (function() {
         if (window.blockrIoGearToggle) return;
@@ -205,7 +205,7 @@ download_block_css <- function() {
 #'
 #' Adding a new format (e.g. SAS) only requires extending
 #' [`write_formats()`], `format_extension()`, and the dispatch in
-#' `write_expr()` — both [`new_write_block()`] and [`new_download_block()`]
+#' `write_expr()` - both [`new_write_block()`] and [`new_download_block()`]
 #' pick it up automatically.
 #'
 #' @return A blockr transform block exposing a download button.

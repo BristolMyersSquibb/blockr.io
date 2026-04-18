@@ -35,7 +35,7 @@ Parquet, and Feather.
 
 Adding a new format (e.g. SAS) only requires extending
 \code{\link[=write_formats]{write_formats()}}, \code{format_extension()}, and the dispatch in
-\code{write_expr()} — both \code{\link[=new_write_block]{new_write_block()}} and \code{\link[=new_download_block]{new_download_block()}}
+\code{write_expr()} - both \code{\link[=new_write_block]{new_write_block()}} and \code{\link[=new_download_block]{new_download_block()}}
 pick it up automatically.
 }
 \examples{
