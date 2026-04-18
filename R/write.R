@@ -281,12 +281,8 @@ new_write_block <- function(
 
             # Generate confirmation message with file path and timestamp
             base_filename <- generate_filename(r_filename())
-            ext <- switch(r_format(),
-              "csv" = ".csv",
-              "excel" = ".xlsx",
-              "parquet" = ".parquet",
-              ".csv"
-            )
+            needs_zip <- length(arg_names()) > 1 && r_format() != "excel"
+            ext <- format_extension(r_format(), needs_zip = needs_zip)
             full_path <- file.path(resolved_directory(), paste0(base_filename, ext))
             timestamp <- format(Sys.time(), "%H:%M:%S")
             r_write_status(sprintf("\u2713 Saved to %s at %s", full_path, timestamp))
@@ -336,12 +332,8 @@ new_write_block <- function(
 
             # Generate confirmation message with file path and timestamp
             base_filename <- generate_filename(r_filename())
-            ext <- switch(r_format(),
-              "csv" = ".csv",
-              "excel" = ".xlsx",
-              "parquet" = ".parquet",
-              ".csv"
-            )
+            needs_zip <- length(arg_names()) > 1 && r_format() != "excel"
+            ext <- format_extension(r_format(), needs_zip = needs_zip)
             full_path <- file.path(resolved_directory(), paste0(base_filename, ext))
             timestamp <- format(Sys.time(), "%H:%M:%S")
             r_write_status(sprintf("\u2713 Saved to %s at %s", full_path, timestamp))
@@ -353,18 +345,7 @@ new_write_block <- function(
             filename = function() {
               base <- generate_filename(r_filename())
               needs_zip <- length(arg_names()) > 1 && r_format() != "excel"
-
-              if (needs_zip) {
-                paste0(base, ".zip")
-              } else {
-                ext <- switch(r_format(),
-                  csv = ".csv",
-                  excel = ".xlsx",
-                  parquet = ".parquet",
-                  feather = ".feather"
-                )
-                paste0(base, ext)
-              }
+              paste0(base, format_extension(r_format(), needs_zip = needs_zip))
             },
             content = function(file) {
               # Use a fixed timestamp for consistent filename generation
