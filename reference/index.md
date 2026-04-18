@@ -8,6 +8,8 @@ Blocks for reading and writing various file formats
   : Unified file reading block
 - [`new_write_block()`](https://bristolmyerssquibb.github.io/blockr.io/reference/write.md)
   : Unified file writing block
+- [`new_download_block()`](https://bristolmyerssquibb.github.io/blockr.io/reference/download.md)
+  : Download-only file export block
 
 ## Utilities
 
@@ -17,6 +19,8 @@ Helper functions for file handling and configuration
   : File category from extension
 - [`file_extensions()`](https://bristolmyerssquibb.github.io/blockr.io/reference/file_extensions.md)
   : Supported file extensions
+- [`format_extension()`](https://bristolmyerssquibb.github.io/blockr.io/reference/format_extension.md)
+  : File extension for a write format
 - [`new_data_dir_option()`](https://bristolmyerssquibb.github.io/blockr.io/reference/new_data_dir_option.md)
   : Data directory board option
 - [`path_input_ui()`](https://bristolmyerssquibb.github.io/blockr.io/reference/path_input.md)
