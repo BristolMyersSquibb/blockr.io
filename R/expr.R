@@ -77,34 +77,10 @@ read_expr <- function(
 #' @return A language object (expression)
 #' @keywords internal
 read_expr_single <- function(path, file_type, ...) {
-  # Dispatch to appropriate builder
-  inner <- if (file_type == "csv") {
-    read_expr_csv(path, ...)
-  } else if (file_type == "excel") {
-    read_expr_excel(path, ...)
-  } else if (file_type == "arrow") {
-    read_expr_arrow(path, ...)
-  } else {
-    read_expr_rio(path, ...)
-  }
-
-  ext <- tolower(tools::file_ext(path))
-
-  # Wrap: ensure result is a data frame, with a helpful error on failure
-  bquote(local({
-    .res <- tryCatch(.(inner), error = function(e) {
-      stop("Cannot read .", .(ext), " file: ", conditionMessage(e), call. = FALSE)
-    })
-    if (!is.data.frame(.res)) {
-      .res <- tryCatch(as.data.frame(.res), error = function(e) {
-        stop(
-          "The .", .(ext), " file was read but could not be converted to a table.",
-          call. = FALSE
-        )
-      })
-    }
-    .res
-  }))
+  if (file_type == "csv")   return(read_expr_csv(path, ...))
+  if (file_type == "excel") return(read_expr_excel(path, ...))
+  if (file_type == "arrow") return(read_expr_arrow(path, ...))
+  read_expr_rio(path, ...)
 }
 
 
@@ -179,6 +155,8 @@ read_expr_excel <- function(path, ...) {
   skip <- if (is.null(params$skip)) 0 else params$skip
   n_max <- if (is.null(params$n_max)) Inf else params$n_max
 
+  path <- unname(path)
+
   bquote(readxl::read_excel(
     path = .(path),
     sheet = .(sheet),
@@ -198,8 +176,9 @@ read_expr_excel <- function(path, ...) {
 #' @return Expression calling arrow::read_parquet, arrow::read_feather, or arrow::read_ipc_file
 #' @keywords internal
 read_expr_arrow <- function(path, ...) {
-  # Detect arrow format from extension
   ext <- tolower(tools::file_ext(path))
+
+  path <- unname(path)
 
   if (ext == "parquet") {
     bquote(arrow::read_parquet(.(path)))
@@ -222,5 +201,6 @@ read_expr_arrow <- function(path, ...) {
 #' @return Expression calling rio::import
 #' @keywords internal
 read_expr_rio <- function(path, ...) {
+  path <- unname(path)
   bquote(rio::import(file = .(path)))
 }
