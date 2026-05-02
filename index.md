@@ -7,12 +7,14 @@ interfaces - no code required.
 ## Installation
 
 ``` r
+
 install.packages("blockr.io")
 ```
 
 Or install the development version from GitHub:
 
 ``` r
+
 # install.packages("pak")
 pak::pak("BristolMyersSquibb/blockr.io")
 ```
@@ -20,6 +22,7 @@ pak::pak("BristolMyersSquibb/blockr.io")
 ## Getting Started
 
 ``` r
+
 library(blockr.io)
 serve(new_board())
 ```
