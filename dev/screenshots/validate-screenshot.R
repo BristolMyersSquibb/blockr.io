@@ -343,12 +343,16 @@ blockr.core::serve(
       if (expand_advanced) {
         tryCatch(
           {
-            # Click all advanced toggles on the page
+            # Click all advanced toggles on the page. Supports both the legacy
+            # chevron-collapse pattern and the current gear-button popover
+            # pattern. Each gear button triggers window.blockrIoGearToggle.
             app$run_js(
               "
-              var toggles = document.querySelectorAll('.block-advanced-toggle');
-              toggles.forEach(function(toggle) {
+              document.querySelectorAll('.block-advanced-toggle').forEach(function(toggle) {
                 toggle.click();
+              });
+              document.querySelectorAll('.blockr-gear-btn').forEach(function(gear) {
+                gear.click();
               });
               "
             )

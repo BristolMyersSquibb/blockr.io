@@ -460,11 +460,19 @@ new_write_block <- function(
       tagList(
         # Add CSS
         css_responsive_grid(),
-        css_advanced_toggle(NS(id, "advanced-options"), use_subgrid = TRUE),
+        css_gear_popover(),
         div(
           class = "block-container write-block-container",
 
           tags$style(HTML("
+            /* File Configuration header lays out gear to the right of the h4 */
+            .write-block-container .write-block-config-header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 8px;
+              margin-bottom: 1rem;
+            }
             /* Make inputs full width */
             .write-block-container .shiny-input-container {
               width: 100% !important;
@@ -563,7 +571,89 @@ new_write_block <- function(
             style = "padding-bottom: 0; margin-bottom: 0;",
             div(
               class = "block-section",
-              tags$h4("File Configuration", ),
+              local({
+                gear_id <- NS(id, "gear_btn")
+                popover_id <- NS(id, "gear_popover")
+                div(
+                  class = "write-block-config-header",
+                  tags$h4("File Configuration", class = "mb-0"),
+                  div(
+                    class = "blockr-gear-host",
+                    tags$button(
+                      type = "button",
+                      id = gear_id,
+                      class = "blockr-gear-btn",
+                      title = "Advanced settings",
+                      `aria-label` = "Advanced settings",
+                      `aria-controls` = popover_id,
+                      `aria-expanded` = "false",
+                      onclick = sprintf(
+                        "window.blockrIoGearToggle && window.blockrIoGearToggle('%s','%s');",
+                        gear_id, popover_id
+                      ),
+                      HTML(gear_icon_svg())
+                    ),
+                    div(
+                      id = popover_id,
+                      class = "blockr-popover",
+                      style = "display: none;",
+                      role = "dialog",
+                      `aria-label` = "Write settings",
+
+                      tags$h4("Format-Specific Options"),
+
+                      conditionalPanel(
+                        condition = "output['show_csv_options']",
+                        ns = NS(id),
+                        div(
+                          class = "blockr-popover-row",
+                          tags$label(
+                            class = "blockr-popover-label",
+                            `for` = NS(id, "csv_sep"),
+                            "Delimiter"
+                          ),
+                          selectizeInput(
+                            inputId = NS(id, "csv_sep"),
+                            label = NULL,
+                            choices = c(
+                              "Comma (,)" = ",",
+                              "Semicolon (;)" = ";",
+                              "Tab (\\t)" = "\t",
+                              "Pipe (|)" = "|"
+                            ),
+                            selected = if (!is.null(args$sep)) args$sep else ",",
+                            options = list(create = TRUE),
+                            width = "100%"
+                          )
+                        ),
+                        div(
+                          class = "blockr-popover-row",
+                          checkboxInput(
+                            inputId = NS(id, "csv_quote"),
+                            label = "Quote strings",
+                            value = if (!is.null(args$quote)) args$quote else TRUE
+                          )
+                        ),
+                        div(
+                          class = "blockr-popover-row",
+                          tags$label(
+                            class = "blockr-popover-label",
+                            `for` = NS(id, "csv_na"),
+                            "NA representation"
+                          ),
+                          textInput(
+                            inputId = NS(id, "csv_na"),
+                            label = NULL,
+                            value = if (!is.null(args$na)) args$na else "",
+                            placeholder = "default: empty string",
+                            width = "100%"
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              }),
               div(
                 class = "block-section-grid",
                 div(
@@ -686,77 +776,6 @@ new_write_block <- function(
             )
           ),
 
-          # --- Advanced Options ---
-          div(
-            class = "block-section mt-3",
-            div(
-              class = "block-advanced-toggle text-muted",
-              id = NS(id, "advanced-toggle"),
-              onclick = sprintf(
-                "
-                const section = document.getElementById('%s');
-                const chevron = document.querySelector('#%s .block-chevron');
-                section.classList.toggle('expanded');
-                chevron.classList.toggle('rotated');
-                ",
-                NS(id, "advanced-options"),
-                NS(id, "advanced-toggle")
-              ),
-              tags$span(class = "block-chevron", "\u203A"),
-              "Advanced Options"
-            )
-          ),
-          div(
-            id = NS(id, "advanced-options"),
-            div(
-              class = "block-section",
-              tags$h4("Format-Specific Options"),
-              div(
-                class = "block-section-grid",
-                conditionalPanel(
-                  condition = "output['show_csv_options']",
-                  ns = NS(id),
-                  div(
-                    class = "block-input-wrapper",
-                    selectizeInput(
-                      inputId = NS(id, "csv_sep"),
-                      label = "Delimiter",
-                      choices = c(
-                        "Comma (,)" = ",",
-                        "Semicolon (;)" = ";",
-                        "Tab (\\t)" = "\t",
-                        "Pipe (|)" = "|"
-                      ),
-                      selected = if (!is.null(args$sep)) args$sep else ",",
-                      options = list(create = TRUE)
-                    ),
-                    div(
-                      class = "block-help-text",
-                      style = "font-size: 0.75rem;",
-                      "Type to add custom delimiter"
-                    )
-                  ),
-                  div(
-                    class = "block-input-wrapper",
-                    checkboxInput(
-                      inputId = NS(id, "csv_quote"),
-                      label = "Quote strings",
-                      value = if (!is.null(args$quote)) args$quote else TRUE
-                    )
-                  ),
-                  div(
-                    class = "block-input-wrapper",
-                    textInput(
-                      inputId = NS(id, "csv_na"),
-                      label = "NA representation",
-                      value = if (!is.null(args$na)) args$na else "",
-                      placeholder = "default: empty string"
-                    )
-                  )
-                )
-              )
-            )
-          )
         )
       )
     },

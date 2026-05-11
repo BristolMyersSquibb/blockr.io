@@ -9,7 +9,8 @@
 #'
 #' **Common optional utilities:**
 #' - `css_single_column()` - Force single-column layout (common)
-#' - `css_advanced_toggle()` - Collapsible sections with toggle (optional)
+#' - `css_gear_popover()` - Gear-button + popover (cogwheel) for advanced settings
+#' - `css_advanced_toggle()` - Legacy chevron-collapse toggle (kept for backwards compat)
 #' - `css_inline_checkbox()` - Checkbox/label styling for inline layouts (optional)
 #'
 #' **Usage in block UI:**
@@ -143,7 +144,7 @@ css_single_column <- function(block_name) {
 #' 1. Toggles `.expanded` class on the content div
 #' 2. Toggles `.rotated` class on the chevron
 #'
-#' Used by: summarize, bind_rows
+#' Used by: legacy callers only. New blocks should prefer `css_gear_popover()`.
 #'
 #' @param id Character string, the namespaced ID for the advanced options div.
 #'   Should be created with `NS(id, "advanced-options")` or similar.
@@ -202,6 +203,164 @@ css_advanced_toggle <- function(id, use_subgrid = FALSE) {
     subgrid_css,
     id
   )))
+}
+
+#' Inline gear icon SVG (Bootstrap Icons)
+#'
+#' Kept inline so blockr.io has no cross-package dep on blockr.dplyr for the
+#' icon. Used by every block that exposes a `.blockr-gear-btn`.
+#'
+#' @return Character string containing the SVG markup.
+#' @noRd
+gear_icon_svg <- function() {
+  paste0(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" ',
+    'viewBox="0 0 16 16"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 ',
+    '1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82',
+    '.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 ',
+    '.872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 ',
+    '2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31',
+    '.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-',
+    '.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-',
+    '1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872zM8 10.93a2.929 ',
+    '2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>'
+  )
+}
+
+#' CSS + JS for the gear-button / popover (cogwheel) pattern
+#'
+#' Shared by `new_read_block()`, `new_write_block()`, and `new_download_block()`.
+#' Class names mirror `blockr.dplyr` so visual style matches when both packages
+#' load in the same app. The host element (the block container, or any
+#' relatively-positioned wrapper that owns the gear + popover) must carry the
+#' `.blockr-gear-host` class so the outside-click handler can dismiss the right
+#' popover.
+#'
+#' Defines:
+#' - `.blockr-gear-btn` - 32px square icon button (idle / hover / active states)
+#' - `.blockr-popover` - absolute-positioned panel, anchored to its gear host
+#' - `.blockr-popover-row` / `.blockr-popover-label` - internal row layout
+#'
+#' Also installs the idempotent `window.blockrIoGearToggle(gearId, popId)`
+#' helper and a single document-level click listener that closes any open
+#' popover when the user clicks outside its `.blockr-gear-host`.
+#'
+#' @return HTML style + script tags wrapped in a `tagList`.
+#' @noRd
+css_gear_popover <- function() {
+  tagList(
+    tags$style(HTML("
+      .blockr-gear-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        color: #9ca3af;
+        background: transparent;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+      }
+      .blockr-gear-btn:hover {
+        color: #2563eb;
+        border-color: rgba(37, 99, 235, 0.3);
+        background: rgba(37, 99, 235, 0.04);
+      }
+      .blockr-gear-btn.blockr-gear-active {
+        color: #2563eb;
+        border-color: rgba(37, 99, 235, 0.3);
+        background: rgba(37, 99, 235, 0.08);
+      }
+      .blockr-gear-host {
+        position: relative;
+      }
+      .blockr-gear-row {
+        display: flex;
+        justify-content: flex-end;
+      }
+      .blockr-popover {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 4px);
+        z-index: 1000;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        padding: 12px 14px;
+        min-width: 320px;
+        max-width: 380px;
+        max-height: 70vh;
+        overflow-y: auto;
+      }
+      .blockr-popover-row {
+        margin-bottom: 10px;
+      }
+      .blockr-popover-row:last-child {
+        margin-bottom: 0;
+      }
+      .blockr-popover-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #6b7280;
+        margin-bottom: 0.25rem;
+      }
+      .blockr-popover h4 {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: #374151;
+        margin: 12px 0 6px;
+      }
+      .blockr-popover h4:first-child {
+        margin-top: 0;
+      }
+      .blockr-popover .form-group,
+      .blockr-popover .shiny-input-container {
+        margin-bottom: 0;
+        width: 100% !important;
+      }
+      .blockr-popover .selectize-control {
+        width: 100% !important;
+        margin-bottom: 0;
+      }
+    ")),
+    tags$script(HTML("
+      (function() {
+        if (window.blockrIoGearToggle) return;
+        window.blockrIoGearToggle = function(gearId, popId) {
+          var gear = document.getElementById(gearId);
+          var pop  = document.getElementById(popId);
+          if (!gear || !pop) return;
+          var open = pop.style.display !== 'none';
+          if (open) {
+            pop.style.display = 'none';
+            gear.classList.remove('blockr-gear-active');
+            gear.setAttribute('aria-expanded', 'false');
+          } else {
+            pop.style.display = 'block';
+            gear.classList.add('blockr-gear-active');
+            gear.setAttribute('aria-expanded', 'true');
+          }
+        };
+        document.addEventListener('click', function(e) {
+          document.querySelectorAll('.blockr-gear-host .blockr-popover').forEach(function(pop) {
+            if (pop.style.display === 'none') return;
+            var host = pop.closest('.blockr-gear-host');
+            if (!host || host.contains(e.target)) return;
+            pop.style.display = 'none';
+            var gear = host.querySelector('.blockr-gear-btn');
+            if (gear) {
+              gear.classList.remove('blockr-gear-active');
+              gear.setAttribute('aria-expanded', 'false');
+            }
+          });
+        });
+      })();
+    "))
+  )
 }
 
 #' Common checkbox and label styling for inline layouts
