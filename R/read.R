@@ -177,6 +177,10 @@ new_read_block <- function(
           }
           detected_type <- reactiveVal(initial_type)
 
+          # Non-empty when the deployment's file-access policy rejected the
+          # current path; surfaced as an error on the path-status badge.
+          r_path_blocked <- reactiveVal("")
+
           # Update state from inputs
           observeEvent(input$combine, r_combine(input$combine))
 
@@ -299,14 +303,33 @@ new_read_block <- function(
                 resolved <- file.path(data_dir, path_val)
               }
 
-              if (file.exists(resolved) && !dir.exists(resolved)) {
-                named_path <- set_names(path_val, basename(resolved))
-                r_path(named_path)
-                r_file_paths(named_path)
-                detected_type(file_category(resolved))
-              } else if (!dir.exists(resolved)) {
+              # Deployment file-access policy: reject paths outside the
+              # allowed roots before the path can be read. tryCatch so a
+              # stop() from the verifier becomes a block error, not an
+              # uncaught observer crash.
+              blocked <- tryCatch(
+                {
+                  resolve_and_check(resolved, "read")
+                  ""
+                },
+                error = function(e) conditionMessage(e)
+              )
+
+              if (nzchar(blocked)) {
+                r_path_blocked(blocked)
                 r_file_paths(character())
                 detected_type("unknown")
+              } else {
+                r_path_blocked("")
+                if (file.exists(resolved) && !dir.exists(resolved)) {
+                  named_path <- set_names(path_val, basename(resolved))
+                  r_path(named_path)
+                  r_file_paths(named_path)
+                  detected_type(file_category(resolved))
+                } else if (!dir.exists(resolved)) {
+                  r_file_paths(character())
+                  detected_type("unknown")
+                }
               }
             }
 
@@ -408,7 +431,13 @@ new_read_block <- function(
               statistical = "Stats", web = "Web data",
               r_format = "R data", other = "File"
             )
-            if (length(paths) > 0 && type != "unknown") {
+            if (nzchar(r_path_blocked())) {
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("file_path-path_text"),
+                text = "Blocked",
+                state = "error"
+              ))
+            } else if (length(paths) > 0 && type != "unknown") {
               label <- unname(type_labels[type]) %||% "File"
               session$sendCustomMessage("blockr-path-status", list(
                 id = session$ns("file_path-path_text"),
@@ -465,6 +494,32 @@ new_read_block <- function(
                       p
                     }
                   }, character(1))
+                }
+              }
+
+              # Authoritative file-access policy check: the path-status
+              # observer covers live input, but a restored/serialized board
+              # populates r_file_paths via the constructor without firing it.
+              # Enforce here, the single point where paths become a read, and
+              # surface a rejection as a block error. URL downloads and uploads
+              # land in app-managed sandboxes (tempdir / upload_path) and are
+              # exempt — only user-chosen filesystem paths are policed.
+              sandbox_roots <- normalizePath(
+                c(tempdir(), upload_path), winslash = "/", mustWork = FALSE
+              )
+              for (p in file_paths) {
+                if (is_valid_url(p)) next
+                np <- normalizePath(p, winslash = "/", mustWork = FALSE)
+                if (any(startsWith(np, paste0(sandbox_roots, "/")))) next
+                blocked <- tryCatch(
+                  {
+                    resolve_and_check(p, "read")
+                    ""
+                  },
+                  error = function(e) conditionMessage(e)
+                )
+                if (nzchar(blocked)) {
+                  return(bquote(stop(.(blocked), call. = FALSE)))
                 }
               }
 

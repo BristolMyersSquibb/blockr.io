@@ -148,6 +148,7 @@ new_write_block <- function(
           r_args <- reactiveVal(args)
           r_last_write <- reactiveVal(NULL) # Track last write time
           r_write_status <- reactiveVal("") # Status message
+          r_dir_ok <- reactiveVal(TRUE) # Deployment file-access policy gate
 
           # Data directory from board options
           data_dir_reactive <- reactive({
@@ -200,6 +201,27 @@ new_write_block <- function(
             }
           })
 
+          # Deployment file-access policy: reject write targets outside the
+          # allowed roots before any directory is created or written. Gates the
+          # dir-creation observer and both write-expression paths below.
+          observeEvent(resolved_directory(), {
+            dir_val <- resolved_directory()
+            if (!nzchar(dir_val)) {
+              r_dir_ok(TRUE)
+              return()
+            }
+            tryCatch(
+              {
+                resolve_and_check(dir_val, "write")
+                r_dir_ok(TRUE)
+              },
+              error = function(e) {
+                r_dir_ok(FALSE)
+                r_write_status(sprintf("✗ %s", conditionMessage(e)))
+              }
+            )
+          }, ignoreNULL = FALSE)
+
           # Update state from inputs
           observeEvent(input$write_mode, {
             r_auto_write(identical(input$write_mode, "auto"))
@@ -235,6 +257,19 @@ new_write_block <- function(
           # Directory creation - create when resolved directory path changes
           observeEvent(resolved_directory(), {
             req(nzchar(resolved_directory()))
+            # Policy check inline (not via r_dir_ok) so a rejected path can
+            # never create a directory due to observer ordering.
+            blocked <- tryCatch(
+              {
+                resolve_and_check(resolved_directory(), "write")
+                FALSE
+              },
+              error = function(e) {
+                r_write_status(sprintf("✗ %s", conditionMessage(e)))
+                TRUE
+              }
+            )
+            req(!blocked)
             existed <- dir.exists(resolved_directory())
             r_dir_existed(existed)
             if (!existed) {
@@ -261,6 +296,7 @@ new_write_block <- function(
             req(length(arg_names()) > 0)
             req(nzchar(r_directory()))
             req(!r_auto_write()) # Only trigger when auto_write is disabled
+            req(r_dir_ok()) # Deployment file-access policy
 
             # Generate write expression
             expr <- write_expr(
@@ -294,6 +330,7 @@ new_write_block <- function(
               if (r_auto_write()) {
                 # Auto-write enabled: Generate expression automatically
                 req(length(arg_names()) > 0)
+                req(r_dir_ok()) # Deployment file-access policy
 
                 expr <- write_expr(
                   data_names = arg_names(),

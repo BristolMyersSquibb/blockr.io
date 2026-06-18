@@ -370,3 +370,53 @@ test_that("read_block handles empty path gracefully", {
     args = list(x = block, data = list())
   )
 })
+
+test_that("read_block honors blockr.verify_read_path policy via framework", {
+
+  # Use a base OUTSIDE tempdir(): the expr-level check exempts the app sandbox
+  # (tempdir / upload_path) so URL downloads and uploads keep working, so the
+  # policed paths must live elsewhere. dirname(tempdir()) (e.g. /tmp) is not
+  # under tempdir() (e.g. /tmp/RtmpXXXX).
+  base <- file.path(dirname(tempdir()), "blockr_io_fp_test")
+  dir_ok <- file.path(base, "study")
+  dir.create(dir_ok, recursive = TRUE)
+  temp_csv <- file.path(dir_ok, "data.csv")
+  write.csv(data.frame(x = 1:3), temp_csv, row.names = FALSE)
+
+  old <- options(blockr.verify_read_path = within_dirs(dir_ok))
+  on.exit({ options(old); unlink(base, recursive = TRUE) })
+
+  # Allowed: path inside the permitted root reads normally.
+  block <- new_read_block(path = temp_csv)
+  testServer(
+    blockr.core:::get_s3_method("block_server", block),
+    {
+      session$flushReact()
+      result <- session$returned$result()
+      expect_true(is.data.frame(result))
+      expect_equal(result$x, 1:3)
+    },
+    args = list(x = block, data = list())
+  )
+
+  # Blocked: a path outside the root (e.g. a serialized board) errors instead
+  # of reading.
+  outside <- file.path(base, "other.csv")
+  write.csv(data.frame(x = 9), outside, row.names = FALSE)
+
+  block2 <- new_read_block(path = outside)
+  testServer(
+    blockr.core:::get_s3_method("block_server", block2),
+    {
+      session$flushReact()
+      # Block expr becomes a stop(); blockr.core surfaces it as a block error
+      # and yields no data (result NULL) rather than reading the file.
+      expect_match(
+        rlang::expr_text(session$returned$expr()),
+        "allowed folders"
+      )
+      expect_null(session$returned$result())
+    },
+    args = list(x = block2, data = list())
+  )
+})
