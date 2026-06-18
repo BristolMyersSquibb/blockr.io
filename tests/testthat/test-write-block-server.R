@@ -1028,3 +1028,43 @@ test_that("empty directory with auto-timestamp has correct state (issue #9 scena
     }
   )
 })
+
+test_that("write_block honors blockr.verify_write_path policy", {
+  base <- tempfile("write_policy_")
+  allowed <- file.path(base, "out")
+  dir.create(allowed, recursive = TRUE)
+  blocked_dir <- file.path(base, "nope")
+
+  old <- options(blockr.verify_write_path = within_dirs(allowed))
+  on.exit({ options(old); unlink(base, recursive = TRUE) })
+
+  # Allowed target: auto-write generates a write expression.
+  blk_ok <- new_write_block(
+    directory = allowed, filename = "f", format = "csv", auto_write = TRUE
+  )
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk_ok),
+    args = list(x = blk_ok, data = list(...args = reactiveValues(data = iris))),
+    {
+      session$flushReact()
+      expect_false(is.null(session$returned$expr()))
+    }
+  )
+
+  # Blocked target: no write expression, and the directory is never created.
+  blk_no <- new_write_block(
+    directory = blocked_dir, filename = "f", format = "csv", auto_write = TRUE
+  )
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk_no),
+    args = list(x = blk_no, data = list(...args = reactiveValues(data = iris))),
+    {
+      session$flushReact()
+      # The gate stops the write expression (req() short-circuits it) and the
+      # directory is never created.
+      expr_val <- tryCatch(session$returned$expr(), error = function(e) NULL)
+      expect_null(expr_val)
+      expect_false(dir.exists(blocked_dir))
+    }
+  )
+})
