@@ -47,7 +47,7 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
         )
       )
     },
-    server = function(..., session) {
+    server = function(board, ..., session) {
       ns <- session$ns
 
       # Register directory listing endpoint (directories only)
@@ -172,7 +172,7 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
           {
             val <- session$input[["data_dir_browse"]] %||% ""
             val <- normalizePath(val, winslash = "/")
-            set_board_option_value("data_dir", val, session)
+            set_board_option_value("data_dir", val, board$board, session)
             # Update input to normalized path
             session$sendCustomMessage("blockr-path-set-value", list(
               id = ns("data_dir_browse"),
