@@ -52,6 +52,7 @@ Imports:
 Suggests:
     arrow,
     knitr,
+    nanoparquet,
     rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
