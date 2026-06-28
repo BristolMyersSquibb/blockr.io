@@ -173,21 +173,36 @@ read_expr_excel <- function(path, ...) {
 #' @param path Character. File path
 #' @param ... Reading parameters (currently unused)
 #'
-#' @return Expression calling arrow::read_parquet, arrow::read_feather, or arrow::read_ipc_file
+#' @return Expression calling nanoparquet::read_parquet (preferred) or
+#'   arrow::read_parquet for parquet, and arrow::read_feather /
+#'   arrow::read_ipc_file for the Arrow-only feather and IPC formats
 #' @keywords internal
 read_expr_arrow <- function(path, ...) {
   ext <- tolower(tools::file_ext(path))
 
   path <- unname(path)
 
+  # Parquet: prefer nanoparquet (tiny, zero-dependency) when installed, and
+  # fall back to arrow otherwise — e.g. a validated environment that only
+  # whitelists arrow. Feather and Arrow IPC are arrow-only formats.
   if (ext == "parquet") {
-    bquote(arrow::read_parquet(.(path)))
+    read_parquet_expr(path)
   } else if (ext == "feather") {
     bquote(arrow::read_feather(.(path)))
   } else if (ext == "arrow") {
     bquote(arrow::read_ipc_file(.(path)))
   } else {
     # Default to parquet if extension unclear
+    read_parquet_expr(path)
+  }
+}
+
+# Pick the parquet reader expression based on what is installed: prefer
+# nanoparquet (lightweight, zero-dependency), fall back to arrow.
+read_parquet_expr <- function(path) {
+  if (requireNamespace("nanoparquet", quietly = TRUE)) {
+    bquote(nanoparquet::read_parquet(.(path)))
+  } else {
     bquote(arrow::read_parquet(.(path)))
   }
 }
