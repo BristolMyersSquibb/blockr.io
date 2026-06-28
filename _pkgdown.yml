@@ -20,6 +20,7 @@ reference:
   contents:
   - file_category
   - file_extensions
+  - file_policy
   - format_extension
   - new_data_dir_option
   - path_input
