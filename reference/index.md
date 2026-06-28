@@ -19,6 +19,9 @@ Helper functions for file handling and configuration
   : File category from extension
 - [`file_extensions()`](https://bristolmyerssquibb.github.io/blockr.io/reference/file_extensions.md)
   : Supported file extensions
+- [`resolve_and_check()`](https://bristolmyerssquibb.github.io/blockr.io/reference/file_policy.md)
+  [`within_dirs()`](https://bristolmyerssquibb.github.io/blockr.io/reference/file_policy.md)
+  : File-access verification for path-based blocks
 - [`format_extension()`](https://bristolmyerssquibb.github.io/blockr.io/reference/format_extension.md)
   : File extension for a write format
 - [`new_data_dir_option()`](https://bristolmyerssquibb.github.io/blockr.io/reference/new_data_dir_option.md)

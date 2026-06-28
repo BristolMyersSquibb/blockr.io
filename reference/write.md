@@ -157,7 +157,7 @@ block
 #> Name: "Write"
 #> Indefinite arity
 #> Initial block state:
-#>  $ directory : chr "/tmp/RtmpXki4zR"
+#>  $ directory : chr "/tmp/RtmpQHFPeN"
 #>  $ filename  : chr "output"
 #>  $ format    : chr "csv"
 #>  $ auto_write: logi FALSE
