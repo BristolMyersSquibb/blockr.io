@@ -101,7 +101,10 @@ options(
 
 # within_dirs() rejects paths outside its roots:
 verify <- within_dirs(tempdir())
-verify(file.path(tempdir(), "ok.csv"))            # allowed (returns NULL)
+ok <- file.path(tempdir(), "ok.csv")
+file.create(ok)                                   # normalizePath resolves it
+#> [1] TRUE
+verify(ok)                                        # allowed (returns NULL)
 tryCatch(verify("/etc/passwd"), error = conditionMessage)
 #> [1] "Path outside the allowed folders."
 ```
