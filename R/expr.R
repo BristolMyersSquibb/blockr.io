@@ -173,8 +173,8 @@ read_expr_excel <- function(path, ...) {
 #' @param path Character. File path
 #' @param ... Reading parameters (currently unused)
 #'
-#' @return Expression calling nanoparquet::read_parquet (preferred) or
-#'   arrow::read_parquet for parquet, and arrow::read_feather /
+#' @return Expression calling arrow::read_parquet (preferred) or
+#'   nanoparquet::read_parquet for parquet, and arrow::read_feather /
 #'   arrow::read_ipc_file for the Arrow-only feather and IPC formats
 #' @keywords internal
 read_expr_arrow <- function(path, ...) {
@@ -182,9 +182,10 @@ read_expr_arrow <- function(path, ...) {
 
   path <- unname(path)
 
-  # Parquet: prefer nanoparquet (tiny, zero-dependency) when installed, and
-  # fall back to arrow otherwise — e.g. a validated environment that only
-  # whitelists arrow. Feather and Arrow IPC are arrow-only formats.
+  # Parquet: prefer arrow when installed — it restores column/table label
+  # attributes from the "r" key-value metadata, which nanoparquet ignores.
+  # nanoparquet (tiny, zero-dependency) is the fallback for environments
+  # without arrow. Feather and Arrow IPC are arrow-only formats.
   if (ext == "parquet") {
     read_parquet_expr(path)
   } else if (ext == "feather") {
@@ -198,12 +199,13 @@ read_expr_arrow <- function(path, ...) {
 }
 
 # Pick the parquet reader expression based on what is installed: prefer
-# nanoparquet (lightweight, zero-dependency), fall back to arrow.
+# arrow (preserves label attributes stored in parquet metadata), fall back
+# to nanoparquet (lightweight, zero-dependency — but drops labels).
 read_parquet_expr <- function(path) {
-  if (requireNamespace("nanoparquet", quietly = TRUE)) {
-    bquote(nanoparquet::read_parquet(.(path)))
-  } else {
+  if (requireNamespace("arrow", quietly = TRUE)) {
     bquote(arrow::read_parquet(.(path)))
+  } else {
+    bquote(nanoparquet::read_parquet(.(path)))
   }
 }
 
