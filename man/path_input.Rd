@@ -6,13 +6,14 @@
 \alias{path_input_server}
 \title{Path input widget}
 \usage{
-path_input_ui(id, prefix = NULL, upload_id = NULL)
+path_input_ui(id, prefix = NULL, upload_id = NULL, placeholder = NULL)
 
 path_input_server(
   id,
   data_dir = reactive(""),
   mode = c("file", "directory"),
-  extensions = NULL
+  extensions = NULL,
+  policy = NULL
 )
 }
 \arguments{
@@ -26,6 +27,10 @@ for upload-icon click and drag-and-drop. When non-NULL, an upload icon
 button is rendered inside the input field and the container gets a
 \code{data-upload-target} attribute pointing to this ID.}
 
+\item{placeholder}{Placeholder text for the input. Defaults to an
+upload-aware file hint; pass e.g. "Enter directory path..." for
+directory-mode inputs.}
+
 \item{data_dir}{Reactive returning the current data directory path
 (from board options). Empty string means no data directory.}
 
@@ -35,10 +40,14 @@ are selectable in the autocomplete dropdown.}
 \item{extensions}{Optional character vector of file extensions (without dots)
 to show in autocomplete. Defaults to \code{NULL}, which shows all
 rio-supported formats. Use e.g. \code{"rtf"} to restrict to RTF files only.}
+
+\item{policy}{Which deployment file-access verifier applies to the
+directory-listing endpoint: \code{"read"} or \code{"write"} (see \link{file_policy}).
+Defaults to \code{"read"} for file mode and \code{"write"} for directory mode.}
 }
 \value{
 \code{path_input_ui()} returns a \code{tagList} with the widget HTML.
-\code{path_input_server()} returns a \code{reactive} containing the current
+\code{path_input_server()} returns a \code{reactive} containing the committed
 path text value.
 }
 \description{
@@ -46,3 +55,14 @@ A Shiny module that provides a text input with server-side file/directory
 autocomplete. Used by the read and write blocks to replace shinyFiles
 browser widgets.
 }
+\section{Commit model}{
+
+Typing never commits: keystrokes only drive the autocomplete dropdown.
+The reactive value returned by \code{path_input_server()} updates when the user
+\emph{commits} — by pressing Enter, leaving the field (blur), or selecting a
+dropdown entry. While the typed text differs from the committed value, the
+field shows an "Enter ↵" chip; committing collapses it to a faded
+check mark. This follows the blockr design-system text-commit convention
+(decided 2026-07-02) and keeps half-typed paths from reaching the pipeline.
+}
+

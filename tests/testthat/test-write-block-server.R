@@ -1,4 +1,12 @@
-test_that("write_block expr_server with auto_write=FALSE starts with NULL expression", {
+# A passthrough expression is `{ <input-name> }`: a language object (core
+# requires one; a bare symbol is not) that carries no write call.
+expect_passthrough <- function(expr, name) {
+  expect_true(is.call(expr))
+  expect_false(grepl("write", paste(deparse(expr), collapse = " ")))
+  expect_equal(deparse(expr[[2]]), name)
+}
+
+test_that("write_block expr_server with auto_write=FALSE is a passthrough", {
   # Create temp output directory
   temp_dir <- tempfile("write_test_")
   dir.create(temp_dir)
@@ -28,9 +36,9 @@ test_that("write_block expr_server with auto_write=FALSE starts with NULL expres
       result <- session$returned
       expect_true(is.reactive(result$expr))
 
-      # With auto_write=FALSE, expression should be NULL initially
-      expr_before <- result$expr()
-      expect_null(expr_before)
+      # With auto_write=FALSE, the expression is a pure passthrough of the
+      # first input — the write happens imperatively on submit
+      expect_passthrough(result$expr(), "1")
 
       # Verify auto_write state is FALSE
       expect_false(result$state$auto_write())
@@ -70,19 +78,11 @@ test_that("write_block expr_server handles submit button click with auto_write=F
 
       result <- session$returned
 
-      # STEP 1: Verify no file exists yet and expression is NULL
+      # STEP 1: Verify no file exists yet; expression is a passthrough
       files_before <- list.files(temp_dir, pattern = "iris_submit\\.csv$")
       expect_equal(length(files_before), 0)
 
-      expr_before <- result$expr()
-      expect_null(expr_before, info = "Expression should be NULL before submit")
-
-      # Debug: Check state before button click
-      # cat("\nBefore button click:\n")
-      # cat("  mode:", result$state$mode(), "\n")
-      # cat("  auto_write:", result$state$auto_write(), "\n")
-      # cat("  directory:", result$state$directory(), "\n")
-      # cat("  expr is NULL:", is.null(result$expr()), "\n")
+      expect_passthrough(result$expr(), "data")
 
       # STEP 2: USER CLICKS SUBMIT BUTTON IN UI
       # This is the key part - session$setInputs() simulates button click
@@ -90,24 +90,71 @@ test_that("write_block expr_server handles submit button click with auto_write=F
       session$setInputs(`expr-submit_write` = 1)
       session$flushReact()
 
-      # Debug: Check state after button click
-      # cat("\nAfter button click:\n")
-      # cat("  expr is NULL:", is.null(result$expr()), "\n")
+      # STEP 3: The write is imperative and happens in the submit handler,
+      # so the file exists right after the click ...
+      expected_file <- file.path(temp_dir, "iris_submit.csv")
+      expect_true(file.exists(expected_file))
+      written <- read.csv(expected_file)
+      expect_equal(nrow(written), nrow(iris))
 
-      # STEP 3: Verify expression is now generated after submit
-      expr_after <- result$expr()
-      expect_false(is.null(expr_after), info = "Expression should be generated after submit")
+      # ... while the block expression stays a passthrough (later upstream
+      # changes must not rewrite the file)
+      expect_passthrough(result$expr(), "data")
+    }
+  )
 
-      # Verify it's a write expression
-      expr_text <- paste(deparse(expr_after), collapse = " ")
-      expect_true(grepl("readr::write_csv", expr_text))
-      expect_true(grepl("iris_submit\\.csv", expr_text))
-      expect_true(grepl("data", expr_text))  # Should reference the data variable name
+  unlink(temp_dir, recursive = TRUE)
+})
 
-      # Note: We don't evaluate the expression here because it references
-      # a variable name ("data") that needs to exist in the calling environment.
-      # The important thing is that clicking submit generates the expression,
-      # which proves the UI interaction works with testServer.
+test_that("write_block handles an unnamed (DAG-UI) variadic slot", {
+  # Regression: connecting a block to the write block by dragging an edge in
+  # the DAG UI adds an *unnamed* link, which a live board stores as a
+  # positional slot in the `...args` reactives object. `names()` is then NULL,
+  # which used to collapse arg_names() to NULL -> the expr reactive's
+  # `req(length(arg_names()) > 0)` failed silently -> an empty red error
+  # banner. Reproduce that exact slot shape (not the reactiveValues() used
+  # elsewhere, which can only hold *named* slots).
+  args_obj <- shiny::isolate({
+    ra <- blockr.core:::reactives()
+    blockr.core:::append_reactive(ra, function() mtcars[1:5, 1:3])
+    ra
+  })
+
+  shiny::isolate({
+    expect_null(names(args_obj))
+    expect_equal(length(args_obj), 1L)
+  })
+
+  temp_dir <- tempfile("write_test_")
+  dir.create(temp_dir)
+
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "unnamed_slot",
+    format = "csv",
+    auto_write = FALSE
+  )
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(x = blk, data = list(...args = args_obj)),
+    {
+      session$flushReact()
+
+      result <- session$returned
+
+      # The expression must be a valid passthrough referencing the positional
+      # slot as `.arg1` (the symbol core binds an unnamed input under) — not a
+      # silent req() failure.
+      expect_passthrough(result$expr(), ".arg1")
+
+      # And a manual save must actually write the connected data, not NULL.
+      session$setInputs(`expr-submit_write` = 1)
+      session$flushReact()
+
+      written_file <- file.path(temp_dir, "unnamed_slot.csv")
+      expect_true(file.exists(written_file))
+      expect_equal(nrow(read.csv(written_file)), 5L)
     }
   )
 
@@ -364,13 +411,13 @@ test_that("write_block expr_server generates expression in browse mode", {
   unlink(temp_dir, recursive = TRUE)
 })
 
-test_that("write_block expr_server handles auto-timestamp filename", {
+test_that("write_block expr_server uses fixed filename for auto-write", {
   temp_dir <- tempfile("write_test_")
   dir.create(temp_dir)
 
   blk <- new_write_block(
     directory = temp_dir,
-    filename = "",  # Empty = auto-timestamp
+    filename = "",  # Empty + auto-write = fixed "data" file (no litter)
     format = "csv",
     auto_write = TRUE
   )
@@ -392,8 +439,10 @@ test_that("write_block expr_server handles auto-timestamp filename", {
       expr_result <- result$expr()
       expr_text <- paste(deparse(expr_result), collapse = " ")
 
-      # Should have timestamped filename pattern
-      expect_true(grepl("data_[0-9]{8}_[0-9]{6}\\.csv", expr_text))
+      # Auto-write with empty filename targets a FIXED file, overwritten on
+      # each change — a timestamp would create one file per invalidation
+      expect_true(grepl("data\\.csv", expr_text))
+      expect_false(grepl("data_[0-9]{8}_[0-9]{6}\\.csv", expr_text))
     }
   )
 
@@ -548,9 +597,9 @@ test_that("write_block expr_server returns NULL expr with empty directory", {
 
       result <- session$returned
 
-      # With empty directory, expression should be NULL (download handler handles writing)
-      expr_result <- result$expr()
-      expect_null(expr_result, info = "Empty directory should return NULL expr")
+      # With empty directory, the expression is a passthrough (the download
+      # handler does the writing)
+      expect_passthrough(result$expr(), "data")
 
       # Verify state reflects empty directory
       expect_equal(result$state$directory(), "")
@@ -928,23 +977,22 @@ test_that("write_block with auto_write=FALSE only writes after submit", {
       # Before submit: file should NOT exist
       expect_false(file.exists(expected_file), info = "File should not exist before submit")
 
-      # Expression should be NULL before submit
+      # Expression is a passthrough (never carries the write in manual mode)
       result <- session$returned
-      expect_null(result$expr())
+      expect_passthrough(result$expr(), "data")
 
-      # USER CLICKS SUBMIT
+      # USER CLICKS SUBMIT — the write is imperative and one-shot
       session$setInputs(`expr-submit_write` = 1)
       session$flushReact()
 
-      # Expression should now be set
-      expect_false(is.null(result$expr()))
+      expect_true(file.exists(expected_file))
+      written <- read.csv(expected_file)
+      expect_equal(written$x, 1:3)
+
+      # The expression stays a passthrough after submit
+      expect_passthrough(result$expr(), "data")
     }
   )
-
-  # Note: The file may not exist after testServer because testServer
-  # doesn't fully simulate the framework's evaluation cycle for the
-  # newly-set expression. This tests the expression generation logic.
-  # Full integration would require shinytest2.
 
   unlink(temp_dir, recursive = TRUE)
 })
@@ -957,8 +1005,9 @@ test_that("write_block with auto_write=FALSE only writes after submit", {
 # manually (issue #9 fix confirmed working).
 # ============================================================================
 
-test_that("empty directory returns NULL expr (download-only mode)", {
-  # With no directory set, expression is NULL — download handler handles writing
+test_that("empty directory returns passthrough expr (download-only mode)", {
+  # With no directory set, the expression passes the first input through —
+  # the download handler handles writing
 
   blk <- new_write_block(
     directory = "",
@@ -983,8 +1032,8 @@ test_that("empty directory returns NULL expr (download-only mode)", {
 
       result <- session$returned
 
-      # With empty directory, expr should be NULL (download handler handles writing)
-      expect_null(result$expr())
+      # With empty directory, expr is a passthrough (download-only)
+      expect_passthrough(result$expr(), "data")
 
       # Verify state reflects empty directory
       expect_equal(result$state$directory(), "")
@@ -1021,8 +1070,8 @@ test_that("empty directory with auto-timestamp has correct state (issue #9 scena
 
       result <- session$returned
 
-      # With empty directory, expr is NULL (download-only)
-      expect_null(result$expr())
+      # With empty directory, expr is a passthrough (download-only)
+      expect_passthrough(result$expr(), "data")
       expect_equal(result$state$directory(), "")
       expect_equal(result$state$filename(), "")  # Empty = auto-timestamp
     }
@@ -1051,7 +1100,8 @@ test_that("write_block honors blockr.verify_write_path policy", {
     }
   )
 
-  # Blocked target: no write expression, and the directory is never created.
+  # Blocked target: the expression degrades to a passthrough (no write),
+  # and the directory is never created.
   blk_no <- new_write_block(
     directory = blocked_dir, filename = "f", format = "csv", auto_write = TRUE
   )
@@ -1060,10 +1110,8 @@ test_that("write_block honors blockr.verify_write_path policy", {
     args = list(x = blk_no, data = list(...args = reactiveValues(data = iris))),
     {
       session$flushReact()
-      # The gate stops the write expression (req() short-circuits it) and the
-      # directory is never created.
       expr_val <- tryCatch(session$returned$expr(), error = function(e) NULL)
-      expect_null(expr_val)
+      expect_passthrough(expr_val, "data")
       expect_false(dir.exists(blocked_dir))
     }
   )

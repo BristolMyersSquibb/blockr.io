@@ -58,6 +58,9 @@ The block supports two modes:
 \strong{Location mode} (path):
 \itemize{
 \item User enters a file path or URL in a text input with autocomplete
+\item The path is committed (and the file read) on Enter, blur, or a
+dropdown selection — never while typing; an "Enter" chip shows while
+the typed path is not yet applied
 \item For server paths: reads directly from original location
 \item For URLs: downloads to a temporary file each time
 \item When a board-level data directory is set, paths are resolved relative to it

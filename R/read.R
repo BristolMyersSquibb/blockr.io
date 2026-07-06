@@ -38,6 +38,9 @@
 #'
 #' **Location mode** (path):
 #' - User enters a file path or URL in a text input with autocomplete
+#' - The path is committed (and the file read) on Enter, blur, or a
+#'   dropdown selection — never while typing; an "Enter" chip shows while
+#'   the typed path is not yet applied
 #' - For server paths: reads directly from original location
 #' - For URLs: downloads to a temporary file each time
 #' - When a board-level data directory is set, paths are resolved relative to it
@@ -799,7 +802,8 @@ new_read_block <- function(
               })
             ),
             tags$p(
-              "Browse server files, paste a URL, or drag & drop to upload",
+              "Browse server files, paste a URL, or drag & drop to upload.",
+              "Press Enter to load the typed path.",
               class = "blockr-path-hint"
             ),
 

@@ -50,76 +50,14 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
     server = function(board, ..., session) {
       ns <- session$ns
 
-      # Register directory listing endpoint (directories only)
+      # Register directory listing endpoint (directories only) — shares
+      # the path-input implementation, including the file-access policy.
       list_url <- session$registerDataObj(
         "list_dir_opt", NULL,
         function(data, req) {
           query <- parseQueryString(req$QUERY_STRING)
           path_val <- query$path %||% ""
-
-          if (grepl("/$", path_val) || dir.exists(path_val)) {
-            dir_to_list <- path_val
-            name_filter <- ""
-            query_base <- if (!nzchar(path_val) || grepl("/$", path_val)) {
-              path_val
-            } else {
-              paste0(path_val, "/")
-            }
-          } else {
-            dir_to_list <- dirname(path_val)
-            name_filter <- tolower(basename(path_val))
-            slash_pos <- regexpr("^.*/", path_val)
-            query_base <- if (slash_pos > 0) {
-              regmatches(path_val, slash_pos)
-            } else if (grepl("^(~|[A-Za-z]:)$", path_val)) {
-              paste0(path_val, "/")
-            } else {
-              ""
-            }
-          }
-
-          if (!nzchar(dir_to_list)) {
-            dir_to_list <- "."
-          }
-
-          items <- list()
-
-          if (nzchar(dir_to_list) && dir.exists(dir_to_list)) {
-            entries <- list.files(
-              dir_to_list, all.files = FALSE, full.names = FALSE
-            )
-
-            if (nzchar(name_filter)) {
-              entries <- entries[
-                grepl(name_filter, tolower(entries), fixed = TRUE)
-              ]
-            }
-
-            for (entry in entries) {
-              full <- file.path(dir_to_list, entry)
-              if (!dir.exists(full)) next
-              items[[length(items) + 1]] <- list(
-                name = entry,
-                isdir = TRUE,
-                size = NULL
-              )
-            }
-
-            names_vec <- vapply(items, function(x) x$name, character(1))
-            if (length(names_vec)) {
-              items <- items[order(tolower(names_vec))]
-            }
-
-            if (length(items) > 50) {
-              items <- items[seq_len(50)]
-            }
-          }
-
-          httpResponse(
-            200,
-            "application/json",
-            jsonlite::toJSON(list(items = items, base = query_base), auto_unbox = TRUE)
-          )
+          list_dir_response(path_val, mode = "directory", policy = "read")
         }
       )
 
@@ -147,7 +85,8 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
             ))
           }
         ),
-        # Validate as user types: enable when valid AND changed from saved
+        # Validate committed input (Enter/blur/dropdown-select): enable the
+        # button when valid AND changed from saved
         observeEvent(
           session$input[["data_dir_browse"]],
           {

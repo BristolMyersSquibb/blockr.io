@@ -18,20 +18,23 @@ new_write_block(
 \item{directory}{Character. Default directory for file output. When non-empty,
 enables server-side writing. Can be configured via
 \code{options(blockr.write_dir = "/path")} or environment variable
-\code{BLOCKR_WRITE_DIR}. Default: \code{""} (empty — download-only until user sets a path).}
+\code{BLOCKR_WRITE_DIR}. Default: \code{""} (empty -- download-only until user sets a path).}
 
 \item{filename}{Character. Optional fixed filename (without extension).
 \itemize{
-\item \strong{If provided}: Writes to same file path on every upstream change (auto-overwrite)
-\item \strong{If empty} (default): Generates timestamped filename (e.g., \code{data_20250127_143022.csv})
+\item \strong{If provided}: Writes to the same file path on every save (overwrite)
+\item \strong{If empty} (default): Manual saves and downloads generate a
+timestamped filename (e.g., \code{data_20250127_143022.csv}); auto-write
+uses a fixed \verb{data.\{ext\}} file so repeated writes overwrite instead
+of littering the directory
 }}
 
 \item{format}{Character. Output format: "csv", "excel", "parquet", or "feather".
 Default: "csv"}
 
 \item{auto_write}{Logical. When TRUE, automatically writes files when data changes
-(requires a non-empty directory). When FALSE (default), user must click
-"Save to File" button.}
+(requires a non-empty directory). When FALSE (default), the user must click
+"Save to Server", and each click writes exactly once.}
 
 \item{args}{Named list of format-specific writing parameters. Only specify values
 that differ from defaults. Available parameters:
@@ -42,7 +45,7 @@ that differ from defaults. Available parameters:
 }}
 
 \item{mode}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Previously selected between
-"browse" and "download" tabs. Now ignored — both download and server-save
+"browse" and "download" tabs. Now ignored -- both download and server-save
 are always available. Kept for backwards compatibility; emits a deprecation
 warning when non-NULL.}
 
@@ -90,15 +93,17 @@ Input names are used for sheet names (Excel) or filenames (multi-file ZIP).
 \strong{Fixed filename} (\code{filename = "output"}):
 \itemize{
 \item Reproducible path: always writes to \verb{\{directory\}/output.\{ext\}}
-\item Overwrites file on every upstream data change
+\item Overwrites the file on every save (every data change with auto-write)
 \item Ideal for automated pipelines
 }
 
-\strong{Auto-timestamped} (\code{filename = ""}):
+\strong{Empty filename} (\code{filename = ""}):
 \itemize{
-\item Unique files: \verb{\{directory\}/data_YYYYMMDD_HHMMSS.\{ext\}}
-\item Preserves history, prevents accidental overwrites
-\item Safe default behavior
+\item Manual saves and downloads: unique files
+\verb{\{directory\}/data_YYYYMMDD_HHMMSS.\{ext\}} -- preserves history,
+prevents accidental overwrites
+\item Auto-write: fixed \verb{\{directory\}/data.\{ext\}}, overwritten on each
+change -- a timestamp would create one file per upstream change
 }
 }
 
@@ -115,10 +120,23 @@ Both options are always available in a flat layout (no tabs):
 \strong{Save to Server:}
 \itemize{
 \item Active when a server directory path is set (non-empty)
-\item User enters a directory path in the path input
-\item Files persist on server
-\item When running locally, this is your computer's file system
+\item User types a directory path (committed with Enter, blur, or a
+dropdown selection -- an "Enter" chip shows while the typed path is
+not yet applied) in the path input
+\item The target directory is created at write time if missing
+\item In manual mode each "Save to Server" click writes exactly once;
+later data changes never rewrite the file
+\item Files persist on server; when running locally, this is your
+computer's file system
 }
+}
+
+\subsection{Pipeline Behavior}{
+
+The block passes its first input through unchanged. Only with
+\code{auto_write = TRUE} does the block expression itself contain the write
+(so exported code reproduces the auto-write); manual saves and downloads
+happen in their handlers and keep the expression a pure passthrough.
 }
 }
 \examples{

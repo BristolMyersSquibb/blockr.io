@@ -181,32 +181,46 @@ file_category <- function(path) {
   "other"
 }
 
-#' Extract names for variadic block arguments
-#'
-#' Helper function for variadic blocks. Processes ...args names to handle
-#' numeric indices vs named arguments.
-#'
-#' @param x List with names (typically ...args)
-#' @return Character vector of names, or NULL if all numeric
-#' @keywords internal
-dot_args_names <- function(x) {
-  res <- names(x)
+# Variadic ...args helpers, mirroring blockr.core (not exported). A variadic
+# block server receives `...args` as a `reactives` object: slots added through
+# the DAG UI (an unnamed link) are stored positionally and have NO display name,
+# so `names(...args)` returns "" for them (or NULL when every slot is unnamed).
+# The old `names(...args)`-based helper collapsed that to NULL, which wedged the
+# block's expr reactive (`req(length(arg_names()) > 0)` failed -> silent error ->
+# empty condition banner). These mirror core's slot -> symbol mapping:
+# `dot_arg_refs()` gives the symbol each slot is bound to in the eval env (the
+# link name for named slots, `.arg1`, `.arg2`, ... for unnamed ones), keyed by
+# display name; `dot_arg_values()` pairs those reference names with the realized
+# slot values and works on both the live-board `reactives` and the
+# `reactiveValues` used in tests. Keep in sync with blockr.core
+# R/utils-misc.R (dot_sym/arg_refs/dot_arg_refs/dot_arg_values).
+dot_sym <- function(i) {
+  paste0(".arg", i)
+}
 
-  # Check if names are all numeric (1, 2, 3, etc.)
-  unnamed <- grepl("^[1-9][0-9]*$", res)
+arg_refs <- function(nms) {
+  unnamed <- !nzchar(nms)
+  replace(nms, unnamed, dot_sym(seq_len(sum(unnamed))))
+}
 
-  # All numeric - return NULL (no custom names)
-  if (all(unnamed)) {
-    return(NULL)
+dot_arg_refs <- function(x) {
+  nms <- names(x)
+
+  if (is.null(nms)) {
+    nms <- character(length(x))
   }
 
-  # Mix of numeric and named - replace numeric with empty strings
-  if (any(unnamed)) {
-    return(replace(res, unnamed, ""))
+  set_names(arg_refs(nms), nms)
+}
+
+dot_arg_values <- function(x) {
+  vals <- if (inherits(x, "reactivevalues")) {
+    reactiveValuesToList(x)
+  } else {
+    as.list(x)
   }
 
-  # All named - return as-is
-  res
+  set_names(vals, unname(dot_arg_refs(x)))
 }
 
 #' Supported file extensions

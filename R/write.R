@@ -7,22 +7,25 @@
 #' @param directory Character. Default directory for file output. When non-empty,
 #'   enables server-side writing. Can be configured via
 #'   `options(blockr.write_dir = "/path")` or environment variable
-#'   `BLOCKR_WRITE_DIR`. Default: `""` (empty — download-only until user sets a path).
+#'   `BLOCKR_WRITE_DIR`. Default: `""` (empty -- download-only until user sets a path).
 #' @param filename Character. Optional fixed filename (without extension).
-#'   - **If provided**: Writes to same file path on every upstream change (auto-overwrite)
-#'   - **If empty** (default): Generates timestamped filename (e.g., `data_20250127_143022.csv`)
+#'   - **If provided**: Writes to the same file path on every save (overwrite)
+#'   - **If empty** (default): Manual saves and downloads generate a
+#'     timestamped filename (e.g., `data_20250127_143022.csv`); auto-write
+#'     uses a fixed `data.{ext}` file so repeated writes overwrite instead
+#'     of littering the directory
 #' @param format Character. Output format: "csv", "excel", "parquet", or "feather".
 #'   Default: "csv"
 #' @param auto_write Logical. When TRUE, automatically writes files when data changes
-#'   (requires a non-empty directory). When FALSE (default), user must click
-#'   "Save to File" button.
+#'   (requires a non-empty directory). When FALSE (default), the user must click
+#'   "Save to Server", and each click writes exactly once.
 #' @param args Named list of format-specific writing parameters. Only specify values
 #'   that differ from defaults. Available parameters:
 #'   - **For CSV files:** `sep` (default: ","), `quote` (default: TRUE),
 #'     `na` (default: "")
 #'   - **For Excel/Arrow:** Minimal options needed (handled by underlying packages)
 #' @param mode `r lifecycle::badge("deprecated")` Previously selected between
-#'   "browse" and "download" tabs. Now ignored — both download and server-save
+#'   "browse" and "download" tabs. Now ignored -- both download and server-save
 #'   are always available. Kept for backwards compatibility; emits a deprecation
 #'   warning when non-NULL.
 #' @param ... Forwarded to [blockr.core::new_transform_block()]
@@ -52,13 +55,15 @@
 #'
 #' **Fixed filename** (`filename = "output"`):
 #' - Reproducible path: always writes to `{directory}/output.{ext}`
-#' - Overwrites file on every upstream data change
+#' - Overwrites the file on every save (every data change with auto-write)
 #' - Ideal for automated pipelines
 #'
-#' **Auto-timestamped** (`filename = ""`):
-#' - Unique files: `{directory}/data_YYYYMMDD_HHMMSS.{ext}`
-#' - Preserves history, prevents accidental overwrites
-#' - Safe default behavior
+#' **Empty filename** (`filename = ""`):
+#' - Manual saves and downloads: unique files
+#'   `{directory}/data_YYYYMMDD_HHMMSS.{ext}` -- preserves history,
+#'   prevents accidental overwrites
+#' - Auto-write: fixed `{directory}/data.{ext}`, overwritten on each
+#'   change -- a timestamp would create one file per upstream change
 #'
 #' ## Download vs Server Save
 #'
@@ -70,9 +75,21 @@
 #'
 #' **Save to Server:**
 #' - Active when a server directory path is set (non-empty)
-#' - User enters a directory path in the path input
-#' - Files persist on server
-#' - When running locally, this is your computer's file system
+#' - User types a directory path (committed with Enter, blur, or a
+#'   dropdown selection -- an "Enter" chip shows while the typed path is
+#'   not yet applied) in the path input
+#' - The target directory is created at write time if missing
+#' - In manual mode each "Save to Server" click writes exactly once;
+#'   later data changes never rewrite the file
+#' - Files persist on server; when running locally, this is your
+#'   computer's file system
+#'
+#' ## Pipeline Behavior
+#'
+#' The block passes its first input through unchanged. Only with
+#' `auto_write = TRUE` does the block expression itself contain the write
+#' (so exported code reproduces the auto-write); manual saves and downloads
+#' happen in their handlers and keep the expression a pure passthrough.
 #'
 #' @return A blockr transform block that writes dataframes to files
 #'
@@ -134,10 +151,13 @@ new_write_block <- function(
         function(input, output, session) {
           # directory, auto_write available here via closure
 
-          # Extract arg names for variadic inputs
+          # Eval-env reference names for the connected inputs: the link name
+          # for named slots, ".arg1", ".arg2", ... for unnamed ones (added via
+          # the DAG UI). Values are the symbols the block expression and the
+          # imperative save/download handlers bind data under; names are the
+          # display names. Reactive on the link set.
           arg_names <- reactive({
-            names_vec <- names(...args)
-            set_names(names_vec, dot_args_names(...args))
+            dot_arg_refs(...args)
           })
 
           # Reactive values for state
@@ -146,7 +166,6 @@ new_write_block <- function(
           r_format <- reactiveVal(format)
           r_auto_write <- reactiveVal(auto_write)
           r_args <- reactiveVal(args)
-          r_last_write <- reactiveVal(NULL) # Track last write time
           r_write_status <- reactiveVal("") # Status message
           r_dir_ok <- reactiveVal(TRUE) # Deployment file-access policy gate
 
@@ -182,7 +201,7 @@ new_write_block <- function(
             }) |> bindEvent(TRUE, once = TRUE)
           }
 
-          # Handle directory path changes — store relative path in state
+          # Handle directory path changes -- store relative path in state
           observeEvent(dir_path(), {
             path_val <- dir_path()
             req(nzchar(path_val))
@@ -202,8 +221,8 @@ new_write_block <- function(
           })
 
           # Deployment file-access policy: reject write targets outside the
-          # allowed roots before any directory is created or written. Gates the
-          # dir-creation observer and both write-expression paths below.
+          # allowed roots before anything is written. Gates the submit
+          # handler and the auto-write expression below.
           observeEvent(resolved_directory(), {
             dir_val <- resolved_directory()
             if (!nzchar(dir_val)) {
@@ -247,112 +266,100 @@ new_write_block <- function(
             r_args(current)
           })
 
-          # Reactive to store the write expression (set when submit clicked)
-          r_write_expression_set <- reactiveVal(NULL)
+          # Auto-write filename: empty means a FIXED "data" file, overwritten
+          # on each change \u2014 a timestamp here would litter the directory with
+          # one file per upstream invalidation.
+          auto_filename <- function() {
+            if (nzchar(r_filename())) r_filename() else "data"
+          }
 
-          # Track whether directory existed before we created it
-          # Initial check deferred to resolved_directory observer
-          r_dir_existed <- reactiveVal(FALSE)
+          # Full output path for a given base filename (single source for the
+          # write expression and the status message \u2014 one computation, no
+          # timestamp drift between the reported and the written file).
+          output_path <- function(base_filename) {
+            needs_zip <- length(arg_names()) > 1 && r_format() != "excel"
+            ext <- format_extension(r_format(), needs_zip = needs_zip)
+            file.path(resolved_directory(), paste0(base_filename, ext))
+          }
 
-          # Directory creation - create when resolved directory path changes
-          observeEvent(resolved_directory(), {
-            req(nzchar(resolved_directory()))
-            # Policy check inline (not via r_dir_ok) so a rejected path can
-            # never create a directory due to observer ordering.
-            blocked <- tryCatch(
-              {
-                resolve_and_check(resolved_directory(), "write")
-                FALSE
-              },
-              error = function(e) {
-                r_write_status(sprintf("\u2717 %s", conditionMessage(e)))
-                TRUE
-              }
-            )
-            req(!blocked)
-            existed <- dir.exists(resolved_directory())
-            r_dir_existed(existed)
-            if (!existed) {
-              tryCatch(
-                {
-                  dir.create(resolved_directory(), recursive = TRUE, showWarnings = FALSE)
-                  if (!dir.exists(resolved_directory())) {
-                    r_write_status(sprintf(
-                      "\u2717 Cannot create directory: %s", resolved_directory()
-                    ))
-                  }
-                },
-                error = function(e) {
-                  r_write_status(sprintf(
-                    "\u2717 Directory error: %s", conditionMessage(e)
-                  ))
-                }
-              )
-            }
-          })
-
-          # Submit button for server save (only when auto_write is FALSE)
+          # Submit button for server save (only when auto_write is FALSE).
+          # The write happens HERE, imperatively \u2014 exactly once per click.
+          # Keeping it out of the block expression means later upstream
+          # changes can never silently rewrite the file in manual mode.
           observeEvent(input$submit_write, {
             req(length(arg_names()) > 0)
             req(nzchar(r_directory()))
             req(!r_auto_write()) # Only trigger when auto_write is disabled
             req(r_dir_ok()) # Deployment file-access policy
 
-            # Generate write expression
+            # Compute the filename once; write_expr() and the status message
+            # both use it, so the reported path is the written path.
+            base_filename <- generate_filename(r_filename())
+
             expr <- write_expr(
               data_names = arg_names(),
               directory = resolved_directory(),
-              filename = r_filename(),
+              filename = base_filename,
               format = r_format(),
               args = r_args()
             )
 
-            # Set the expression - blockr.core will evaluate it
-            # Expression writes file and returns first data for pipeline continuity
-            first_data <- as.name(arg_names()[1])
-            r_write_expression_set(bquote({
-              .(expr)
-              .(first_data)
-            }))
+            # Bind each input under the same reference symbol the write
+            # expression uses (.arg1 for an unnamed/DAG-UI slot, else the link
+            # name). dot_arg_values() reads slots positionally, so it is robust
+            # to the unnamed positional keys a live board assigns -- a per-name
+            # ...args[[nm]] lookup would miss those and bind NULL.
+            eval_env <- new.env(parent = baseenv())
+            arg_vals <- dot_arg_values(...args)
+            for (nm in names(arg_vals)) {
+              val <- arg_vals[[nm]]
+              assign(nm, if (is.reactive(val)) val() else val, envir = eval_env)
+            }
 
-            # Generate confirmation message with file path and timestamp
-            base_filename <- generate_filename(r_filename())
-            needs_zip <- length(arg_names()) > 1 && r_format() != "excel"
-            ext <- format_extension(r_format(), needs_zip = needs_zip)
-            full_path <- file.path(resolved_directory(), paste0(base_filename, ext))
-            timestamp <- format(Sys.time(), "%H:%M:%S")
-            r_write_status(sprintf("\u2713 Saved to %s at %s", full_path, timestamp))
+            tryCatch(
+              {
+                eval(expr, envir = eval_env)
+                r_write_status(sprintf(
+                  "\u2713 Saved to %s at %s",
+                  output_path(base_filename), format(Sys.time(), "%H:%M:%S")
+                ))
+              },
+              error = function(e) {
+                r_write_status(sprintf(
+                  "\u2717 Write failed: %s", conditionMessage(e)
+                ))
+              }
+            )
           })
 
-          # Generate expression based on directory state and auto_write setting
+          # Block expression: the write block is a passthrough node. Only in
+          # auto-write mode does the expression carry the write itself (its
+          # contract is "rewrite on every change", and the exported code
+          # should reproduce that). Manual saves and downloads happen
+          # imperatively in their handlers, so the expression stays pure.
           r_write_expression <- reactive({
-            if (nzchar(r_directory())) {
-              if (r_auto_write()) {
-                # Auto-write enabled: Generate expression automatically
-                req(length(arg_names()) > 0)
-                req(r_dir_ok()) # Deployment file-access policy
+            req(length(arg_names()) > 0)
+            first_data <- as.name(arg_names()[1])
 
-                expr <- write_expr(
-                  data_names = arg_names(),
-                  directory = resolved_directory(),
-                  filename = r_filename(),
-                  format = r_format(),
-                  args = r_args()
-                )
+            if (nzchar(r_directory()) && r_auto_write() && r_dir_ok()) {
+              expr <- write_expr(
+                data_names = arg_names(),
+                directory = resolved_directory(),
+                filename = auto_filename(),
+                format = r_format(),
+                args = r_args()
+              )
 
-                # Return expression with write code and data passthrough
-                first_data <- as.name(arg_names()[1])
-                bquote({
-                  .(expr)
-                  .(first_data)
-                })
-              } else {
-                # Auto-write disabled: Wait for submit button
-                r_write_expression_set()
-              }
+              bquote({
+                .(expr)
+                .(first_data)
+              })
             } else {
-              # No directory set: Return NULL - download handler handles writing
-              NULL
+              # Wrapped in { } because blockr.core requires a language
+              # object (a bare symbol is not one)
+              bquote({
+                .(first_data)
+              })
             }
           })
 
@@ -360,24 +367,23 @@ new_write_block <- function(
           observe({
             req(nzchar(r_directory()))
             req(r_auto_write())
-            req(r_write_expression())
+            req(r_dir_ok())
+            req(length(arg_names()) > 0)
 
-            # Depend on all data values to trigger status update when data changes
-            for (nm in names(...args)) {
-              ...args[[nm]]
-            }
+            # Depend on all data values to trigger status update when data
+            # changes. dot_arg_values() realizes every slot (including unnamed
+            # positional ones), establishing the reactive dependency.
+            dot_arg_values(...args)
 
-            # Generate confirmation message with file path and timestamp
-            base_filename <- generate_filename(r_filename())
-            needs_zip <- length(arg_names()) > 1 && r_format() != "excel"
-            ext <- format_extension(r_format(), needs_zip = needs_zip)
-            full_path <- file.path(resolved_directory(), paste0(base_filename, ext))
+            # Deterministic path (fixed filename in auto mode) \u2014 matches the
+            # path baked into the auto-write expression.
+            full_path <- output_path(generate_filename(auto_filename()))
             timestamp <- format(Sys.time(), "%H:%M:%S")
             r_write_status(sprintf("\u2713 Saved to %s at %s", full_path, timestamp))
           })
 
 
-          # Download handler — always available
+          # Download handler -- always available
           output$download_data <- downloadHandler(
             filename = function() {
               base <- generate_filename(r_filename())
@@ -403,18 +409,18 @@ new_write_block <- function(
               # Create environment with parent.frame() as parent
               eval_env <- new.env(parent = parent.frame())
 
-              # Extract data from ...args and add to eval_env
-              names_vec <- arg_names()
-              ll <- reactiveValuesToList(...args)
-
-              for (i in seq_along(names_vec)) {
-                arg_i <- ll[[i]]
-                data_val <- if (is.reactive(arg_i)) {
-                  arg_i()
-                } else {
-                  arg_i
-                }
-                assign(names_vec[i], data_val, envir = eval_env)
+              # Bind each input under its reference symbol (.arg1 for unnamed
+              # DAG-UI slots, else the link name) -- the same names write_expr()
+              # emits. dot_arg_values() handles both the live-board reactives
+              # and the reactiveValues used in tests.
+              arg_vals <- dot_arg_values(...args)
+              for (nm in names(arg_vals)) {
+                data_val <- arg_vals[[nm]]
+                assign(
+                  nm,
+                  if (is.reactive(data_val)) data_val() else data_val,
+                  envir = eval_env
+                )
               }
 
               # Evaluate write expression - this writes the file(s)
@@ -442,11 +448,12 @@ new_write_block <- function(
           )
 
 
-          # Status badge for directory validation
+          # Status badge for directory validation. Runs on committed path
+          # changes only (Enter/blur/selection), so the dir.exists() check
+          # is cheap. "New directory" signals it will be created on save.
           observe({
             dir <- r_directory()
-            existed <- r_dir_existed()
-            if (nzchar(dir) && existed) {
+            if (nzchar(dir) && dir.exists(resolved_directory())) {
               session$sendCustomMessage("blockr-path-status", list(
                 id = session$ns("dir_path-path_text"),
                 text = "Directory",
@@ -455,7 +462,7 @@ new_write_block <- function(
             } else if (nzchar(dir)) {
               session$sendCustomMessage("blockr-path-status", list(
                 id = session$ns("dir_path-path_text"),
-                text = "New directory",
+                text = "New directory (created on save)",
                 state = "info"
               ))
             } else {
@@ -502,13 +509,18 @@ new_write_block <- function(
           class = "block-container write-block-container",
 
           tags$style(HTML("
-            /* File Configuration header lays out gear to the right of the h4 */
+            /* File Configuration header lays out gear to the right of the h4.
+               It must span the full grid row: .block-section is
+               display:contents, so this wrapper is a grid item -- without the
+               explicit span it becomes a 250px column NEXT TO the fields on
+               wide panels. */
             .write-block-container .write-block-config-header {
+              grid-column: 1 / -1;
               display: flex;
               align-items: center;
               justify-content: space-between;
               gap: 8px;
-              margin-bottom: 1rem;
+              margin-bottom: 0;
             }
             /* Make inputs full width */
             .write-block-container .shiny-input-container {
@@ -704,8 +716,9 @@ new_write_block <- function(
                   div(
                     class = "block-help-text",
                     style = "font-size: 0.75rem;",
-                    "Fixed filename overwrites on each change.",
-                    "Empty generates unique timestamped files."
+                    "Fixed filename overwrites on each save.",
+                    "Empty: timestamped file per manual save;",
+                    "auto-save writes a fixed \"data\" file."
                   )
                 ),
                 div(
@@ -751,9 +764,12 @@ new_write_block <- function(
             tags$h4("Save to Server", class = "mb-3"),
             tags$p(
               class = "blockr-path-hint",
-              "Choose a server path to save"
+              "Type a directory path and press Enter, or pick from the suggestions"
             ),
-            path_input_ui(NS(id, "dir_path")),
+            path_input_ui(
+              NS(id, "dir_path"),
+              placeholder = "Enter directory path..."
+            ),
             # Mode toggle + save button row
             div(
               class = "mt-2",
@@ -803,7 +819,7 @@ new_write_block <- function(
               ns = NS(id),
               div(
                 class = "blockr-exec-auto-hint mt-2",
-                "Auto-save enabled. File updates automatically on data changes."
+                "Auto-save enabled. Writes to a fixed file, overwritten on every data change."
               )
             ),
             # Status message

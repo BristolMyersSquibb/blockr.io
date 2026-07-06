@@ -112,6 +112,27 @@ test_that("write_expr handles empty filename with timestamp", {
   expect_true(grepl("data_[0-9]{8}_[0-9]{6}\\.csv", expr_text))
 })
 
+test_that("write_expr creates the target directory at write time", {
+  root <- tempfile("write_expr_dir_")
+  target <- file.path(root, "nested", "out")
+  on.exit(unlink(root, recursive = TRUE))
+
+  expr <- write_expr(c(d = "df"), target, "output", "csv")
+
+  # The guard is part of the expression (self-contained exported code) ...
+  expr_text <- paste(deparse(expr), collapse = " ")
+  expect_true(grepl("dir.create", expr_text, fixed = TRUE))
+
+  # ... and nothing is created by merely building the expression
+  expect_false(dir.exists(target))
+
+  # Evaluating the expression creates the directory and writes the file
+  eval_env <- new.env(parent = baseenv())
+  eval_env$df <- data.frame(x = 1:3)
+  eval(expr, envir = eval_env)
+  expect_true(file.exists(file.path(target, "output.csv")))
+})
+
 test_that("write_expr creates ZIP for multiple CSV files", {
   expr <- write_expr(c(a = "df1", b = "df2"), "/tmp", "output", "csv")
   expr_text <- paste(deparse(expr), collapse = " ")
