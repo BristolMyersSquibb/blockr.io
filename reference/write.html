@@ -11,7 +11,7 @@ Excel, or ZIP archives depending on format and number of inputs."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">blockr.io</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,12 +64,15 @@ Excel, or ZIP archives depending on format and number of inputs.</p>
 <dd><p>Character. Default directory for file output. When non-empty,
 enables server-side writing. Can be configured via
 <code>options(blockr.write_dir = "/path")</code> or environment variable
-<code>BLOCKR_WRITE_DIR</code>. Default: <code>""</code> (empty — download-only until user sets a path).</p></dd>
+<code>BLOCKR_WRITE_DIR</code>. Default: <code>""</code> (empty – download-only until user sets a path).</p></dd>
 
 
 <dt id="arg-filename">filename<a class="anchor" aria-label="anchor" href="#arg-filename"></a></dt>
-<dd><p>Character. Optional fixed filename (without extension).</p><ul><li><p><strong>If provided</strong>: Writes to same file path on every upstream change (auto-overwrite)</p></li>
-<li><p><strong>If empty</strong> (default): Generates timestamped filename (e.g., <code>data_20250127_143022.csv</code>)</p></li>
+<dd><p>Character. Optional fixed filename (without extension).</p><ul><li><p><strong>If provided</strong>: Writes to the same file path on every save (overwrite)</p></li>
+<li><p><strong>If empty</strong> (default): Manual saves and downloads generate a
+timestamped filename (e.g., <code>data_20250127_143022.csv</code>); auto-write
+uses a fixed <code>data.{ext}</code> file so repeated writes overwrite instead
+of littering the directory</p></li>
 </ul></dd>
 
 
@@ -80,8 +83,8 @@ Default: "csv"</p></dd>
 
 <dt id="arg-auto-write">auto_write<a class="anchor" aria-label="anchor" href="#arg-auto-write"></a></dt>
 <dd><p>Logical. When TRUE, automatically writes files when data changes
-(requires a non-empty directory). When FALSE (default), user must click
-"Save to File" button.</p></dd>
+(requires a non-empty directory). When FALSE (default), the user must click
+"Save to Server", and each click writes exactly once.</p></dd>
 
 
 <dt id="arg-args">args<a class="anchor" aria-label="anchor" href="#arg-args"></a></dt>
@@ -94,7 +97,7 @@ that differ from defaults. Available parameters:</p><ul><li><p><strong>For CSV f
 
 <dt id="arg-mode">mode<a class="anchor" aria-label="anchor" href="#arg-mode"></a></dt>
 <dd><p><a href="https://lifecycle.r-lib.org/articles/stages.html#deprecated" class="external-link"><img src="figures/lifecycle-deprecated.svg" alt="[Deprecated]"></a> Previously selected between
-"browse" and "download" tabs. Now ignored — both download and server-save
+"browse" and "download" tabs. Now ignored – both download and server-save
 are always available. Kept for backwards compatibility; emits a deprecation
 warning when non-NULL.</p></dd>
 
@@ -136,11 +139,13 @@ Input names are used for sheet names (Excel) or filenames (multi-file ZIP).</p>
 
 
 <p><strong>Fixed filename</strong> (<code>filename = "output"</code>):</p><ul><li><p>Reproducible path: always writes to <code>{directory}/output.{ext}</code></p></li>
-<li><p>Overwrites file on every upstream data change</p></li>
+<li><p>Overwrites the file on every save (every data change with auto-write)</p></li>
 <li><p>Ideal for automated pipelines</p></li>
-</ul><p><strong>Auto-timestamped</strong> (<code>filename = ""</code>):</p><ul><li><p>Unique files: <code>{directory}/data_YYYYMMDD_HHMMSS.{ext}</code></p></li>
-<li><p>Preserves history, prevents accidental overwrites</p></li>
-<li><p>Safe default behavior</p></li>
+</ul><p><strong>Empty filename</strong> (<code>filename = ""</code>):</p><ul><li><p>Manual saves and downloads: unique files
+<code>{directory}/data_YYYYMMDD_HHMMSS.{ext}</code> – preserves history,
+prevents accidental overwrites</p></li>
+<li><p>Auto-write: fixed <code>{directory}/data.{ext}</code>, overwritten on each
+change – a timestamp would create one file per upstream change</p></li>
 </ul></div>
 
 <div class="section">
@@ -151,10 +156,25 @@ Input names are used for sheet names (Excel) or filenames (multi-file ZIP).</p>
 <p><strong>Download to Browser:</strong></p><ul><li><p>Always available via the download button</p></li>
 <li><p>Triggers a download to your browser's download folder</p></li>
 </ul><p><strong>Save to Server:</strong></p><ul><li><p>Active when a server directory path is set (non-empty)</p></li>
-<li><p>User enters a directory path in the path input</p></li>
-<li><p>Files persist on server</p></li>
-<li><p>When running locally, this is your computer's file system</p></li>
+<li><p>User types a directory path (committed with Enter, blur, or a
+dropdown selection – an "Enter" chip shows while the typed path is
+not yet applied) in the path input</p></li>
+<li><p>The target directory is created at write time if missing</p></li>
+<li><p>In manual mode each "Save to Server" click writes exactly once;
+later data changes never rewrite the file</p></li>
+<li><p>Files persist on server; when running locally, this is your
+computer's file system</p></li>
 </ul></div>
+
+<div class="section">
+<h3 id="pipeline-behavior">Pipeline Behavior<a class="anchor" aria-label="anchor" href="#pipeline-behavior"></a></h3>
+
+
+<p>The block passes its first input through unchanged. Only with
+<code>auto_write = TRUE</code> does the block expression itself contain the write
+(so exported code reproduces the auto-write); manual saves and downloads
+happen in their handlers and keep the expression a pure passthrough.</p>
+</div>
 
     </div>
 
@@ -171,7 +191,7 @@ Input names are used for sheet names (Excel) or filenames (multi-file ZIP).</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Name: "Write"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Indefinite arity</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Initial block state:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ directory : chr "/tmp/RtmpHKLses"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  $ directory : chr "/tmp/Rtmpcctq3b"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ filename  : chr "output"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ format    : chr "csv"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ auto_write: logi FALSE</span>

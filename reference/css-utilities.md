@@ -16,7 +16,11 @@ conflicts.
 
 - `css_single_column()` - Force single-column layout (common)
 
-- `css_advanced_toggle()` - Collapsible sections with toggle (optional)
+- `css_gear_popover()` - Gear-button + popover (cogwheel) for advanced
+  settings
+
+- `css_advanced_toggle()` - Legacy chevron-collapse toggle (kept for
+  backwards compat)
 
 - `css_inline_checkbox()` - Checkbox/label styling for inline layouts
   (optional)

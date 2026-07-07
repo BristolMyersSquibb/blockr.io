@@ -11,7 +11,7 @@ framework classes (Bootstrap, Shiny, etc.) and prevent naming conflicts."></head
 
     <a class="navbar-brand me-2" href="../index.html">blockr.io</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,7 +48,8 @@ framework classes (Bootstrap, Shiny, etc.) and prevent naming conflicts.</p>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><strong>Required for all blocks:</strong></p><ul><li><p><code>css_responsive_grid()</code> - Base grid layout and block styling (REQUIRED)</p></li>
 </ul><p><strong>Common optional utilities:</strong></p><ul><li><p><code>css_single_column()</code> - Force single-column layout (common)</p></li>
-<li><p><code>css_advanced_toggle()</code> - Collapsible sections with toggle (optional)</p></li>
+<li><p><code>css_gear_popover()</code> - Gear-button + popover (cogwheel) for advanced settings</p></li>
+<li><p><code>css_advanced_toggle()</code> - Legacy chevron-collapse toggle (kept for backwards compat)</p></li>
 <li><p><code>css_inline_checkbox()</code> - Checkbox/label styling for inline layouts (optional)</p></li>
 </ul><p><strong>Usage in block UI:</strong></p>
 <p></p><div class="sourceCode r"><pre><code><span><span class="va">ui</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span><span class="op">)</span> <span class="op">{</span></span>

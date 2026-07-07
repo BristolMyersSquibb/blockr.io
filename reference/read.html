@@ -11,7 +11,7 @@ based on detected file type. Supports "From Browser" (upload) and "Location"
 
     <a class="navbar-brand me-2" href="../index.html">blockr.io</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -104,6 +104,9 @@ that differ from defaults. Available parameters:</p><ul><li><p><strong>For CSV f
 <li><p>State stores permanent file paths</p></li>
 <li><p>Works across R sessions with state restoration</p></li>
 </ul><p><strong>Location mode</strong> (path):</p><ul><li><p>User enters a file path or URL in a text input with autocomplete</p></li>
+<li><p>The path is committed (and the file read) on Enter, blur, or a
+dropdown selection — never while typing; an "Enter" chip shows while
+the typed path is not yet applied</p></li>
 <li><p>For server paths: reads directly from original location</p></li>
 <li><p>For URLs: downloads to a temporary file each time</p></li>
 <li><p>When a board-level data directory is set, paths are resolved relative to it</p></li>
@@ -149,7 +152,7 @@ Default: <code>tools::R_user_dir("blockr", "data")</code></p></li>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Name: "Read"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> No data inputs</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Initial block state:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ path   : chr "/tmp/RtmpHKLses/file19e9574a25f4.csv"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  $ path   : chr "/tmp/Rtmpcctq3b/file19fc6b56d750.csv"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ source : chr "upload"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ combine: chr "auto"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ args   : list()</span>

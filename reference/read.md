@@ -77,6 +77,10 @@ The block supports two modes:
 
 - User enters a file path or URL in a text input with autocomplete
 
+- The path is committed (and the file read) on Enter, blur, or a
+  dropdown selection — never while typing; an "Enter" chip shows while
+  the typed path is not yet applied
+
 - For server paths: reads directly from original location
 
 - For URLs: downloads to a temporary file each time
@@ -128,7 +132,7 @@ block
 #> Name: "Read"
 #> No data inputs
 #> Initial block state:
-#>  $ path   : chr "/tmp/RtmpHKLses/file19e9574a25f4.csv"
+#>  $ path   : chr "/tmp/Rtmpcctq3b/file19fc6b56d750.csv"
 #>  $ source : chr "upload"
 #>  $ combine: chr "auto"
 #>  $ args   : list()
