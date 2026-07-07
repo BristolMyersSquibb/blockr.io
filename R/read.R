@@ -839,7 +839,8 @@ new_read_block <- function(
             # Unified path input with upload icon
             path_input_ui(
               NS(id, "file_path"),
-              upload_id = NS(id, "file_upload")
+              upload_id = NS(id, "file_upload"),
+              required = TRUE
             )
           )
         )

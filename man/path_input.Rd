@@ -6,7 +6,13 @@
 \alias{path_input_server}
 \title{Path input widget}
 \usage{
-path_input_ui(id, prefix = NULL, upload_id = NULL, placeholder = NULL)
+path_input_ui(
+  id,
+  prefix = NULL,
+  upload_id = NULL,
+  placeholder = NULL,
+  required = FALSE
+)
 
 path_input_server(
   id,
@@ -30,6 +36,10 @@ button is rendered inside the input field and the container gets a
 \item{placeholder}{Placeholder text for the input. Defaults to an
 upload-aware file hint; pass e.g. "Enter directory path..." for
 directory-mode inputs.}
+
+\item{required}{Whether the field must be filled. When \code{TRUE}, an empty
+field carries a soft amber "needs a value" cue (mirroring blockr.viz's
+required-empty mapping affordance) that clears once a value is entered.}
 
 \item{data_dir}{Reactive returning the current data directory path
 (from board options). Empty string means no data directory.}

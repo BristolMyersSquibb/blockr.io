@@ -115,6 +115,21 @@
     } else {
       chip.style.display = "none";
     }
+    updateRequiredState(inputId);
+  }
+
+  // Soft amber "needs a value" cue on required-but-empty fields, mirroring
+  // blockr.viz's .dd-role-required-empty. Toggled off the visible value, so
+  // it clears the moment the user types (and never shows on optional fields).
+  function updateRequiredState(inputId) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    var container = input.closest(".blockr-path-input");
+    var field = input.closest(".blockr-path-input-field");
+    if (!container || !field) return;
+    var required = container.getAttribute("data-required") === "true";
+    var empty = !input.value || !input.value.trim();
+    field.classList.toggle("blockr-path-required-empty", required && empty);
   }
 
   // Commit the current input value: this is the ONLY path through which
@@ -431,6 +446,7 @@
       var st = getState(inputId);
       st.committed = input.value;
       ensureChip(inputId);
+      updateRequiredState(inputId);
 
       // Track every commit (Enter, blur, selection, programmatic trigger):
       // jQuery-bound so both native change events and $().trigger("change")

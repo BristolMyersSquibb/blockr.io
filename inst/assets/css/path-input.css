@@ -25,6 +25,15 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
+/* Required-but-empty field: soft amber "needs a value" cue, mirroring
+   blockr.viz's .dd-role-required-empty (design-system warning tokens). An
+   affordance, not a hard error; the :focus-within rule below overrides it
+   while the user is actively typing. */
+.blockr-path-input-field.blockr-path-required-empty {
+  border-color: var(--blockr-color-warning, #f59e0b);
+  background: var(--blockr-color-warning-bg, #fffbeb);
+}
+
 .blockr-path-input-field:focus-within {
   background-color: #fff;
   border-color: #2563eb;
