@@ -296,11 +296,21 @@ write_expr <- function(
   full_path <- file.path(directory, full_filename)
 
   # Dispatch to appropriate handler
-  if (format == "csv") {
+  write_call <- if (format == "csv") {
     write_expr_csv(data_names, full_path, args)
   } else if (format == "excel") {
     write_expr_excel(data_names, full_path)
   } else {
     write_expr_arrow(data_names, full_path, format)
   }
+
+  # The target directory is created here, at write time, and nowhere else —
+  # so browsing/typing a path never leaves partial directories behind, and
+  # the exported expression is self-contained.
+  bquote({
+    if (!dir.exists(.(directory))) {
+      dir.create(.(directory), recursive = TRUE)
+    }
+    .(write_call)
+  })
 }

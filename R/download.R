@@ -120,9 +120,11 @@ new_download_block <- function(
       moduleServer(
         id,
         function(input, output, session) {
+          # Eval-env reference names for the connected inputs: the link name
+          # for named slots, ".arg1", ".arg2", ... for unnamed ones (added via
+          # the DAG UI). Reactive on the link set.
           arg_names <- reactive({
-            names_vec <- names(...args)
-            set_names(names_vec, dot_args_names(...args))
+            dot_arg_refs(...args)
           })
 
           r_filename <- reactiveVal(filename)
@@ -167,14 +169,20 @@ new_download_block <- function(
                 args = r_args()
               )
 
+              # Bind each input under its reference symbol (.arg1 for unnamed
+              # DAG-UI slots, else the link name) — the same names write_expr()
+              # emits. dot_arg_values() handles both the live-board reactives
+              # and the reactiveValues used in tests.
               eval_env <- new.env(parent = parent.frame())
-              names_vec <- arg_names()
-              ll <- reactiveValuesToList(...args)
+              arg_vals <- dot_arg_values(...args)
 
-              for (i in seq_along(names_vec)) {
-                arg_i <- ll[[i]]
-                data_val <- if (is.reactive(arg_i)) arg_i() else arg_i
-                assign(names_vec[i], data_val, envir = eval_env)
+              for (nm in names(arg_vals)) {
+                data_val <- arg_vals[[nm]]
+                assign(
+                  nm,
+                  if (is.reactive(data_val)) data_val() else data_val,
+                  envir = eval_env
+                )
               }
 
               eval(expr, envir = eval_env)

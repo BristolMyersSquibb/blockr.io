@@ -17,7 +17,8 @@ framework classes (Bootstrap, Shiny, etc.) and prevent naming conflicts.
 \strong{Common optional utilities:}
 \itemize{
 \item \code{css_single_column()} - Force single-column layout (common)
-\item \code{css_advanced_toggle()} - Collapsible sections with toggle (optional)
+\item \code{css_gear_popover()} - Gear-button + popover (cogwheel) for advanced settings
+\item \code{css_advanced_toggle()} - Legacy chevron-collapse toggle (kept for backwards compat)
 \item \code{css_inline_checkbox()} - Checkbox/label styling for inline layouts (optional)
 }
 

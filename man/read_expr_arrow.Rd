@@ -12,8 +12,8 @@ read_expr_arrow(path, ...)
 \item{...}{Reading parameters (currently unused)}
 }
 \value{
-Expression calling nanoparquet::read_parquet (preferred) or
-arrow::read_parquet for parquet, and arrow::read_feather /
+Expression calling arrow::read_parquet (preferred) or
+nanoparquet::read_parquet for parquet, and arrow::read_feather /
 arrow::read_ipc_file for the Arrow-only feather and IPC formats
 }
 \description{
