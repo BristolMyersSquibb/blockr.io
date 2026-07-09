@@ -413,3 +413,140 @@
   margin-bottom: 0;
   cursor: pointer;
 }
+
+/* --- Select parity ------------------------------------------------------------
+   blockr.io keeps stock shiny selectInput()/selectizeInput() (no cross-package
+   dependency on blockr.dplyr's Blockr.Select). These rules give the closed
+   control, the caret and the dropdown the same look as .blockr-select--bordered
+   (blockr-select.css): 42px, radius-lg, bg-input, chevron instead of selectize's
+   solid triangle, and the shared focus ring.
+
+   Scoped + !important on purpose: blockr.dock ships its own !important selectize
+   overrides (a different focus-ring hue and roomier options), which would win by
+   load order; the container-scoped selectors out-specify them. All of this drops
+   out when io adopts the shared Select with the blockr.ui move.
+
+   One recipe, two DOM shapes — selectize widget and, if selectize is ever
+   disabled, the native <select>. */
+
+.block-container .selectize-control,
+.block-container .selectize-dropdown,
+.blockr-settings .selectize-control,
+.blockr-settings .selectize-dropdown {
+  font-size: var(--blockr-font-size-base, 0.875rem);
+}
+
+.block-container .selectize-input,
+.blockr-settings .selectize-input {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  min-height: var(--blockr-control-h, 42px) !important;
+  padding: 6px 12px !important;
+  background-color: var(--blockr-color-bg-input, #f9fafb) !important;
+  border: 1px solid var(--blockr-color-border, #e5e7eb) !important;
+  border-radius: var(--blockr-radius-lg, 8px) !important;
+  color: var(--blockr-color-text-primary, #111827);
+  box-shadow: none !important;
+  transition: border-color var(--blockr-transition, 0.15s ease),
+    box-shadow var(--blockr-transition, 0.15s ease);
+}
+
+.block-container .selectize-input.focus,
+.block-container .selectize-input.dropdown-active,
+.blockr-settings .selectize-input.focus,
+.blockr-settings .selectize-input.dropdown-active {
+  /* Keep the input background (matches .blockr-select--bordered, which tints
+     only the border + ring on focus) — dock turns it white. */
+  background-color: var(--blockr-color-bg-input, #f9fafb) !important;
+  border-color: var(--blockr-color-primary, #2563eb) !important;
+  box-shadow: var(--blockr-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.12)) !important;
+}
+
+.block-container .selectize-input > input::placeholder,
+.blockr-settings .selectize-input > input::placeholder {
+  color: var(--blockr-grey-400, #9ca3af);
+}
+
+/* Caret: selectize's solid triangle -> the Blockr.icons.chevron glyph,
+   rotating 180deg while the dropdown is open (as Blockr.Select does). */
+.block-container .selectize-control.single .selectize-input:after,
+.blockr-settings .selectize-control.single .selectize-input:after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border: none !important;
+  background: no-repeat center / 12px 12px
+    url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+  transition: transform var(--blockr-transition, 0.15s ease);
+}
+
+.block-container .selectize-control.single .selectize-input.dropdown-active:after,
+.blockr-settings .selectize-control.single .selectize-input.dropdown-active:after {
+  transform: rotate(180deg);
+}
+
+.block-container .selectize-dropdown,
+.blockr-settings .selectize-dropdown {
+  margin-top: 4px !important;
+  background: #fff;
+  border: 1px solid var(--blockr-color-border, #e5e7eb) !important;
+  border-radius: var(--blockr-radius-lg, 8px) !important;
+  box-shadow: var(--blockr-shadow-dropdown, 0 4px 12px rgba(0, 0, 0, 0.1)) !important;
+}
+
+.block-container .selectize-dropdown-content,
+.blockr-settings .selectize-dropdown-content {
+  max-height: 240px !important;
+}
+
+.block-container .selectize-dropdown-content .option,
+.blockr-settings .selectize-dropdown-content .option {
+  padding: 6px 10px !important;
+  color: var(--blockr-color-text-primary, #111827);
+}
+
+.block-container .selectize-dropdown-content .option.active,
+.blockr-settings .selectize-dropdown-content .option.active {
+  background-color: var(--blockr-grey-50, #f9fafb) !important;
+  color: var(--blockr-color-text-primary, #111827) !important;
+}
+
+.block-container .selectize-dropdown-content .option.selected,
+.blockr-settings .selectize-dropdown-content .option.selected {
+  font-weight: 600;
+}
+
+/* Native <select> fallback (selectize disabled) — same closed-control look. */
+.block-container select.form-select,
+.block-container select.form-control,
+.blockr-settings select.form-select,
+.blockr-settings select.form-control {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  min-height: var(--blockr-control-h, 42px);
+  padding: 6px 32px 6px 12px;
+  font-size: var(--blockr-font-size-base, 0.875rem);
+  color: var(--blockr-color-text-primary, #111827);
+  background-color: var(--blockr-color-bg-input, #f9fafb);
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px 12px;
+  border: 1px solid var(--blockr-color-border, #e5e7eb);
+  border-radius: var(--blockr-radius-lg, 8px);
+  cursor: pointer;
+  transition: border-color var(--blockr-transition, 0.15s ease),
+    box-shadow var(--blockr-transition, 0.15s ease);
+}
+
+.block-container select.form-select:focus,
+.block-container select.form-control:focus,
+.blockr-settings select.form-select:focus,
+.blockr-settings select.form-control:focus {
+  outline: none;
+  border-color: var(--blockr-color-primary, #2563eb);
+  box-shadow: var(--blockr-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.12));
+}
