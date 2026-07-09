@@ -799,9 +799,11 @@ new_read_block <- function(
               )
             ),
 
+            # The placeholder already covers browsing and uploading, and the
+            # Enter chip covers committing. A URL and a dropped file are the
+            # two things it accepts that nothing on screen reveals.
             tags$p(
-              "Browse server files, paste a URL, or drag & drop to upload.",
-              "Press Enter to load the typed path.",
+              "Also accepts a pasted URL, or a file dropped here.",
               class = "blockr-path-hint"
             ),
 

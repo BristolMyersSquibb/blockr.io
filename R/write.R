@@ -613,12 +613,16 @@ new_write_block <- function(
                     value = filename,
                     placeholder = "Leave empty for auto-timestamp"
                   ),
+                  # The placeholder covers "empty means timestamped". These two
+                  # consequences it cannot: a fixed name loses every prior
+                  # save, and an empty name under auto-save yields "data"
+                  # rather than the timestamp the placeholder promises.
                   div(
                     class = "block-help-text",
                     style = "font-size: 0.75rem;",
-                    "Fixed filename overwrites on each save.",
-                    "Empty: timestamped file per manual save;",
-                    "auto-save writes a fixed \"data\" file."
+                    "A fixed name is overwritten on every save.",
+                    "Left empty, auto-save writes \"data\" instead of a",
+                    "timestamped file."
                   )
                 ),
                 div(
@@ -643,11 +647,9 @@ new_write_block <- function(
           # --- Download to Browser ---
           div(
             class = "block-section",
+            # No hint: the sibling section is labelled "Save to Server", so the
+            # two labels already draw the contrast a line here would spell out.
             div(class = "io-section-label", "Download to Browser"),
-            tags$p(
-              class = "blockr-path-hint",
-              "Download directly without saving to server"
-            ),
             downloadButton(
               NS(id, "download_data"),
               "Download",
@@ -665,9 +667,12 @@ new_write_block <- function(
           div(
             class = "block-section io-file-location",
             div(class = "io-section-label", "Save to Server"),
+            # The placeholder says to type a path and the Enter chip says how
+            # to commit it. Only the suggestion list is invisible until you
+            # start typing.
             tags$p(
               class = "blockr-path-hint",
-              "Type a directory path and press Enter, or pick from the suggestions"
+              "Typing suggests matching directories."
             ),
             path_input_ui(
               NS(id, "dir_path"),
@@ -720,9 +725,11 @@ new_write_block <- function(
             conditionalPanel(
               condition = "input.write_mode === 'auto'",
               ns = NS(id),
+              # "Auto-save enabled" restates the toggle the user just pressed.
+              # The overwrite-per-change consequence is the reason to show it.
               div(
                 class = "io-exec-auto-hint mt-2",
-                "Auto-save enabled. Writes to a fixed file, overwritten on every data change."
+                "Writes to a fixed file, overwritten on every data change."
               )
             ),
             # Status message
