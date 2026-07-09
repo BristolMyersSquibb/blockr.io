@@ -39,6 +39,15 @@
   background: var(--blockr-color-warning-bg, #fffbeb);
 }
 
+/* Required-but-empty field: soft amber "needs a value" cue, mirroring
+   blockr.viz's .dd-role-required-empty (design-system warning tokens). An
+   affordance, not a hard error; the :focus-within rule below overrides it
+   while the user is actively typing. */
+.blockr-path-input-field.blockr-path-required-empty {
+  border-color: var(--blockr-color-warning, #f59e0b);
+  background: var(--blockr-color-warning-bg, #fffbeb);
+}
+
 .blockr-path-input-field:focus-within {
   background-color: #fff;
   border-color: var(--blockr-color-primary, #2563eb);
@@ -183,6 +192,55 @@
   font-size: 0.7rem;
   color: var(--blockr-color-text-subtle, #9ca3af);
   border-top: 1px solid var(--blockr-color-bg-hover, #f3f4f6);
+  text-align: center;
+}
+
+/* Commit chip — design-system confirm cycle (§5.5): armed "Enter ↵" while
+   the typed value is not committed, faded ✓ once applied */
+.blockr-path-commit {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  height: 24px;
+  margin-right: 8px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  border-radius: 4px;
+  color: #2563eb;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.blockr-path-commit:hover {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(37, 99, 235, 0.5);
+}
+
+.blockr-path-commit.confirmed {
+  background: none;
+  border-color: transparent;
+  color: #9ca3af;
+  opacity: 0.5;
+  cursor: default;
+}
+
+.blockr-path-commit .blockr-kbd {
+  opacity: 0.55;
+  font-size: 0.95em;
+}
+
+/* Truncation footer in the dropdown */
+.blockr-path-dropdown-footer {
+  padding: 5px 12px;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  border-top: 1px solid #f3f4f6;
   text-align: center;
 }
 
