@@ -319,13 +319,12 @@
   margin-top: 8px;
 }
 
-/* --- Checkbox restyle ---------------------------------------------------------
+/* --- Checkbox restyle (scoped to .io-block) ---------------------------------------------------------
    values mirror .blockr-checkbox (settings-band.css) — one recipe, two DOM
    shapes: blockr.io keeps its shiny::checkboxInput bindings and restyles
    the native input, instead of building the Blockr.checkbox label/span DOM. */
 
-.block-container input[type="checkbox"],
-.blockr-settings input[type="checkbox"] {
+.io-block input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
   width: 16px;
@@ -347,34 +346,29 @@
   float: none;
 }
 
-.block-container input[type="checkbox"]:hover,
-.blockr-settings input[type="checkbox"]:hover {
+.io-block input[type="checkbox"]:hover {
   border-color: var(--blockr-grey-400, #9ca3af);
 }
 
-.block-container input[type="checkbox"]:checked,
-.blockr-settings input[type="checkbox"]:checked {
+.io-block input[type="checkbox"]:checked {
   background-color: var(--blockr-color-primary, #2563eb);
   border-color: var(--blockr-color-primary, #2563eb);
   /* check path = CHECK_SVG from settings-band.js */
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3E%3Cpath d='M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0'/%3E%3C/svg%3E");
 }
 
-.block-container input[type="checkbox"]:focus-visible,
-.blockr-settings input[type="checkbox"]:focus-visible {
+.io-block input[type="checkbox"]:focus-visible {
   outline: none;
   box-shadow: var(--blockr-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.12));
 }
 
 /* Label layout — BS3 markup (.checkbox > label > input + span) */
-.block-container .checkbox,
-.blockr-settings .checkbox {
+.io-block .checkbox {
   margin-top: 0;
   margin-bottom: 0;
 }
 
-.block-container .checkbox label,
-.blockr-settings .checkbox label {
+.io-block .checkbox label {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -388,8 +382,7 @@
 }
 
 /* Label layout — BS5 markup (.form-check > input + label) */
-.block-container .form-check,
-.blockr-settings .form-check {
+.io-block .form-check {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -398,15 +391,13 @@
   margin-bottom: 0;
 }
 
-.block-container .form-check .form-check-input,
-.blockr-settings .form-check .form-check-input {
+.io-block .form-check .form-check-input {
   float: none;
   margin-left: 0;
   margin-top: 0;
 }
 
-.block-container .form-check .form-check-label,
-.blockr-settings .form-check .form-check-label {
+.io-block .form-check .form-check-label {
   font-size: var(--blockr-font-size-sm, 0.8125rem);
   color: var(--blockr-grey-700, #374151);
   font-weight: 400;
@@ -414,7 +405,7 @@
   cursor: pointer;
 }
 
-/* --- Select parity ------------------------------------------------------------
+/* --- Select parity (scoped to .io-block) ------------------------------------------------------------
    blockr.io keeps stock shiny selectInput()/selectizeInput() (no cross-package
    dependency on blockr.dplyr's Blockr.Select). These rules give the closed
    control, the caret and the dropdown the same look as .blockr-select--bordered
@@ -429,15 +420,14 @@
    One recipe, two DOM shapes — selectize widget and, if selectize is ever
    disabled, the native <select>. */
 
-.block-container .selectize-control,
-.block-container .selectize-dropdown,
-.blockr-settings .selectize-control,
-.blockr-settings .selectize-dropdown {
+.io-block .selectize-control,
+.io-block .selectize-dropdown,
+.io-block .blockr-settings .selectize-control,
+.io-block .blockr-settings .selectize-dropdown {
   font-size: var(--blockr-font-size-base, 0.875rem);
 }
 
-.block-container .selectize-input,
-.blockr-settings .selectize-input {
+.io-block .selectize-input {
   display: flex !important;
   align-items: center !important;
   flex-wrap: wrap !important;
@@ -452,10 +442,10 @@
     box-shadow var(--blockr-transition, 0.15s ease);
 }
 
-.block-container .selectize-input.focus,
-.block-container .selectize-input.dropdown-active,
-.blockr-settings .selectize-input.focus,
-.blockr-settings .selectize-input.dropdown-active {
+.io-block .selectize-input.focus,
+.io-block .selectize-input.dropdown-active,
+.io-block .blockr-settings .selectize-input.focus,
+.io-block .blockr-settings .selectize-input.dropdown-active {
   /* Keep the input background (matches .blockr-select--bordered, which tints
      only the border + ring on focus) — dock turns it white. */
   background-color: var(--blockr-color-bg-input, #f9fafb) !important;
@@ -463,15 +453,13 @@
   box-shadow: var(--blockr-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.12)) !important;
 }
 
-.block-container .selectize-input > input::placeholder,
-.blockr-settings .selectize-input > input::placeholder {
+.io-block .selectize-input > input::placeholder {
   color: var(--blockr-grey-400, #9ca3af);
 }
 
 /* Caret: selectize's solid triangle -> the Blockr.icons.chevron glyph,
    rotating 180deg while the dropdown is open (as Blockr.Select does). */
-.block-container .selectize-control.single .selectize-input:after,
-.blockr-settings .selectize-control.single .selectize-input:after {
+.io-block .selectize-control.single .selectize-input:after {
   content: '';
   width: 12px;
   height: 12px;
@@ -482,13 +470,11 @@
   transition: transform var(--blockr-transition, 0.15s ease);
 }
 
-.block-container .selectize-control.single .selectize-input.dropdown-active:after,
-.blockr-settings .selectize-control.single .selectize-input.dropdown-active:after {
+.io-block .selectize-control.single .selectize-input.dropdown-active:after {
   transform: rotate(180deg);
 }
 
-.block-container .selectize-dropdown,
-.blockr-settings .selectize-dropdown {
+.io-block .selectize-dropdown {
   margin-top: 4px !important;
   background: #fff;
   border: 1px solid var(--blockr-color-border, #e5e7eb) !important;
@@ -496,33 +482,29 @@
   box-shadow: var(--blockr-shadow-dropdown, 0 4px 12px rgba(0, 0, 0, 0.1)) !important;
 }
 
-.block-container .selectize-dropdown-content,
-.blockr-settings .selectize-dropdown-content {
+.io-block .selectize-dropdown-content {
   max-height: 240px !important;
 }
 
-.block-container .selectize-dropdown-content .option,
-.blockr-settings .selectize-dropdown-content .option {
+.io-block .selectize-dropdown-content .option {
   padding: 6px 10px !important;
   color: var(--blockr-color-text-primary, #111827);
 }
 
-.block-container .selectize-dropdown-content .option.active,
-.blockr-settings .selectize-dropdown-content .option.active {
+.io-block .selectize-dropdown-content .option.active {
   background-color: var(--blockr-grey-50, #f9fafb) !important;
   color: var(--blockr-color-text-primary, #111827) !important;
 }
 
-.block-container .selectize-dropdown-content .option.selected,
-.blockr-settings .selectize-dropdown-content .option.selected {
+.io-block .selectize-dropdown-content .option.selected {
   font-weight: 600;
 }
 
 /* Native <select> fallback (selectize disabled) — same closed-control look. */
-.block-container select.form-select,
-.block-container select.form-control,
-.blockr-settings select.form-select,
-.blockr-settings select.form-control {
+.io-block select.form-select,
+.io-block select.form-control,
+.io-block .blockr-settings select.form-select,
+.io-block .blockr-settings select.form-control {
   appearance: none;
   -webkit-appearance: none;
   width: 100%;
@@ -542,10 +524,10 @@
     box-shadow var(--blockr-transition, 0.15s ease);
 }
 
-.block-container select.form-select:focus,
-.block-container select.form-control:focus,
-.blockr-settings select.form-select:focus,
-.blockr-settings select.form-control:focus {
+.io-block select.form-select:focus,
+.io-block select.form-control:focus,
+.io-block .blockr-settings select.form-select:focus,
+.io-block .blockr-settings select.form-control:focus {
   outline: none;
   border-color: var(--blockr-color-primary, #2563eb);
   box-shadow: var(--blockr-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.12));

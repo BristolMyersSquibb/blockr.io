@@ -506,7 +506,7 @@ new_write_block <- function(
       tagList(
         io_block_deps(),
         div(
-          class = "block-container write-block-container",
+          class = "block-container io-block write-block-container",
 
           # Hidden input to track mode
           div(

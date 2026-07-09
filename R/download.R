@@ -155,7 +155,7 @@ new_download_block <- function(
       tagList(
         io_block_deps(),
         div(
-          class = "block-container download-block-container",
+          class = "block-container io-block download-block-container",
 
           # Main row: download button + format selector on the left, gear on the right
           div(

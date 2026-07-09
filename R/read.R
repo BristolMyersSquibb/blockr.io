@@ -556,7 +556,7 @@ new_read_block <- function(
         shinyjs::useShinyjs(),
         io_block_deps(),
         div(
-          class = "block-container read-block-container",
+          class = "block-container io-block read-block-container",
           div(
             class = "block-section io-file-location",
             div(
