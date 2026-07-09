@@ -1,76 +1,3 @@
-
-#' Download-block layout CSS
-#'
-#' Layout rules specific to `new_download_block()` (button row, inline format
-#' selector). Shared gear/popover styling lives in [`css_gear_popover()`].
-#' @noRd
-download_block_css <- function() {
-  tagList(
-    css_gear_popover(),
-    tags$style(HTML("
-      .download-block-container {
-        padding: 12px 14px;
-      }
-      .download-block-main {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-      }
-      .download-block-main-left {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .download-block-main .btn {
-        flex: 0 0 auto;
-      }
-      /* Download button - aligned to the format select on its right.
-         Target values measured from the selectize-input computed style:
-         height 42px, padding 5px 12px, radius 8px, bg #f9fafb. */
-      .download-block-container .download-block-main-left .btn {
-        height: 42px;
-        padding: 5px 14px;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 14px;
-        line-height: 14px;
-        border-radius: 8px;
-        background: #f9fafb;
-        color: rgba(0, 0, 0, 0.83);
-        border: 1px solid #e5e7eb;
-        box-shadow: none;
-      }
-      .download-block-container .download-block-main-left .btn:hover {
-        background: #f3f4f6;
-        border-color: #d1d5db;
-        color: rgba(0, 0, 0, 0.9);
-      }
-      .download-block-container .download-block-main-left .btn:focus,
-      .download-block-container .download-block-main-left .btn:active {
-        background: #f9fafb;
-        border-color: #2563eb;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        color: rgba(0, 0, 0, 0.83);
-      }
-      .download-block-container .download-block-main-left .btn i,
-      .download-block-container .download-block-main-left .btn .fa {
-        color: #6b7280;
-      }
-      /* Tighten the inline format selector */
-      .download-block-format .form-group,
-      .download-block-format .shiny-input-container {
-        margin-bottom: 0;
-      }
-      .download-block-format .selectize-control {
-        margin-bottom: 0;
-      }
-    "))
-  )
-}
-
-
 #' Download-only file export block
 #'
 #' A variadic block that lets the user download one or more data frames as a
@@ -224,15 +151,15 @@ new_download_block <- function(
     },
     ui = function(id) {
       gear_id <- NS(id, "gear_btn")
-      popover_id <- NS(id, "gear_popover")
+      band_id <- NS(id, "gear_band")
       tagList(
-        download_block_css(),
+        io_block_deps(),
         div(
           class = "block-container download-block-container",
 
           # Main row: download button + format selector on the left, gear on the right
           div(
-            class = "download-block-main blockr-gear-host",
+            class = "download-block-main",
             div(
               class = "download-block-main-left",
               downloadButton(
@@ -257,47 +184,52 @@ new_download_block <- function(
               class = "blockr-gear-btn",
               title = "Advanced settings",
               `aria-label` = "Advanced settings",
-              `aria-controls` = popover_id,
+              `aria-controls` = band_id,
               `aria-expanded` = "false",
               onclick = sprintf(
                 "window.blockrIoGearToggle && window.blockrIoGearToggle('%s','%s');",
-                gear_id, popover_id
+                gear_id, band_id
               ),
               HTML(gear_icon_svg())
-            ),
+            )
+          ),
 
-            # Popover: filename + CSV args
-            div(
-              id = popover_id,
-              class = "blockr-popover",
-              style = "display: none;",
-              role = "dialog",
-              `aria-label` = "Download settings",
+          # Settings band: in-flow sibling of the main row (not inside it),
+          # its beak pointing at the gear above. Visibility is class-driven;
+          # blockrIoGearToggle() flips blockr-settings--open.
+          div(
+            id = band_id,
+            class = "blockr-settings blockr-settings--beak",
+            role = "region",
+            `aria-label` = "Download settings",
 
             div(
-              class = "blockr-popover-row",
-              tags$label(
-                class = "blockr-popover-label",
-                `for` = NS(id, "filename"),
-                "Filename (optional)"
-              ),
-              textInput(
-                inputId = NS(id, "filename"),
-                label = NULL,
-                value = filename,
-                placeholder = "Leave empty for auto-timestamp",
-                width = "100%"
+              class = "blockr-settings__grid",
+              div(
+                class = "blockr-settings__field",
+                tags$label(
+                  class = "blockr-label",
+                  `for` = NS(id, "filename"),
+                  "Filename (optional)"
+                ),
+                textInput(
+                  inputId = NS(id, "filename"),
+                  label = NULL,
+                  value = filename,
+                  placeholder = "Leave empty for auto-timestamp",
+                  width = "100%"
+                )
               )
             ),
 
             conditionalPanel(
               condition = "output['show_csv_options']",
               ns = NS(id),
-
+              class = "blockr-settings__grid",
               div(
-                class = "blockr-popover-row",
+                class = "blockr-settings__field",
                 tags$label(
-                  class = "blockr-popover-label",
+                  class = "blockr-label",
                   `for` = NS(id, "csv_sep"),
                   "Delimiter"
                 ),
@@ -316,7 +248,7 @@ new_download_block <- function(
                 )
               ),
               div(
-                class = "blockr-popover-row",
+                class = "blockr-settings__field",
                 checkboxInput(
                   inputId = NS(id, "csv_quote"),
                   label = "Quote strings",
@@ -324,9 +256,9 @@ new_download_block <- function(
                 )
               ),
               div(
-                class = "blockr-popover-row",
+                class = "blockr-settings__field",
                 tags$label(
-                  class = "blockr-popover-label",
+                  class = "blockr-label",
                   `for` = NS(id, "csv_na"),
                   "NA representation"
                 ),
@@ -342,7 +274,6 @@ new_download_block <- function(
           )
         )
       )
-    )
     },
     dat_valid = function(...args) {
       stopifnot(length(...args) >= 1L)
