@@ -1,8 +1,13 @@
-/* blockr path-input widget styles */
+/* blockr path-input widget styles
+
+   Tokenized against the blockr design system: every color/geometry literal
+   is written as var(--blockr-*, <canonical fallback>). blockr.io renders
+   standalone, so the fallback value IS the contract and must equal the
+   design-system canon. */
 
 .blockr-path-hint {
-  font-size: 0.75rem;
-  color: #6c757d;
+  font-size: var(--blockr-font-size-xs, 0.75rem);
+  color: var(--blockr-color-text-muted, #6b7280);
   margin: 0 0 6px 0;
 }
 
@@ -14,17 +19,21 @@
   position: relative;
   display: flex;
   align-items: center;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #f9fafb;
+  border: 1px solid var(--blockr-color-border, #e5e7eb);
+  border-radius: var(--blockr-radius-lg, 8px);
+  background: var(--blockr-color-bg-input, #f9fafb);
   overflow: visible;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  transition: border-color var(--blockr-transition, 0.15s ease),
+    box-shadow var(--blockr-transition, 0.15s ease),
+    background-color var(--blockr-transition, 0.15s ease);
 }
 
 /* Required-but-empty field: soft amber "needs a value" cue, mirroring
    blockr.viz's .dd-role-required-empty (design-system warning tokens). An
    affordance, not a hard error; the :focus-within rule below overrides it
-   while the user is actively typing. */
+   while the user is actively typing.
+   .blockr-path-required-empty is a legacy alias, remove next release. */
+.blockr-path-input-field.blockr-field--required-empty,
 .blockr-path-input-field.blockr-path-required-empty {
   border-color: var(--blockr-color-warning, #f59e0b);
   background: var(--blockr-color-warning-bg, #fffbeb);
@@ -32,13 +41,13 @@
 
 .blockr-path-input-field:focus-within {
   background-color: #fff;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: var(--blockr-color-primary, #2563eb);
+  box-shadow: var(--blockr-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.12));
 }
 
 .blockr-path-prefix {
   padding: 0.375rem 0 0.375rem 0;
-  color: #6c757d;
+  color: var(--blockr-color-text-muted, #6b7280);
   font-size: 0.875rem;
   white-space: nowrap;
   pointer-events: none;
@@ -83,10 +92,10 @@
   right: 0;
   z-index: 99999;
   background: #fff;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--blockr-color-border, #e5e7eb);
   border-top: none;
-  border-radius: 0 0 8px 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 0 0 var(--blockr-radius-lg, 8px) var(--blockr-radius-lg, 8px);
+  box-shadow: var(--blockr-shadow-dropdown, 0 4px 12px rgba(0, 0, 0, 0.1));
   max-height: 240px;
   overflow-y: auto;
 }
@@ -102,12 +111,12 @@
 
 .blockr-path-dropdown-item:hover,
 .blockr-path-dropdown-item.active {
-  background-color: #f0f0f5;
+  background-color: var(--blockr-color-bg-hover, #f3f4f6);
 }
 
 .blockr-path-icon {
   flex-shrink: 0;
-  color: #6c757d;
+  color: var(--blockr-color-text-muted, #6b7280);
   display: flex;
   align-items: center;
 }
@@ -121,12 +130,13 @@
 
 .blockr-path-size {
   flex-shrink: 0;
-  font-size: 0.75rem;
-  color: #999;
+  font-size: var(--blockr-font-size-xs, 0.75rem);
+  color: var(--blockr-grey-400, #9ca3af);
 }
 
 /* Commit chip — design-system confirm cycle (§5.5): armed "Enter ↵" while
-   the typed value is not committed, faded ✓ once applied */
+   the typed value is not committed, faded ✓ once applied. Height stays a
+   literal 24px for visual parity with blockr.dplyr's .blockr-expr-confirm. */
 .blockr-path-commit {
   display: inline-flex;
   align-items: center;
@@ -136,15 +146,17 @@
   margin-right: 8px;
   background: rgba(37, 99, 235, 0.08);
   border: 1px solid rgba(37, 99, 235, 0.3);
-  border-radius: 4px;
-  color: #2563eb;
+  border-radius: var(--blockr-radius-sm, 4px);
+  color: var(--blockr-color-primary, #2563eb);
   cursor: pointer;
   flex-shrink: 0;
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+  transition: background var(--blockr-transition, 0.15s ease),
+    border-color var(--blockr-transition, 0.15s ease),
+    opacity var(--blockr-transition, 0.15s ease);
 }
 
 .blockr-path-commit:hover {
@@ -155,7 +167,7 @@
 .blockr-path-commit.confirmed {
   background: none;
   border-color: transparent;
-  color: #9ca3af;
+  color: var(--blockr-color-text-subtle, #9ca3af);
   opacity: 0.5;
   cursor: default;
 }
@@ -169,8 +181,8 @@
 .blockr-path-dropdown-footer {
   padding: 5px 12px;
   font-size: 0.7rem;
-  color: #9ca3af;
-  border-top: 1px solid #f3f4f6;
+  color: var(--blockr-color-text-subtle, #9ca3af);
+  border-top: 1px solid var(--blockr-color-bg-hover, #f3f4f6);
   text-align: center;
 }
 
@@ -183,64 +195,67 @@
   justify-content: center;
   width: 36px;
   border: none;
-  border-left: 1px solid #e5e7eb;
-  border-radius: 0 8px 8px 0;
-  background: #f9f9fa;
-  color: #6c757d;
+  border-left: 1px solid var(--blockr-color-border, #e5e7eb);
+  border-radius: 0 var(--blockr-radius-lg, 8px) var(--blockr-radius-lg, 8px) 0;
+  background: var(--blockr-color-bg-input, #f9fafb);
+  color: var(--blockr-color-text-muted, #6b7280);
   cursor: pointer;
   padding: 0;
-  transition: color 0.15s, background-color 0.15s;
+  transition: color var(--blockr-transition, 0.15s ease),
+    background-color var(--blockr-transition, 0.15s ease);
 }
 
 .blockr-path-upload-btn:hover {
-  color: #0d6efd;
-  background: #ececec;
+  color: var(--blockr-color-primary, #2563eb);
+  background: var(--blockr-color-bg-hover, #f3f4f6);
 }
 
 /* Drag-over state */
 .blockr-path-input-field.blockr-path-dragover {
-  border: 2px dashed #0d6efd;
-  background: #f0f4ff;
+  border: 2px dashed var(--blockr-color-primary, #2563eb);
+  background: var(--blockr-color-primary-bg, #eff6ff);
 }
 
 .blockr-path-input-field.blockr-path-dragover .blockr-path-upload-btn {
-  color: #0d6efd;
-  border-left-color: #0d6efd;
+  color: var(--blockr-color-primary, #2563eb);
+  border-left-color: var(--blockr-color-primary, #2563eb);
 }
 
 .blockr-path-status {
   font-size: 0.8rem;
-  color: #6c757d;
+  color: var(--blockr-color-text-muted, #6b7280);
   margin-top: 6px;
   min-height: 1.2em;
 }
 
 /* Data directory set button — three states: disabled, enabled, success */
 .blockr-datadir-btn {
-  background-color: #6c757d;
-  border-color: #6c757d;
+  background-color: var(--blockr-color-text-muted, #6b7280);
+  border-color: var(--blockr-color-text-muted, #6b7280);
   color: #fff;
   opacity: 0.65;
   cursor: default;
-  transition: background-color 0.2s, border-color 0.2s, opacity 0.2s;
+  transition: background-color var(--blockr-transition, 0.15s ease),
+    border-color var(--blockr-transition, 0.15s ease),
+    opacity var(--blockr-transition, 0.15s ease);
 }
 
 .blockr-datadir-btn:not(:disabled) {
-  background-color: #0d6efd;
-  border-color: #0d6efd;
+  background-color: var(--blockr-color-primary, #2563eb);
+  border-color: var(--blockr-color-primary, #2563eb);
   color: #fff;
   opacity: 1;
   cursor: pointer;
 }
 
 .blockr-datadir-btn:not(:disabled):hover {
-  background-color: #0b5ed7;
-  border-color: #0a58ca;
+  background-color: var(--blockr-color-primary-hover, #1d4ed8);
+  border-color: var(--blockr-color-primary-hover, #1d4ed8);
 }
 
 .blockr-datadir-btn.blockr-datadir-btn-success {
-  background-color: #198754;
-  border-color: #198754;
+  background-color: var(--blockr-color-success, #16a34a);
+  border-color: var(--blockr-color-success, #16a34a);
   color: #fff;
   opacity: 1;
 }
@@ -256,12 +271,13 @@
   animation: blockr-fadeInScale 0.4s ease-out;
 }
 
-/* File-type status badge — matches .badge-two-tone from blockr.dock */
+/* File-type status badge — matches .badge-two-tone from blockr.dock.
+   Color triples stay literal: no badge tokens yet. */
 .blockr-path-badge {
   display: inline-block;
   padding: 2px 8px;
   font-size: 0.625rem;
-  border-radius: 4px;
+  border-radius: var(--blockr-radius-sm, 4px);
   white-space: nowrap;
   line-height: 1.4;
 }
