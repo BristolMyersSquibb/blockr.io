@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">blockr.io</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,14 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="blockrio-development-version">blockr.io (development version)<a class="anchor" aria-label="anchor" href="#blockrio-development-version"></a></h2>
+<div class="section level3">
+<h3 id="design-system-alignment-development-version">Design-system alignment<a class="anchor" aria-label="anchor" href="#design-system-alignment-development-version"></a></h3>
+<ul><li>The gear button on the read, write, and download blocks now expands a full-width, in-flow settings band (the blockr design-system pattern, shared with blockr.viz and blockr.ggplot) instead of a floating popover. The band is a persistent panel: it stays open while you work and only the gear closes it. The settings-band CSS/JS is vendored verbatim from blockr.viz (the canonical source).</li>
+<li>All block styling moved out of R-generated <code>&lt;style&gt;</code> tags into <code>inst/assets/css/io-blocks.css</code> and is tokenized against the design system: colors, radii, control heights, and transitions are <code>var(--blockr-*, &lt;canonical fallback&gt;)</code>, so blocks pick up host themes while rendering canonically standalone.</li>
+<li>Checkboxes are restyled to the design-system <code>.blockr-checkbox</code> recipe (16px box, primary fill, inline SVG check) while keeping their Shiny bindings; one recipe covers both Bootstrap 3 and Bootstrap 5 markup.</li>
+<li>The required-but-empty amber cue on path inputs uses the canonical <code>.blockr-field--required-empty</code> class; the old <code>.blockr-path-required-empty</code> name remains as a CSS alias for one release.</li>
+<li>In-block <code>h4</code> titles are gone: the block name is the title; section headings render as micro-labels (<code>.io-section-label</code> / <code>.blockr-settings__title</code>).</li>
+</ul></div>
 <div class="section level3">
 <h3 id="path-input-commit-on-enter-development-version">Path input: commit on Enter<a class="anchor" aria-label="anchor" href="#path-input-commit-on-enter-development-version"></a></h3>
 <ul><li>Path inputs now follow the blockr design-system text-commit convention: typing only drives the autocomplete dropdown; the value is committed (and the file read / directory applied) on Enter, blur, or a dropdown selection. While the typed text is not yet applied, the field shows an “Enter” chip that collapses to a faded check mark on commit. This removes per-keystroke pipeline recomputes (the main source of autocomplete lag) and mid-typing file reads.</li>
@@ -99,7 +107,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

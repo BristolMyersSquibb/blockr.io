@@ -2,6 +2,30 @@
 
 ## blockr.io (development version)
 
+### Design-system alignment
+
+- The gear button on the read, write, and download blocks now expands a
+  full-width, in-flow settings band (the blockr design-system pattern,
+  shared with blockr.viz and blockr.ggplot) instead of a floating
+  popover. The band is a persistent panel: it stays open while you work
+  and only the gear closes it. The settings-band CSS/JS is vendored
+  verbatim from blockr.viz (the canonical source).
+- All block styling moved out of R-generated `<style>` tags into
+  `inst/assets/css/io-blocks.css` and is tokenized against the design
+  system: colors, radii, control heights, and transitions are
+  `var(--blockr-*, <canonical fallback>)`, so blocks pick up host themes
+  while rendering canonically standalone.
+- Checkboxes are restyled to the design-system `.blockr-checkbox` recipe
+  (16px box, primary fill, inline SVG check) while keeping their Shiny
+  bindings; one recipe covers both Bootstrap 3 and Bootstrap 5 markup.
+- The required-but-empty amber cue on path inputs uses the canonical
+  `.blockr-field--required-empty` class; the old
+  `.blockr-path-required-empty` name remains as a CSS alias for one
+  release.
+- In-block `h4` titles are gone: the block name is the title; section
+  headings render as micro-labels (`.io-section-label` /
+  `.blockr-settings__title`).
+
 ### Path input: commit on Enter
 
 - Path inputs now follow the blockr design-system text-commit

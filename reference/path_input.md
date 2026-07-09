@@ -50,7 +50,8 @@ path_input_server(
 - required:
 
   Whether the field must be filled. When `TRUE`, an empty field carries
-  a soft amber "needs a value" cue (mirroring blockr.viz's
+  a soft amber "needs a value" cue via the canonical
+  `.blockr-field--required-empty` class (mirroring blockr.viz's
   required-empty mapping affordance) that clears once a value is
   entered.
 
