@@ -19,7 +19,8 @@
 io_settings_band_dep <- function() {
   htmltools::htmlDependency(
     name = "io-settings-band",
-    version = utils::packageVersion("blockr.io"),
+    # Bump the suffix on every settings-band.css/js edit (asset cache).
+    version = paste0(utils::packageVersion("blockr.io"), ".1"),
     src = system.file("assets", package = "blockr.io"),
     script = "js/settings-band.js",
     stylesheet = "css/settings-band.css"

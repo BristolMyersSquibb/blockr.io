@@ -20,7 +20,12 @@
   display: none;
   border: 1px solid var(--blockr-color-border, #e5e7eb);
   border-radius: 8px;
-  padding: 12px 14px 8px;
+  /* Symmetric-looking breathing room: the 8px bottom only ever read as
+     enough because row-built bands (summary table) put an 8px margin under
+     every row, including the last. Bands whose grid is a plain field row
+     (blockr.dplyr's) had the controls nearly touching the border. The band
+     now owns the bottom rhythm; the stray last-row margin is zeroed below. */
+  padding: 12px 14px 16px;
   margin-bottom: 10px;
   background: #fff;
   box-sizing: border-box;
@@ -83,6 +88,13 @@
 
 /* Field grid for hand-built (non-engine) bands, e.g. the summary-table
    block: the flex-wrap responsive idiom, same as .stb-grid / .dd-form-row. */
+/* Row-built bands set an inline margin under each row; the last one would
+   double up with the band's bottom padding (hence !important, which is the
+   only way to beat an inline style). */
+.blockr-settings__grid > :last-child {
+  margin-bottom: 0 !important;
+}
+
 .blockr-settings__grid {
   flex: 1 1 100%;
   display: flex;
