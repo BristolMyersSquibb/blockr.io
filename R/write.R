@@ -501,108 +501,12 @@ new_write_block <- function(
       )
     },
     ui = function(id) {
+      gear_id <- NS(id, "gear_btn")
+      band_id <- NS(id, "gear_band")
       tagList(
-        # Add CSS
-        css_responsive_grid(),
-        css_gear_popover(),
+        io_block_deps(),
         div(
-          class = "block-container write-block-container",
-
-          tags$style(HTML("
-            /* File Configuration header lays out gear to the right of the h4.
-               It must span the full grid row: .block-section is
-               display:contents, so this wrapper is a grid item -- without the
-               explicit span it becomes a 250px column NEXT TO the fields on
-               wide panels. */
-            .write-block-container .write-block-config-header {
-              grid-column: 1 / -1;
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              gap: 8px;
-              margin-bottom: 0;
-            }
-            /* Make inputs full width */
-            .write-block-container .shiny-input-container {
-              width: 100% !important;
-            }
-            .write-block-container .selectize-control {
-              width: 100% !important;
-            }
-            /* Tighten spacing in file config grid */
-            .write-block-container .block-form-grid .shiny-input-container {
-              margin-bottom: 0;
-            }
-            .write-block-container .block-help-text {
-              margin-top: 8px;
-            }
-            /* Execution mode toggle */
-            .blockr-exec-toggle {
-              display: inline-flex;
-              align-items: center;
-              gap: 2px;
-              background-color: #f3f4f6;
-              border-radius: 8px;
-              padding: 2px;
-            }
-            .blockr-exec-toggle button {
-              padding: 0.25rem 0.5rem;
-              font-size: 0.875rem;
-              line-height: 1.5;
-              font-weight: 500;
-              color: #6b7280;
-              background: transparent;
-              border: none;
-              border-radius: 6px;
-              cursor: pointer;
-              transition: all 0.15s ease;
-              white-space: nowrap;
-            }
-            .blockr-exec-toggle button:hover {
-              color: #374151;
-              background-color: #e5e7eb;
-            }
-            .blockr-exec-toggle button.active {
-              color: #111827;
-              background-color: #fff;
-              box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
-            }
-            /* Auto-save info banner */
-            .blockr-exec-auto-hint {
-              font-size: 0.8rem;
-              color: #0d6efd;
-              background: #e7f1ff;
-              border: 1px solid #b6d4fe;
-              border-radius: 6px;
-              padding: 8px 12px;
-            }
-            /* Status text */
-            .blockr-exec-status {
-              font-size: 0.8rem;
-              color: #6b7280;
-              min-height: 1.2em;
-            }
-            /* OR divider */
-            .blockr-or-divider {
-              display: flex;
-              align-items: center;
-              gap: 12px;
-              margin: 16px 0;
-            }
-            .blockr-or-divider::before,
-            .blockr-or-divider::after {
-              content: '';
-              flex: 1;
-              border-top: 1px solid #e5e7eb;
-            }
-            .blockr-or-divider span {
-              font-size: 0.75rem;
-              font-weight: 500;
-              color: #9ca3af;
-              text-transform: uppercase;
-              letter-spacing: 0.05em;
-            }
-          ")),
+          class = "block-container io-block write-block-container",
 
           # Hidden input to track mode
           div(
@@ -620,89 +524,85 @@ new_write_block <- function(
             style = "padding-bottom: 0; margin-bottom: 0;",
             div(
               class = "block-section",
-              local({
-                gear_id <- NS(id, "gear_btn")
-                popover_id <- NS(id, "gear_popover")
-                div(
-                  class = "write-block-config-header",
-                  tags$h4("File Configuration", class = "mb-0"),
+              div(
+                class = "blockr-gear-row",
+                tags$button(
+                  type = "button",
+                  id = gear_id,
+                  class = "blockr-gear-btn",
+                  title = "Advanced settings",
+                  `aria-label` = "Advanced settings",
+                  `aria-controls` = band_id,
+                  `aria-expanded` = "false",
+                  onclick = sprintf(
+                    "window.blockrIoGearToggle && window.blockrIoGearToggle('%s','%s');",
+                    gear_id, band_id
+                  ),
+                  HTML(gear_icon_svg())
+                )
+              ),
+
+              # Settings band: in-flow panel spanning the form grid (see the
+              # .block-form-grid .blockr-settings rule in io-blocks.css).
+              # Visibility is class-driven; blockrIoGearToggle() flips it.
+              div(
+                id = band_id,
+                class = "blockr-settings blockr-settings--beak",
+                role = "region",
+                `aria-label` = "Write settings",
+
+                div(class = "blockr-settings__title", "Format options"),
+
+                conditionalPanel(
+                  condition = "output['show_csv_options']",
+                  ns = NS(id),
+                  class = "blockr-settings__grid",
                   div(
-                    class = "blockr-gear-host",
-                    tags$button(
-                      type = "button",
-                      id = gear_id,
-                      class = "blockr-gear-btn",
-                      title = "Advanced settings",
-                      `aria-label` = "Advanced settings",
-                      `aria-controls` = popover_id,
-                      `aria-expanded` = "false",
-                      onclick = sprintf(
-                        "window.blockrIoGearToggle && window.blockrIoGearToggle('%s','%s');",
-                        gear_id, popover_id
-                      ),
-                      HTML(gear_icon_svg())
+                    class = "blockr-settings__field",
+                    tags$label(
+                      class = "blockr-label",
+                      `for` = NS(id, "csv_sep"),
+                      "Delimiter"
                     ),
-                    div(
-                      id = popover_id,
-                      class = "blockr-popover",
-                      style = "display: none;",
-                      role = "dialog",
-                      `aria-label` = "Write settings",
-
-                      tags$h4("Format-Specific Options"),
-
-                      conditionalPanel(
-                        condition = "output['show_csv_options']",
-                        ns = NS(id),
-                        div(
-                          class = "blockr-popover-row",
-                          tags$label(
-                            class = "blockr-popover-label",
-                            `for` = NS(id, "csv_sep"),
-                            "Delimiter"
-                          ),
-                          selectizeInput(
-                            inputId = NS(id, "csv_sep"),
-                            label = NULL,
-                            choices = c(
-                              "Comma (,)" = ",",
-                              "Semicolon (;)" = ";",
-                              "Tab (\\t)" = "\t",
-                              "Pipe (|)" = "|"
-                            ),
-                            selected = if (!is.null(args$sep)) args$sep else ",",
-                            options = list(create = TRUE),
-                            width = "100%"
-                          )
-                        ),
-                        div(
-                          class = "blockr-popover-row",
-                          checkboxInput(
-                            inputId = NS(id, "csv_quote"),
-                            label = "Quote strings",
-                            value = if (!is.null(args$quote)) args$quote else TRUE
-                          )
-                        ),
-                        div(
-                          class = "blockr-popover-row",
-                          tags$label(
-                            class = "blockr-popover-label",
-                            `for` = NS(id, "csv_na"),
-                            "NA representation"
-                          ),
-                          textInput(
-                            inputId = NS(id, "csv_na"),
-                            label = NULL,
-                            value = if (!is.null(args$na)) args$na else "",
-                            placeholder = "default: empty string",
-                            width = "100%"
-                          )
-                        )
-                      )
+                    selectizeInput(
+                      inputId = NS(id, "csv_sep"),
+                      label = NULL,
+                      choices = c(
+                        "Comma (,)" = ",",
+                        "Semicolon (;)" = ";",
+                        "Tab (\\t)" = "\t",
+                        "Pipe (|)" = "|"
+                      ),
+                      selected = if (!is.null(args$sep)) args$sep else ",",
+                      options = list(create = TRUE),
+                      width = "100%"
+                    )
+                  ),
+                  div(
+                    class = "blockr-settings__field",
+                    checkboxInput(
+                      inputId = NS(id, "csv_quote"),
+                      label = "Quote strings",
+                      value = if (!is.null(args$quote)) args$quote else TRUE
+                    )
+                  ),
+                  div(
+                    class = "blockr-settings__field",
+                    tags$label(
+                      class = "blockr-label",
+                      `for` = NS(id, "csv_na"),
+                      "NA representation"
+                    ),
+                    textInput(
+                      inputId = NS(id, "csv_na"),
+                      label = NULL,
+                      value = if (!is.null(args$na)) args$na else "",
+                      placeholder = "default: empty string",
+                      width = "100%"
                     )
                   )
                 )
-              }),
+              ),
               div(
                 class = "block-section-grid",
                 div(
@@ -735,12 +635,15 @@ new_write_block <- function(
           ),
 
           # --- Separator ---
-          tags$hr(style = "border-top: 1px solid #e5e7eb; margin: 16px 0;"),
+          tags$hr(style = paste(
+            "border-top: 1px solid var(--blockr-color-border, #e5e7eb);",
+            "margin: 16px 0;"
+          )),
 
           # --- Download to Browser ---
           div(
             class = "block-section",
-            tags$h4("Download to Browser", class = "mb-3"),
+            div(class = "io-section-label", "Download to Browser"),
             tags$p(
               class = "blockr-path-hint",
               "Download directly without saving to server"
@@ -754,14 +657,14 @@ new_write_block <- function(
 
           # --- OR divider ---
           div(
-            class = "blockr-or-divider",
+            class = "io-or-divider",
             tags$span("or")
           ),
 
           # --- Save to Server ---
           div(
-            class = "block-section blockr-file-location",
-            tags$h4("Save to Server", class = "mb-3"),
+            class = "block-section io-file-location",
+            div(class = "io-section-label", "Save to Server"),
             tags$p(
               class = "blockr-path-hint",
               "Type a directory path and press Enter, or pick from the suggestions"
@@ -775,7 +678,7 @@ new_write_block <- function(
               class = "mt-2",
               style = "display: flex; align-items: center; gap: 8px;",
               div(
-                class = "blockr-exec-toggle",
+                class = "io-exec-toggle",
                 tags$button(
                   "Manual",
                   class = if (!auto_write) "active" else "",
@@ -818,13 +721,13 @@ new_write_block <- function(
               condition = "input.write_mode === 'auto'",
               ns = NS(id),
               div(
-                class = "blockr-exec-auto-hint mt-2",
+                class = "io-exec-auto-hint mt-2",
                 "Auto-save enabled. Writes to a fixed file, overwritten on every data change."
               )
             ),
             # Status message
             div(
-              class = "blockr-exec-status mt-2",
+              class = "io-exec-status mt-2",
               textOutput(NS(id, "write_status"))
             )
           ),

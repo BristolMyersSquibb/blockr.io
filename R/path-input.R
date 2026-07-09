@@ -24,7 +24,8 @@
 #'   upload-aware file hint; pass e.g. "Enter directory path..." for
 #'   directory-mode inputs.
 #' @param required Whether the field must be filled. When `TRUE`, an empty
-#'   field carries a soft amber "needs a value" cue (mirroring blockr.viz's
+#'   field carries a soft amber "needs a value" cue via the canonical
+#'   `.blockr-field--required-empty` class (mirroring blockr.viz's
 #'   required-empty mapping affordance) that clears once a value is entered.
 #'
 #' @return `path_input_ui()` returns a `tagList` with the widget HTML.
@@ -79,7 +80,7 @@ path_input_ui <- function(id, prefix = NULL, upload_id = NULL,
         # is entered / committed.
         class = paste(
           "blockr-path-input-field",
-          if (required) "blockr-path-required-empty"
+          if (required) "blockr-field--required-empty"
         ),
         tags$span(
           id = ns("path_text_prefix"),
@@ -341,7 +342,7 @@ list_dir_response <- function(path_val, dir_root = "", mode = "file",
 path_input_dep <- function() {
   htmltools::htmlDependency(
     name = "blockr-path-input",
-    version = "0.2.1",
+    version = "0.3.0",
     src = system.file("assets", package = "blockr.io"),
     script = "js/path-input.js",
     stylesheet = "css/path-input.css"

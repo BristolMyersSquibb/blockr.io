@@ -550,280 +550,260 @@ new_read_block <- function(
       )
     },
     ui = function(id) {
+      gear_id <- NS(id, "gear_btn")
+      band_id <- NS(id, "gear_band")
       tagList(
         shinyjs::useShinyjs(),
-
-        # Add CSS
-        css_responsive_grid(),
-        css_gear_popover(),
+        io_block_deps(),
         div(
-          class = "block-container read-block-container",
+          class = "block-container io-block read-block-container",
           div(
-            class = "block-section blockr-file-location",
+            class = "block-section io-file-location",
             div(
-              class = "blockr-file-location-header",
-              tags$h4("File Location", class = "mb-0"),
-              local({
-                gear_id <- NS(id, "gear_btn")
-                popover_id <- NS(id, "gear_popover")
+              class = "blockr-gear-row",
+              tags$button(
+                type = "button",
+                id = gear_id,
+                class = "blockr-gear-btn",
+                title = "Advanced settings",
+                `aria-label` = "Advanced settings",
+                `aria-controls` = band_id,
+                `aria-expanded` = "false",
+                onclick = sprintf(
+                  "window.blockrIoGearToggle && window.blockrIoGearToggle('%s','%s');",
+                  gear_id, band_id
+                ),
+                HTML(gear_icon_svg())
+              )
+            ),
+
+            # Settings band: persistent in-flow panel between the gear row
+            # and the path input. Visibility is class-driven (closed = no
+            # blockr-settings--open); blockrIoGearToggle() flips it.
+            div(
+              id = band_id,
+              class = "blockr-settings blockr-settings--beak",
+              role = "region",
+              `aria-label` = "Read settings",
+
+              tags$p(
+                "Change the global data directory in the sidebar",
+                class = "blockr-path-hint blockr-settings__field--full"
+              ),
+
+              div(class = "blockr-settings__title", "Format options"),
+
+              conditionalPanel(
+                condition = "output['show_csv_options']",
+                ns = NS(id),
+                class = "blockr-settings__grid",
                 div(
-                  class = "blockr-gear-host",
-                  tags$button(
-                    type = "button",
-                    id = gear_id,
-                    class = "blockr-gear-btn",
-                    title = "Advanced settings",
-                    `aria-label` = "Advanced settings",
-                    `aria-controls` = popover_id,
-                    `aria-expanded` = "false",
-                    onclick = sprintf(
-                      "window.blockrIoGearToggle && window.blockrIoGearToggle('%s','%s');",
-                      gear_id, popover_id
-                    ),
-                    HTML(gear_icon_svg())
+                  class = "blockr-settings__field",
+                  tags$label(
+                    class = "blockr-label",
+                    `for` = NS(id, "csv_sep"),
+                    "Delimiter"
                   ),
-                  div(
-                    id = popover_id,
-                    class = "blockr-popover",
-                    style = "display: none;",
-                    role = "dialog",
-                    `aria-label` = "Read settings",
-
-                    tags$p(
-                      "Change the global data directory in the sidebar",
-                      class = "blockr-path-hint"
+                  selectizeInput(
+                    inputId = NS(id, "csv_sep"),
+                    label = NULL,
+                    choices = c(
+                      "Comma (,)" = ",",
+                      "Semicolon (;)" = ";",
+                      "Tab (\\t)" = "\t",
+                      "Pipe (|)" = "|"
                     ),
-
-                    tags$h4("Format-Specific Options"),
-
-                    conditionalPanel(
-                      condition = "output['show_csv_options']",
-                      ns = NS(id),
-                      div(
-                        class = "blockr-popover-row",
-                        tags$label(
-                          class = "blockr-popover-label",
-                          `for` = NS(id, "csv_sep"),
-                          "Delimiter"
-                        ),
-                        selectizeInput(
-                          inputId = NS(id, "csv_sep"),
-                          label = NULL,
-                          choices = c(
-                            "Comma (,)" = ",",
-                            "Semicolon (;)" = ";",
-                            "Tab (\\t)" = "\t",
-                            "Pipe (|)" = "|"
-                          ),
-                          selected = if (!is.null(args$sep)) args$sep else ",",
-                          options = list(create = TRUE),
-                          width = "100%"
-                        )
-                      ),
-                      div(
-                        class = "blockr-popover-row",
-                        tags$label(
-                          class = "blockr-popover-label",
-                          `for` = NS(id, "csv_quote"),
-                          "Quote character"
-                        ),
-                        textInput(
-                          inputId = NS(id, "csv_quote"),
-                          label = NULL,
-                          value = if (!is.null(args$quote)) args$quote else "\"",
-                          placeholder = "default: \"",
-                          width = "100%"
-                        )
-                      ),
-                      div(
-                        class = "blockr-popover-row",
-                        tags$label(
-                          class = "blockr-popover-label",
-                          `for` = NS(id, "csv_encoding"),
-                          "Encoding"
-                        ),
-                        selectInput(
-                          inputId = NS(id, "csv_encoding"),
-                          label = NULL,
-                          choices = c(
-                            "UTF-8",
-                            "Latin-1",
-                            "Windows-1252",
-                            "ISO-8859-1"
-                          ),
-                          selected = if (!is.null(args$encoding)) args$encoding else "UTF-8",
-                          width = "100%"
-                        )
-                      ),
-                      div(
-                        class = "blockr-popover-row",
-                        tags$label(
-                          class = "blockr-popover-label",
-                          `for` = NS(id, "csv_skip"),
-                          "Skip rows"
-                        ),
-                        textInput(
-                          inputId = NS(id, "csv_skip"),
-                          label = NULL,
-                          value = if (!is.null(args$skip)) as.character(args$skip) else "",
-                          placeholder = "default: 0",
-                          width = "100%"
-                        )
-                      ),
-                      div(
-                        class = "blockr-popover-row",
-                        tags$label(
-                          class = "blockr-popover-label",
-                          `for` = NS(id, "csv_n_max"),
-                          "Max rows to read"
-                        ),
-                        textInput(
-                          inputId = NS(id, "csv_n_max"),
-                          label = NULL,
-                          value = if (!is.null(args$n_max) && !is.infinite(args$n_max)) as.character(args$n_max) else "",
-                          placeholder = "default: all rows",
-                          width = "100%"
-                        )
-                      ),
-                      div(
-                        class = "blockr-popover-row",
-                        checkboxInput(
-                          inputId = NS(id, "csv_col_names"),
-                          label = "First row is header",
-                          value = if (!is.null(args$col_names)) args$col_names else TRUE
-                        )
-                      )
+                    selected = if (!is.null(args$sep)) args$sep else ",",
+                    options = list(create = TRUE),
+                    width = "100%"
+                  )
+                ),
+                div(
+                  class = "blockr-settings__field",
+                  tags$label(
+                    class = "blockr-label",
+                    `for` = NS(id, "csv_quote"),
+                    "Quote character"
+                  ),
+                  textInput(
+                    inputId = NS(id, "csv_quote"),
+                    label = NULL,
+                    value = if (!is.null(args$quote)) args$quote else "\"",
+                    placeholder = "default: \"",
+                    width = "100%"
+                  )
+                ),
+                div(
+                  class = "blockr-settings__field",
+                  tags$label(
+                    class = "blockr-label",
+                    `for` = NS(id, "csv_encoding"),
+                    "Encoding"
+                  ),
+                  selectInput(
+                    inputId = NS(id, "csv_encoding"),
+                    label = NULL,
+                    choices = c(
+                      "UTF-8",
+                      "Latin-1",
+                      "Windows-1252",
+                      "ISO-8859-1"
                     ),
-
-                    conditionalPanel(
-                      condition = "output['show_excel_options']",
-                      ns = NS(id),
-                      div(
-                        class = "blockr-popover-row",
-                        tags$label(
-                          class = "blockr-popover-label",
-                          `for` = NS(id, "excel_sheet"),
-                          "Sheet name or number"
-                        ),
-                        textInput(
-                          inputId = NS(id, "excel_sheet"),
-                          label = NULL,
-                          value = if (!is.null(args$sheet)) as.character(args$sheet) else "",
-                          placeholder = "default: first sheet",
-                          width = "100%"
-                        )
-                      ),
-                      div(
-                        class = "blockr-popover-row",
-                        tags$label(
-                          class = "blockr-popover-label",
-                          `for` = NS(id, "excel_range"),
-                          "Cell range"
-                        ),
-                        textInput(
-                          inputId = NS(id, "excel_range"),
-                          label = NULL,
-                          value = if (!is.null(args$range)) args$range else "",
-                          placeholder = "default: all cells (e.g., A1:C10)",
-                          width = "100%"
-                        )
-                      ),
-                      div(
-                        class = "blockr-popover-row",
-                        tags$label(
-                          class = "blockr-popover-label",
-                          `for` = NS(id, "excel_skip"),
-                          "Skip rows"
-                        ),
-                        textInput(
-                          inputId = NS(id, "excel_skip"),
-                          label = NULL,
-                          value = if (!is.null(args$skip)) as.character(args$skip) else "",
-                          placeholder = "default: 0",
-                          width = "100%"
-                        )
-                      ),
-                      div(
-                        class = "blockr-popover-row",
-                        tags$label(
-                          class = "blockr-popover-label",
-                          `for` = NS(id, "excel_n_max"),
-                          "Max rows to read"
-                        ),
-                        textInput(
-                          inputId = NS(id, "excel_n_max"),
-                          label = NULL,
-                          value = if (!is.null(args$n_max) && !is.infinite(args$n_max)) as.character(args$n_max) else "",
-                          placeholder = "default: all rows",
-                          width = "100%"
-                        )
-                      ),
-                      div(
-                        class = "blockr-popover-row",
-                        checkboxInput(
-                          inputId = NS(id, "excel_col_names"),
-                          label = "First row is header",
-                          value = if (!is.null(args$col_names)) args$col_names else TRUE
-                        )
-                      )
-                    ),
-
-                    conditionalPanel(
-                      condition = "output['show_multi_file_options']",
-                      ns = NS(id),
-                      tags$h4("Multi-File Options"),
-                      div(
-                        class = "blockr-popover-row",
-                        tags$label(
-                          class = "blockr-popover-label",
-                          `for` = NS(id, "combine"),
-                          "Combination strategy"
-                        ),
-                        selectInput(
-                          inputId = NS(id, "combine"),
-                          label = NULL,
-                          choices = c(
-                            "Auto (rbind with fallback)" = "auto",
-                            "Row bind (rbind)" = "rbind",
-                            "Column bind (cbind)" = "cbind",
-                            "First file only" = "first"
-                          ),
-                          selected = combine,
-                          width = "100%"
-                        ),
-                        div(
-                          class = "block-help-text",
-                          textOutput(NS(id, "combine_info"))
-                        )
-                      )
-                    )
+                    selected = if (!is.null(args$encoding)) args$encoding else "UTF-8",
+                    width = "100%"
+                  )
+                ),
+                div(
+                  class = "blockr-settings__field",
+                  tags$label(
+                    class = "blockr-label",
+                    `for` = NS(id, "csv_skip"),
+                    "Skip rows"
+                  ),
+                  textInput(
+                    inputId = NS(id, "csv_skip"),
+                    label = NULL,
+                    value = if (!is.null(args$skip)) as.character(args$skip) else "",
+                    placeholder = "default: 0",
+                    width = "100%"
+                  )
+                ),
+                div(
+                  class = "blockr-settings__field",
+                  tags$label(
+                    class = "blockr-label",
+                    `for` = NS(id, "csv_n_max"),
+                    "Max rows to read"
+                  ),
+                  textInput(
+                    inputId = NS(id, "csv_n_max"),
+                    label = NULL,
+                    value = if (!is.null(args$n_max) && !is.infinite(args$n_max)) as.character(args$n_max) else "",
+                    placeholder = "default: all rows",
+                    width = "100%"
+                  )
+                ),
+                div(
+                  class = "blockr-settings__field",
+                  checkboxInput(
+                    inputId = NS(id, "csv_col_names"),
+                    label = "First row is header",
+                    value = if (!is.null(args$col_names)) args$col_names else TRUE
                   )
                 )
-              })
+              ),
+
+              conditionalPanel(
+                condition = "output['show_excel_options']",
+                ns = NS(id),
+                class = "blockr-settings__grid",
+                div(
+                  class = "blockr-settings__field",
+                  tags$label(
+                    class = "blockr-label",
+                    `for` = NS(id, "excel_sheet"),
+                    "Sheet name or number"
+                  ),
+                  textInput(
+                    inputId = NS(id, "excel_sheet"),
+                    label = NULL,
+                    value = if (!is.null(args$sheet)) as.character(args$sheet) else "",
+                    placeholder = "default: first sheet",
+                    width = "100%"
+                  )
+                ),
+                div(
+                  class = "blockr-settings__field",
+                  tags$label(
+                    class = "blockr-label",
+                    `for` = NS(id, "excel_range"),
+                    "Cell range"
+                  ),
+                  textInput(
+                    inputId = NS(id, "excel_range"),
+                    label = NULL,
+                    value = if (!is.null(args$range)) args$range else "",
+                    placeholder = "default: all cells (e.g., A1:C10)",
+                    width = "100%"
+                  )
+                ),
+                div(
+                  class = "blockr-settings__field",
+                  tags$label(
+                    class = "blockr-label",
+                    `for` = NS(id, "excel_skip"),
+                    "Skip rows"
+                  ),
+                  textInput(
+                    inputId = NS(id, "excel_skip"),
+                    label = NULL,
+                    value = if (!is.null(args$skip)) as.character(args$skip) else "",
+                    placeholder = "default: 0",
+                    width = "100%"
+                  )
+                ),
+                div(
+                  class = "blockr-settings__field",
+                  tags$label(
+                    class = "blockr-label",
+                    `for` = NS(id, "excel_n_max"),
+                    "Max rows to read"
+                  ),
+                  textInput(
+                    inputId = NS(id, "excel_n_max"),
+                    label = NULL,
+                    value = if (!is.null(args$n_max) && !is.infinite(args$n_max)) as.character(args$n_max) else "",
+                    placeholder = "default: all rows",
+                    width = "100%"
+                  )
+                ),
+                div(
+                  class = "blockr-settings__field",
+                  checkboxInput(
+                    inputId = NS(id, "excel_col_names"),
+                    label = "First row is header",
+                    value = if (!is.null(args$col_names)) args$col_names else TRUE
+                  )
+                )
+              ),
+
+              conditionalPanel(
+                condition = "output['show_multi_file_options']",
+                ns = NS(id),
+                class = "blockr-settings__grid",
+                div(class = "blockr-settings__title", "Multi-file options"),
+                div(
+                  class = "blockr-settings__field",
+                  tags$label(
+                    class = "blockr-label",
+                    `for` = NS(id, "combine"),
+                    "Combination strategy"
+                  ),
+                  selectInput(
+                    inputId = NS(id, "combine"),
+                    label = NULL,
+                    choices = c(
+                      "Auto (rbind with fallback)" = "auto",
+                      "Row bind (rbind)" = "rbind",
+                      "Column bind (cbind)" = "cbind",
+                      "First file only" = "first"
+                    ),
+                    selected = combine,
+                    width = "100%"
+                  ),
+                  div(
+                    class = "block-help-text",
+                    textOutput(NS(id, "combine_info"))
+                  )
+                )
+              )
             ),
+
             tags$p(
               "Browse server files, paste a URL, or drag & drop to upload.",
               "Press Enter to load the typed path.",
               class = "blockr-path-hint"
             ),
-
-            tags$style(HTML(
-              "
-              .blockr-file-input { display: none; }
-              .read-block-container .blockr-file-location-header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 8px;
-              }
-              .read-block-container .shiny-input-container {
-                width: 100% !important;
-              }
-              .read-block-container .selectize-control {
-                width: 100% !important;
-              }
-            "
-            )),
 
             # Hidden fileInput (Shiny handles upload mechanics)
             div(

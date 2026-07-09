@@ -1,0 +1,534 @@
+/* =========================================================================
+   io-blocks.css — blockr.io block styling (read / write / download).
+
+   Absorbs the CSS formerly generated in R (R/css.R helpers plus per-block
+   inline <style> tags), tokenized against the blockr design system: every
+   color/geometry literal is written as var(--blockr-*, <canonical fallback>).
+   blockr.io renders standalone, so the fallback value IS the contract and
+   must equal the design-system canon.
+
+   Naming: the blockr- prefix is reserved for the shared design system;
+   io-local classes use io-. Shared-vocabulary classes kept on purpose:
+   .blockr-gear-btn / .blockr-gear-active / .blockr-gear-row,
+   .blockr-label, and the .blockr-settings* band classes (settings-band.css).
+   ========================================================================= */
+
+/* --- Base block layout (from css_responsive_grid()) ---------------------- */
+
+.block-container {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  padding-bottom: 15px;
+}
+
+/* One shared grid across the whole form */
+.block-form-grid {
+  display: grid;
+  gap: 15px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+/* Flatten wrappers so all controls share the same tracks */
+.block-section,
+.block-section-grid {
+  display: contents;
+}
+
+/* Help text spans full width */
+.block-help-text {
+  grid-column: 1 / -1;
+  margin-top: 0;
+  padding-top: 0;
+  font-size: 0.875rem;
+  color: var(--blockr-grey-500, #6b7280);
+}
+
+.block-input-wrapper {
+  width: 100%;
+}
+
+.block-input-wrapper .form-group {
+  margin-bottom: 10px;
+}
+
+/* --- Micro-labels --------------------------------------------------------- */
+
+/* Section micro-label (replaces in-block h4 section titles): the
+   .blockr-settings__title recipe from settings-band.css, minus the
+   flex sizing (these labels live in normal flow, not in a band). */
+.io-section-label {
+  font-size: var(--blockr-font-size-xs, 0.75rem);
+  font-weight: var(--blockr-font-weight-medium, 500);
+  color: var(--blockr-color-text-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+/* Field label — design-system .blockr-label (blockr.dock typography /
+   blockr.dplyr's blockr-blocks.css). Duplicated here until the shared
+   layer moves to blockr.ui; keep the recipe in sync. */
+.blockr-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--blockr-grey-500, #6b7280);
+  margin-bottom: 0.25rem;
+}
+
+/* --- Gear button (shared vocabulary; matches blockr.dplyr) ---------------- */
+
+.blockr-gear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--blockr-color-text-subtle, #9ca3af);
+  background: transparent;
+  border: 1px solid var(--blockr-color-border, #e5e7eb);
+  border-radius: var(--blockr-radius-sm, 4px);
+  cursor: pointer;
+  transition: color var(--blockr-transition, 0.15s ease),
+    border-color var(--blockr-transition, 0.15s ease),
+    background var(--blockr-transition, 0.15s ease);
+}
+
+.blockr-gear-btn:hover {
+  color: var(--blockr-color-primary, #2563eb);
+  border-color: rgba(37, 99, 235, 0.3);
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.blockr-gear-btn.blockr-gear-active {
+  color: var(--blockr-color-primary, #2563eb);
+  border-color: rgba(37, 99, 235, 0.3);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+/* Right-aligned gear header row; the settings band opens directly below
+   it (mirrors blockr.viz's .blockr-gear-header). */
+.blockr-gear-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+/* The write block's gear row and band live inside a CSS grid (their
+   .block-section wrapper is display:contents, so they are grid items):
+   span the full row — without this the band becomes a narrow column.
+   Descendant selector on purpose: the DOM parent is the display:contents
+   .block-section, not .block-form-grid itself. The grid gap already
+   provides the vertical rhythm, so drop the gear row's own margin. */
+.block-form-grid .blockr-gear-row,
+.block-form-grid .blockr-settings {
+  grid-column: 1 / -1;
+}
+
+.block-form-grid .blockr-gear-row {
+  margin-bottom: 0;
+}
+
+/* --- Read block ------------------------------------------------------------ */
+
+.io-file-location {
+  margin-bottom: 24px;
+}
+
+/* Hidden fileInput host — upload mechanics only, never shown */
+.blockr-file-input {
+  display: none;
+}
+
+.read-block-container .shiny-input-container {
+  width: 100% !important;
+}
+
+.read-block-container .selectize-control {
+  width: 100% !important;
+}
+
+/* --- Write block ------------------------------------------------------------ */
+
+/* Make inputs full width */
+.write-block-container .shiny-input-container {
+  width: 100% !important;
+}
+
+.write-block-container .selectize-control {
+  width: 100% !important;
+}
+
+/* Tighten spacing in file config grid */
+.write-block-container .block-form-grid .shiny-input-container {
+  margin-bottom: 0;
+}
+
+.write-block-container .block-help-text {
+  margin-top: 8px;
+}
+
+/* Execution mode toggle */
+.io-exec-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background-color: var(--blockr-color-bg-hover, #f3f4f6);
+  border-radius: var(--blockr-radius-lg, 8px);
+  padding: 2px;
+}
+
+.io-exec-toggle button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--blockr-color-text-muted, #6b7280);
+  background: transparent;
+  border: none;
+  border-radius: var(--blockr-radius-md, 6px);
+  cursor: pointer;
+  transition: all var(--blockr-transition, 0.15s ease);
+  white-space: nowrap;
+}
+
+.io-exec-toggle button:hover {
+  color: var(--blockr-color-text-secondary, #374151);
+  background-color: var(--blockr-color-border, #e5e7eb);
+}
+
+.io-exec-toggle button.active {
+  color: var(--blockr-color-text-primary, #111827);
+  background-color: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+}
+
+/* Auto-save info banner */
+.io-exec-auto-hint {
+  font-size: 0.8rem;
+  color: var(--blockr-color-primary, #2563eb);
+  background: var(--blockr-color-primary-bg, #eff6ff);
+  border: 1px solid var(--blockr-blue-100, #dbeafe);
+  border-radius: var(--blockr-radius-md, 6px);
+  padding: 8px 12px;
+}
+
+/* Status text */
+.io-exec-status {
+  font-size: 0.8rem;
+  color: var(--blockr-color-text-muted, #6b7280);
+  min-height: 1.2em;
+}
+
+/* OR divider */
+.io-or-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.io-or-divider::before,
+.io-or-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--blockr-color-border, #e5e7eb);
+}
+
+.io-or-divider span {
+  font-size: var(--blockr-font-size-xs, 0.75rem);
+  font-weight: var(--blockr-font-weight-medium, 500);
+  color: var(--blockr-color-text-subtle, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* --- Download block ---------------------------------------------------------- */
+
+.download-block-container {
+  padding: 12px 14px;
+}
+
+.download-block-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.download-block-main-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.download-block-main .btn {
+  flex: 0 0 auto;
+}
+
+/* Download button - aligned to the format select on its right.
+   Target values measured from the selectize-input computed style:
+   height 42px, padding 5px 12px, radius 8px, bg #f9fafb. */
+.download-block-container .download-block-main-left .btn {
+  height: var(--blockr-control-h, 42px);
+  padding: 5px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 14px;
+  border-radius: var(--blockr-radius-lg, 8px);
+  background: var(--blockr-color-bg-input, #f9fafb);
+  color: rgba(0, 0, 0, 0.83);
+  border: 1px solid var(--blockr-color-border, #e5e7eb);
+  box-shadow: none;
+}
+
+.download-block-container .download-block-main-left .btn:hover {
+  background: var(--blockr-color-bg-hover, #f3f4f6);
+  border-color: var(--blockr-color-border-hover, #d1d5db);
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.download-block-container .download-block-main-left .btn:focus,
+.download-block-container .download-block-main-left .btn:active {
+  background: var(--blockr-color-bg-input, #f9fafb);
+  border-color: var(--blockr-color-primary, #2563eb);
+  box-shadow: var(--blockr-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.12));
+  color: rgba(0, 0, 0, 0.83);
+}
+
+.download-block-container .download-block-main-left .btn i,
+.download-block-container .download-block-main-left .btn .fa {
+  color: var(--blockr-color-text-muted, #6b7280);
+}
+
+/* Tighten the inline format selector */
+.download-block-format .form-group,
+.download-block-format .shiny-input-container {
+  margin-bottom: 0;
+}
+
+.download-block-format .selectize-control {
+  margin-bottom: 0;
+}
+
+/* Band sits below the main row, its beak pointing at the gear on the right */
+.download-block-container .blockr-settings {
+  margin-top: 8px;
+}
+
+/* --- Checkbox restyle (scoped to .io-block) ---------------------------------------------------------
+   values mirror .blockr-checkbox (settings-band.css) — one recipe, two DOM
+   shapes: blockr.io keeps its shiny::checkboxInput bindings and restyles
+   the native input, instead of building the Blockr.checkbox label/span DOM. */
+
+.io-block input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin: 0;
+  border: 1px solid var(--blockr-grey-300, #d1d5db);
+  border-radius: var(--blockr-radius-sm, 4px);
+  background-color: #fff;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 10px 10px;
+  cursor: pointer;
+  transition: background-color var(--blockr-transition, 0.15s ease),
+    border-color var(--blockr-transition, 0.15s ease);
+  /* neutralize the BS3 .checkbox absolute-positioning idiom */
+  position: static;
+  margin-left: 0;
+  float: none;
+}
+
+.io-block input[type="checkbox"]:hover {
+  border-color: var(--blockr-grey-400, #9ca3af);
+}
+
+.io-block input[type="checkbox"]:checked {
+  background-color: var(--blockr-color-primary, #2563eb);
+  border-color: var(--blockr-color-primary, #2563eb);
+  /* check path = CHECK_SVG from settings-band.js */
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3E%3Cpath d='M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0'/%3E%3C/svg%3E");
+}
+
+.io-block input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: var(--blockr-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.12));
+}
+
+/* Label layout — BS3 markup (.checkbox > label > input + span) */
+.io-block .checkbox {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.io-block .checkbox label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  padding-left: 0;
+  font-size: var(--blockr-font-size-sm, 0.8125rem);
+  color: var(--blockr-grey-700, #374151);
+  font-weight: 400;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+/* Label layout — BS5 markup (.form-check > input + label) */
+.io-block .form-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  padding-left: 0;
+  margin-bottom: 0;
+}
+
+.io-block .form-check .form-check-input {
+  float: none;
+  margin-left: 0;
+  margin-top: 0;
+}
+
+.io-block .form-check .form-check-label {
+  font-size: var(--blockr-font-size-sm, 0.8125rem);
+  color: var(--blockr-grey-700, #374151);
+  font-weight: 400;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+/* --- Select parity (scoped to .io-block) ------------------------------------------------------------
+   blockr.io keeps stock shiny selectInput()/selectizeInput() (no cross-package
+   dependency on blockr.dplyr's Blockr.Select). These rules give the closed
+   control, the caret and the dropdown the same look as .blockr-select--bordered
+   (blockr-select.css): 42px, radius-lg, bg-input, chevron instead of selectize's
+   solid triangle, and the shared focus ring.
+
+   Scoped + !important on purpose: blockr.dock ships its own !important selectize
+   overrides (a different focus-ring hue and roomier options), which would win by
+   load order; the container-scoped selectors out-specify them. All of this drops
+   out when io adopts the shared Select with the blockr.ui move.
+
+   One recipe, two DOM shapes — selectize widget and, if selectize is ever
+   disabled, the native <select>. */
+
+.io-block .selectize-control,
+.io-block .selectize-dropdown,
+.io-block .blockr-settings .selectize-control,
+.io-block .blockr-settings .selectize-dropdown {
+  font-size: var(--blockr-font-size-base, 0.875rem);
+}
+
+.io-block .selectize-input {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  min-height: var(--blockr-control-h, 42px) !important;
+  padding: 6px 12px !important;
+  background-color: var(--blockr-color-bg-input, #f9fafb) !important;
+  border: 1px solid var(--blockr-color-border, #e5e7eb) !important;
+  border-radius: var(--blockr-radius-lg, 8px) !important;
+  color: var(--blockr-color-text-primary, #111827);
+  box-shadow: none !important;
+  transition: border-color var(--blockr-transition, 0.15s ease),
+    box-shadow var(--blockr-transition, 0.15s ease);
+}
+
+.io-block .selectize-input.focus,
+.io-block .selectize-input.dropdown-active,
+.io-block .blockr-settings .selectize-input.focus,
+.io-block .blockr-settings .selectize-input.dropdown-active {
+  /* Keep the input background (matches .blockr-select--bordered, which tints
+     only the border + ring on focus) — dock turns it white. */
+  background-color: var(--blockr-color-bg-input, #f9fafb) !important;
+  border-color: var(--blockr-color-primary, #2563eb) !important;
+  box-shadow: var(--blockr-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.12)) !important;
+}
+
+.io-block .selectize-input > input::placeholder {
+  color: var(--blockr-grey-400, #9ca3af);
+}
+
+/* Caret: selectize's solid triangle -> the Blockr.icons.chevron glyph,
+   rotating 180deg while the dropdown is open (as Blockr.Select does). */
+.io-block .selectize-control.single .selectize-input:after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border: none !important;
+  background: no-repeat center / 12px 12px
+    url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+  transition: transform var(--blockr-transition, 0.15s ease);
+}
+
+.io-block .selectize-control.single .selectize-input.dropdown-active:after {
+  transform: rotate(180deg);
+}
+
+.io-block .selectize-dropdown {
+  margin-top: 4px !important;
+  background: #fff;
+  border: 1px solid var(--blockr-color-border, #e5e7eb) !important;
+  border-radius: var(--blockr-radius-lg, 8px) !important;
+  box-shadow: var(--blockr-shadow-dropdown, 0 4px 12px rgba(0, 0, 0, 0.1)) !important;
+}
+
+.io-block .selectize-dropdown-content {
+  max-height: 240px !important;
+}
+
+.io-block .selectize-dropdown-content .option {
+  padding: 6px 10px !important;
+  color: var(--blockr-color-text-primary, #111827);
+}
+
+.io-block .selectize-dropdown-content .option.active {
+  background-color: var(--blockr-grey-50, #f9fafb) !important;
+  color: var(--blockr-color-text-primary, #111827) !important;
+}
+
+.io-block .selectize-dropdown-content .option.selected {
+  font-weight: 600;
+}
+
+/* Native <select> fallback (selectize disabled) — same closed-control look. */
+.io-block select.form-select,
+.io-block select.form-control,
+.io-block .blockr-settings select.form-select,
+.io-block .blockr-settings select.form-control {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  min-height: var(--blockr-control-h, 42px);
+  padding: 6px 32px 6px 12px;
+  font-size: var(--blockr-font-size-base, 0.875rem);
+  color: var(--blockr-color-text-primary, #111827);
+  background-color: var(--blockr-color-bg-input, #f9fafb);
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px 12px;
+  border: 1px solid var(--blockr-color-border, #e5e7eb);
+  border-radius: var(--blockr-radius-lg, 8px);
+  cursor: pointer;
+  transition: border-color var(--blockr-transition, 0.15s ease),
+    box-shadow var(--blockr-transition, 0.15s ease);
+}
+
+.io-block select.form-select:focus,
+.io-block select.form-control:focus,
+.io-block .blockr-settings select.form-select:focus,
+.io-block .blockr-settings select.form-control:focus {
+  outline: none;
+  border-color: var(--blockr-color-primary, #2563eb);
+  box-shadow: var(--blockr-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.12));
+}

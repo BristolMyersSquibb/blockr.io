@@ -5,7 +5,7 @@ test_that("path_input_dep returns htmlDependency object", {
 
   expect_s3_class(dep, "html_dependency")
   expect_equal(dep$name, "blockr-path-input")
-  expect_equal(dep$version, "0.2.1")
+  expect_equal(dep$version, "0.3.0")
 })
 
 test_that("required path_input_ui carries the amber required-empty affordance", {
@@ -13,12 +13,12 @@ test_that("required path_input_ui carries the amber required-empty affordance", 
     path_input_ui("test_id", required = TRUE)
   ))
   expect_true(grepl("data-required=\"true\"", req_html, fixed = TRUE))
-  expect_true(grepl("blockr-path-required-empty", req_html, fixed = TRUE))
+  expect_true(grepl("blockr-field--required-empty", req_html, fixed = TRUE))
 
   # Optional fields (the default) carry neither.
   opt_html <- as.character(htmltools::tagList(path_input_ui("test_id")))
   expect_false(grepl("data-required", opt_html, fixed = TRUE))
-  expect_false(grepl("blockr-path-required-empty", opt_html, fixed = TRUE))
+  expect_false(grepl("blockr-field--required-empty", opt_html, fixed = TRUE))
 })
 
 test_that("path_input_ui returns a tagList", {

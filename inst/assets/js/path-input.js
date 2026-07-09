@@ -129,7 +129,7 @@
     if (!container || !field) return;
     var required = container.getAttribute("data-required") === "true";
     var empty = !input.value || !input.value.trim();
-    field.classList.toggle("blockr-path-required-empty", required && empty);
+    field.classList.toggle("blockr-field--required-empty", required && empty);
   }
 
   // Commit the current input value: this is the ONLY path through which

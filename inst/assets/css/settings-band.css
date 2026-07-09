@@ -1,0 +1,197 @@
+/* =========================================================================
+   CANONICAL SOURCE: blockr.viz/inst/css/settings-band.css — keep in sync.
+   Copied verbatim into blockr.io per the design-system convention.
+
+   Settings band + checkbox — blockr design-system pilot (blockr.ui/dev/
+   gear-panel-proposals.html variant B and boolean-controls-proposals.html).
+
+   The gear no longer opens a floating popover: it expands a full-width,
+   in-flow band between the gear header and the block content, built from
+   the standard controls (no popover-specific 38px tier). Plain on/off
+   options render as .blockr-checkbox instead of self-labeling pills.
+
+   Staged here in blockr.viz; moves to blockr.ui with the shared layer.
+   ========================================================================= */
+
+/* --- The band ------------------------------------------------------------
+   In flow (no position/z-index): pushes the block content down while open,
+   so the content being configured stays visible. Closed by default. */
+.blockr-settings {
+  display: none;
+  border: 1px solid var(--blockr-color-border, #e5e7eb);
+  border-radius: 8px;
+  /* Symmetric-looking breathing room: the 8px bottom only ever read as
+     enough because row-built bands (summary table) put an 8px margin under
+     every row, including the last. Bands whose grid is a plain field row
+     (blockr.dplyr's) had the controls nearly touching the border. The band
+     now owns the bottom rhythm; the stray last-row margin is zeroed below. */
+  padding: 12px 14px 16px;
+  margin-bottom: 10px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+/* Open: same wrapping form-grid the popover used (chart.css lays out the
+   dd-section / dd-form-row content), now at full block width. */
+.blockr-settings.blockr-settings--open {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0 14px;
+}
+
+/* Gear connector (design-system type-picker proposals, T1): bands opened
+   by a gear opt in via .blockr-settings--beak and grow a notch on their
+   top edge pointing at the 26px gear, which is the last element on the
+   right of the .blockr-gear-header above; the gear itself keeps
+   .blockr-gear-active while the band is open. Opt-in so always-open main
+   areas (e.g. blockr.ggplot's) don't get a beak. */
+.blockr-settings--beak {
+  position: relative;
+}
+.blockr-settings--beak.blockr-settings--open::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border-left: 1px solid var(--blockr-color-border, #e5e7eb);
+  border-top: 1px solid var(--blockr-color-border, #e5e7eb);
+  transform: rotate(45deg);
+}
+
+/* Micro-label heading. The engine's title element keeps its dd-popover-title
+   class; restyle it as the band heading. */
+.blockr-settings .dd-popover-title,
+.blockr-settings__title {
+  flex: 1 1 100%;
+  font-size: var(--blockr-font-size-xs, 0.75rem);
+  font-weight: var(--blockr-font-weight-medium, 500);
+  color: var(--blockr-color-text-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+/* Same inputs as the main UI: lift the popover-specific 38px select and
+   compact text input up to the standard 42px control height inside the band.
+   (Scoped override so blockr.dplyr's blockr-blocks.css stays untouched.) */
+.blockr-settings .blockr-popover-select-wrap .blockr-select__control {
+  min-height: 42px;
+}
+.blockr-settings .blockr-popover-input {
+  padding: 10px 14px;
+  min-height: 42px;
+}
+
+/* Field grid for hand-built (non-engine) bands, e.g. the summary-table
+   block: the flex-wrap responsive idiom, same as .stb-grid / .dd-form-row. */
+/* Row-built bands set an inline margin under each row; the last one would
+   double up with the band's bottom padding (hence !important, which is the
+   only way to beat an inline style). */
+.blockr-settings__grid > :last-child {
+  margin-bottom: 0 !important;
+}
+
+.blockr-settings__grid {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px 12px;
+}
+.blockr-settings__field {
+  flex: 1 1 190px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.blockr-settings__field--full { flex: 1 1 100%; }
+
+/* --- Checkbox --------------------------------------------------------------
+   The default boolean control (data options): 16px box, radius-sm, primary
+   fill when checked, 13px label, 26px hit area. Values stay pills; UI modes
+   are switches (not needed here yet). */
+.blockr-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: var(--blockr-font-size-sm, 0.8125rem);
+  color: var(--blockr-grey-700, #374151);
+  min-height: 26px;
+  user-select: none;
+  position: relative;
+  margin-bottom: 0;           /* neutralize bootstrap label margin */
+  font-weight: var(--blockr-font-weight-normal, 400);
+}
+.blockr-checkbox input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.blockr-checkbox__box {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border: 1px solid var(--blockr-grey-300, #d1d5db);
+  border-radius: 4px;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.blockr-checkbox:hover .blockr-checkbox__box {
+  border-color: var(--blockr-grey-400, #9ca3af);
+}
+.blockr-checkbox input:checked + .blockr-checkbox__box {
+  background: var(--blockr-color-primary, #2563eb);
+  border-color: var(--blockr-color-primary, #2563eb);
+}
+.blockr-checkbox input:focus-visible + .blockr-checkbox__box {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.blockr-checkbox__box svg {
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.blockr-checkbox input:checked + .blockr-checkbox__box svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* A wrapping row of several checkboxes (e.g. the summary-table stats). */
+.blockr-checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 18px;
+  align-items: center;
+}
+
+/* --- Narrow bands -----------------------------------------------------------
+   The band inherits chart.css's .dd-section grid (auto-fill minmax(180px,1fr)).
+   When that collapses to ONE track, the paired-row rule (.dd-role-paired
+   { grid-column: span 2 }) forces a second implicit ~half-width track: other
+   fields get squeezed beside the section title with a tiny select, and paired
+   controls (metric + aggregation) cram side by side. Below the two-track
+   threshold (2*180px + 14px gap + band padding), drop to an explicit single
+   column, neutralize the span, and let paired controls and the type-picker
+   strips wrap. Container query on the band itself — the same narrow-stacking
+   precedent as filter/mutate's @container rules in blockr.dplyr. */
+.blockr-settings {
+  container-type: inline-size;
+}
+@container (max-width: 404px) {
+  .blockr-settings .dd-section { grid-template-columns: 1fr; }
+  .blockr-settings .dd-section > .dd-role-paired { grid-column: auto; }
+  .blockr-settings .dd-row-controls { flex-wrap: wrap; }
+  .blockr-settings .dd-row-controls > .dd-picker-wrap { flex: 1 1 140px; }
+  .blockr-settings .dd-type-group { flex-wrap: wrap; }
+  .blockr-settings .dd-cfg-types { flex-wrap: wrap; }
+}
