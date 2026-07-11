@@ -16,7 +16,7 @@
 #' @return An [htmltools::htmlDependency()], or a `tagList` of both for
 #'   `io_block_deps()`.
 #' @noRd
-io_settings_band_dep <- function() {
+io_settings_band_dep <- memoise0(function() {
   htmltools::htmlDependency(
     name = "io-settings-band",
     # Bump the suffix on every settings-band.css/js edit (asset cache).
@@ -25,10 +25,10 @@ io_settings_band_dep <- function() {
     script = "js/settings-band.js",
     stylesheet = "css/settings-band.css"
   )
-}
+})
 
 #' @noRd
-io_blocks_dep <- function() {
+io_blocks_dep <- memoise0(function() {
   htmltools::htmlDependency(
     name = "blockr-io-blocks",
     version = utils::packageVersion("blockr.io"),
@@ -36,12 +36,12 @@ io_blocks_dep <- function() {
     script = "js/io-blocks.js",
     stylesheet = "css/io-blocks.css"
   )
-}
+})
 
 #' @noRd
-io_block_deps <- function() {
+io_block_deps <- memoise0(function() {
   tagList(
     io_settings_band_dep(),
     io_blocks_dep()
   )
-}
+})

@@ -339,7 +339,7 @@ list_dir_response <- function(path_val, dir_root = "", mode = "file",
 
 #' htmlDependency for path input widget assets
 #' @keywords internal
-path_input_dep <- function() {
+path_input_dep <- memoise0(function() {
   htmltools::htmlDependency(
     name = "blockr-path-input",
     version = "0.3.0",
@@ -347,4 +347,4 @@ path_input_dep <- function() {
     script = "js/path-input.js",
     stylesheet = "css/path-input.css"
   )
-}
+})
