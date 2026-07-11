@@ -19,13 +19,13 @@ Source:
 [`DESCRIPTION`](https://github.com/BristolMyersSquibb/blockr.io/blob/main/DESCRIPTION)
 
 Sax C, Bennett N, Granjon D, Page M (2026). *blockr.io: Interactive File
-Import and Export Blocks*. R package version 0.1.0.9002,
+Import and Export Blocks*. R package version 0.1.0.9003,
 <https://bristolmyerssquibb.github.io/blockr.io/>.
 
     @Manual{,
       title = {blockr.io: Interactive File Import and Export Blocks},
       author = {Christoph Sax and Nicolas Bennett and David Granjon and Mike Page},
       year = {2026},
-      note = {R package version 0.1.0.9002},
+      note = {R package version 0.1.0.9003},
       url = {https://bristolmyerssquibb.github.io/blockr.io/},
     }
