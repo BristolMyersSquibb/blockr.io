@@ -342,7 +342,7 @@ list_dir_response <- function(path_val, dir_root = "", mode = "file",
 path_input_dep <- memoise0(function() {
   htmltools::htmlDependency(
     name = "blockr-path-input",
-    version = "0.3.0",
+    version = "0.4.0",
     src = system.file("assets", package = "blockr.io"),
     script = "js/path-input.js",
     stylesheet = "css/path-input.css"
