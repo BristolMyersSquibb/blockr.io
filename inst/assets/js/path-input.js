@@ -35,6 +35,29 @@
     return state[inputId];
   }
 
+  // ----------------------------------------------------------------------
+  // Replay queue (mirrors blockr.dplyr's blockr-core.js _enqueue/_replay):
+  // inside a dockview panel the input reaches the DOM only when the panel
+  // mounts, which can be long after the server flushed its restore
+  // messages. A message that finds no element is held here, keyed by input
+  // id, and replayed when the element turns up (binding initialize / init
+  // scan). No expiry: a never-mounted panel just keeps its pending entry.
+  // ----------------------------------------------------------------------
+  var pending = {};
+
+  function replayPending(inputId) {
+    var msgs = pending[inputId];
+    if (!msgs) return;
+    delete pending[inputId];
+    if (msgs.setValue) applySetValue(msgs.setValue);
+    if (msgs.status) applyStatus(msgs.status);
+  }
+
+  function enqueue(inputId, kind, msg) {
+    if (!pending[inputId]) pending[inputId] = {};
+    pending[inputId][kind] = msg;
+  }
+
   // --------------------------------------------------------------------
   // Shiny input binding: commit on "change" only (Enter / blur / dropdown
   // selection). This replaces the default text binding, which would send
@@ -60,6 +83,12 @@
       },
       unsubscribe: function(el) {
         $(el).off(".blockrPathText");
+      },
+      // Runs when Shiny binds the input -- for dockview panels that is the
+      // late bindAll on layout change, i.e. the first moment the element is
+      // guaranteed to exist. Replay whatever the server pushed too early.
+      initialize: function(el) {
+        replayPending(el.id);
       }
     });
     Shiny.inputBindings.register(pathBinding, "blockr.pathText", 100);
@@ -168,22 +197,28 @@
     st.listUrl = msg.url;
   });
 
-  // Custom message handler: set input value programmatically
+  // Set input value programmatically.
   // msg.silent: if true, only update the display without triggering change
-  Shiny.addCustomMessageHandler("blockr-path-set-value", function(msg) {
+  function applySetValue(msg) {
     var el = document.getElementById(msg.id);
-    if (el) {
-      var st = getState(msg.id);
-      el.value = msg.value || "";
-      // Programmatic values are already applied — treat as committed
-      st.committed = el.value;
-      // Scroll to end so filename is visible
-      el.scrollLeft = el.scrollWidth;
-      updatePrefixVisibility(msg.id);
-      updateChip(msg.id);
-      if (!msg.silent) {
-        $(el).trigger("change");
-      }
+    var st = getState(msg.id);
+    el.value = msg.value || "";
+    // Programmatic values are already applied — treat as committed
+    st.committed = el.value;
+    // Scroll to end so filename is visible
+    el.scrollLeft = el.scrollWidth;
+    updatePrefixVisibility(msg.id);
+    updateChip(msg.id);
+    if (!msg.silent) {
+      $(el).trigger("change");
+    }
+  }
+
+  Shiny.addCustomMessageHandler("blockr-path-set-value", function(msg) {
+    if (document.getElementById(msg.id)) {
+      applySetValue(msg);
+    } else {
+      enqueue(msg.id, "setValue", msg);
     }
   });
 
@@ -443,10 +478,14 @@
       input.dataset.blockrInit = "true";
 
       var inputId = input.id;
+      // A restore push may have arrived before this element existed (lazy
+      // dockview panel): apply it now, before committed-state bookkeeping.
+      replayPending(inputId);
       var st = getState(inputId);
       st.committed = input.value;
       ensureChip(inputId);
       updateRequiredState(inputId);
+      updatePrefixVisibility(inputId);
 
       // Track every commit (Enter, blur, selection, programmatic trigger):
       // jQuery-bound so both native change events and $().trigger("change")
@@ -565,8 +604,10 @@
     });
   }
 
-  // Custom message handler: file-type status badge
-  Shiny.addCustomMessageHandler("blockr-path-status", function(msg) {
+  // File-type status badge. The badge element lives next to the input, so
+  // element presence is checked on the input id and the same replay queue
+  // applies.
+  function applyStatus(msg) {
     var el = document.getElementById(msg.id + "_status");
     if (!el) return;
     if (msg.state === "success" && msg.text) {
@@ -580,6 +621,14 @@
         escapeHtml(msg.text) + '</span>';
     } else {
       el.innerHTML = "";
+    }
+  }
+
+  Shiny.addCustomMessageHandler("blockr-path-status", function(msg) {
+    if (document.getElementById(msg.id + "_status")) {
+      applyStatus(msg);
+    } else {
+      enqueue(msg.id, "status", msg);
     }
   });
 
