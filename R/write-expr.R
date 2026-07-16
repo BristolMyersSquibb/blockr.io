@@ -279,10 +279,18 @@ write_expr <- function(
     return(NULL)
   }
 
-  # Ensure data_names has names
-  if (is.null(names(data_names))) {
-    names(data_names) <- as.character(seq_along(data_names))
+  # Ensure every entry has a display name. Positional (unnamed) variadic
+  # slots arrive as "" (or NULL when all are unnamed): left as-is they
+  # produce colliding file names ("" -> ".csv", each write clobbering the
+  # last) and empty Excel sheet names. Fill blanks with a positional
+  # default instead.
+  nms <- names(data_names)
+  if (is.null(nms)) {
+    nms <- character(length(data_names))
   }
+  blank <- !nzchar(nms)
+  nms[blank] <- paste0("data_", which(blank))
+  names(data_names) <- make.unique(nms, sep = "_")
 
   # Generate base filename
   base_filename <- generate_filename(filename)
