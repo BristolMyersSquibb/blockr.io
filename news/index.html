@@ -35,6 +35,11 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="blockrio-development-version">blockr.io (development version)<a class="anchor" aria-label="anchor" href="#blockrio-development-version"></a></h2>
 <div class="section level3">
+<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<ul><li>
+<code>write_expr()</code> now fills empty (positional) slot display names with <code>data_1</code>, <code>data_2</code>, … instead of using them verbatim. Variadic links added positionally (the blockr.ui / blockr.dock link menus) arrive with <code>""</code> names, which produced colliding <code>.csv</code> entries inside multi-input ZIP downloads (each write clobbering the last) and empty Excel sheet names.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="design-system-alignment-development-version">Design-system alignment<a class="anchor" aria-label="anchor" href="#design-system-alignment-development-version"></a></h3>
 <ul><li>The gear button on the read, write, and download blocks now expands a full-width, in-flow settings band (the blockr design-system pattern, shared with blockr.viz and blockr.ggplot) instead of a floating popover. The band is a persistent panel: it stays open while you work and only the gear closes it. The settings-band CSS/JS is vendored verbatim from blockr.viz (the canonical source).</li>
 <li>All block styling moved out of R-generated <code>&lt;style&gt;</code> tags into <code>inst/assets/css/io-blocks.css</code> and is tokenized against the design system: colors, radii, control heights, and transitions are <code>var(--blockr-*, &lt;canonical fallback&gt;)</code>, so blocks pick up host themes while rendering canonically standalone.</li>

@@ -2,6 +2,15 @@
 
 ## blockr.io (development version)
 
+### Bug fixes
+
+- `write_expr()` now fills empty (positional) slot display names with
+  `data_1`, `data_2`, … instead of using them verbatim. Variadic links
+  added positionally (the blockr.ui / blockr.dock link menus) arrive
+  with `""` names, which produced colliding `.csv` entries inside
+  multi-input ZIP downloads (each write clobbering the last) and empty
+  Excel sheet names.
+
 ### Design-system alignment
 
 - The gear button on the read, write, and download blocks now expands a
