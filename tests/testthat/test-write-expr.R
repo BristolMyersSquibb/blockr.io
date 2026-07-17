@@ -163,8 +163,68 @@ test_that("write_expr adds names if missing", {
   # Without names
   expr <- write_expr(c("df1", "df2"), "/tmp", "output", "csv")
 
-  # Should still work and add numeric names
+  # Should still work and add positional names
   expect_true(inherits(expr, "call") || is.language(expr))
+})
+
+test_that("write_expr names positional slots distinctly", {
+  skip_if_not_installed("readr")
+  skip_if_not_installed("zip")
+
+  # Positional variadic slots (links added without a name) arrive with ""
+  # display names; each entry still needs a distinct file name or the
+  # writes clobber each other inside the ZIP.
+  df1 <- data.frame(x = 1:3)
+  df2 <- data.frame(y = 4:6)
+
+  out_dir <- tempfile("write_expr_")
+  zip_path <- file.path(out_dir, "output.zip")
+  expr <- write_expr(
+    stats::setNames(c("df1", "df2"), c("", "")),
+    out_dir,
+    "output",
+    "csv"
+  )
+
+  # The multi-file expression rebinds `temp_dir` in the eval env, so keep
+  # the output paths in differently-named locals.
+  eval(expr)
+
+  temp_extract <- tempfile("extract_")
+  dir.create(temp_extract)
+  zip::unzip(zip_path, exdir = temp_extract)
+
+  expect_setequal(
+    list.files(temp_extract, pattern = "\\.csv$"),
+    c("data_1.csv", "data_2.csv")
+  )
+
+  unlink(c(out_dir, temp_extract), recursive = TRUE)
+})
+
+test_that("write_expr mixes named and positional slots without collision", {
+  skip_if_not_installed("writexl")
+  skip_if_not_installed("readxl")
+
+  named <- data.frame(a = 1)
+  unnamed <- data.frame(b = 2)
+
+  temp_dir <- tempfile("write_expr_")
+  expr <- write_expr(
+    stats::setNames(c("named", "unnamed"), c("samples", "")),
+    temp_dir,
+    "output",
+    "excel"
+  )
+
+  eval(expr)
+
+  expect_setequal(
+    readxl::excel_sheets(file.path(temp_dir, "output.xlsx")),
+    c("samples", "data_2")
+  )
+
+  unlink(temp_dir, recursive = TRUE)
 })
 
 
