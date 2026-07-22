@@ -4,7 +4,7 @@
 \alias{write_expr_excel}
 \title{Build expression to write data to Excel file with multiple sheets}
 \usage{
-write_expr_excel(data_names, path)
+write_expr_excel(data_names, path, as_sym = as_bare_sym)
 }
 \arguments{
 \item{data_names}{Named character vector where names are sheet names}

@@ -39,7 +39,7 @@ VignetteBuilder: knitr
 Remotes:
     BristolMyersSquibb/blockr.core
 Imports:
-    blockr.core (>= 0.1.2),
+    blockr.core (>= 0.1.4),
     htmltools,
     jsonlite,
     readxl,

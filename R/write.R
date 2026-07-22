@@ -339,7 +339,10 @@ new_write_block <- function(
           # imperatively in their handlers, so the expression stays pure.
           r_write_expression <- reactive({
             req(length(arg_names()) > 0)
-            first_data <- as.name(arg_names()[1])
+            # `as_dot_sym()` (not `as.name()`): this expression is exported and
+            # re-bquoted by blockr.core, see `expr_type = "bquoted"` below. The
+            # imperative save/download paths keep bare symbols.
+            first_data <- as_dot_sym(arg_names()[1])
 
             if (nzchar(r_directory()) && r_auto_write() && r_dir_ok()) {
               expr <- write_expr(
@@ -347,7 +350,8 @@ new_write_block <- function(
                 directory = resolved_directory(),
                 filename = auto_filename(),
                 format = r_format(),
-                args = r_args()
+                args = r_args(),
+                as_sym = as_dot_sym
               )
 
               bquote({
@@ -747,6 +751,7 @@ new_write_block <- function(
     },
     allow_empty_state = TRUE,
     class = c("write_block", "rbind_block"),
+    expr_type = "bquoted",
     ...
   )
 }

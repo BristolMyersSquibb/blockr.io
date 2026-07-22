@@ -1,4 +1,4 @@
-#' @importFrom blockr.core register_blocks new_block_args new_block_arg
+#' @importFrom blockr.core register_blocks new_arg_specs new_arg_spec
 #'   arg_string arg_boolean arg_enum arg_array
 register_io_blocks <- function() {
   # nocov start
@@ -56,8 +56,8 @@ register_io_blocks <- function() {
 
 #' @noRd
 read_block_arguments <- function() {
-  new_block_args(
-    path = new_block_arg(
+  new_arg_specs(
+    path = new_arg_spec(
       paste0(
         "Character vector of file paths to read. Multiple paths are ",
         "combined according to `combine`."
@@ -65,7 +65,7 @@ read_block_arguments <- function() {
       example = list("/data/trial.csv"),
       type = arg_array(arg_string())
     ),
-    source = new_block_arg(
+    source = new_arg_spec(
       paste0(
         "Where the file comes from. One of \"upload\" (user uploads at ",
         "runtime) or \"path\" (server-side path). Default \"upload\"."
@@ -73,7 +73,7 @@ read_block_arguments <- function() {
       example = "path",
       type = arg_enum(c("upload", "path"))
     ),
-    combine = new_block_arg(
+    combine = new_arg_spec(
       paste0(
         "How to combine multi-file input. One of \"auto\", \"rbind\" ",
         "(row-bind matching schemas), \"cbind\" (column-bind), or ",
@@ -85,7 +85,7 @@ read_block_arguments <- function() {
     # Arbitrary-key map of reader options (keys depend on file type); the
     # JSON-Schema subset has no open-ended object, so `type` is left unset
     # and the consumer infers the shape from the worked example.
-    args = new_block_arg(
+    args = new_arg_spec(
       paste0(
         "Named list of extra arguments forwarded to the underlying reader ",
         "(e.g. `list(sheet = 2, col_types = \"c\")` for Excel). Format is ",
@@ -98,13 +98,13 @@ read_block_arguments <- function() {
 
 #' @noRd
 write_block_arguments <- function() {
-  new_block_args(
-    directory = new_block_arg(
+  new_arg_specs(
+    directory = new_arg_spec(
       "Character. Output directory path.",
       example = "/out",
       type = arg_string()
     ),
-    filename = new_block_arg(
+    filename = new_arg_spec(
       paste0(
         "Character. Base filename (no extension). Extension is derived ",
         "from `format`."
@@ -112,7 +112,7 @@ write_block_arguments <- function() {
       example = "trial-cleaned",
       type = arg_string()
     ),
-    format = new_block_arg(
+    format = new_arg_spec(
       paste0(
         "Output format. One of \"csv\", \"excel\", \"parquet\", ",
         "\"feather\". Default \"csv\"."
@@ -120,7 +120,7 @@ write_block_arguments <- function() {
       example = "csv",
       type = arg_enum(c("csv", "excel", "parquet", "feather"))
     ),
-    auto_write = new_block_arg(
+    auto_write = new_arg_spec(
       paste0(
         "Logical. TRUE writes on every upstream update; FALSE (default) ",
         "writes only on explicit user action."
@@ -130,7 +130,7 @@ write_block_arguments <- function() {
     ),
     # Arbitrary-key map of writer options; `type` left unset, inferred from
     # the worked example.
-    args = new_block_arg(
+    args = new_arg_spec(
       paste0(
         "Named list of extra arguments forwarded to the underlying writer."
       ),
@@ -141,8 +141,8 @@ write_block_arguments <- function() {
 
 #' @noRd
 download_block_arguments <- function() {
-  new_block_args(
-    filename = new_block_arg(
+  new_arg_specs(
+    filename = new_arg_spec(
       paste0(
         "Character. Base filename (no extension). Extension is derived ",
         "from `format`."
@@ -150,7 +150,7 @@ download_block_arguments <- function() {
       example = "trial-cleaned",
       type = arg_string()
     ),
-    format = new_block_arg(
+    format = new_arg_spec(
       paste0(
         "Output format. One of \"csv\", \"excel\", \"parquet\", ",
         "\"feather\". Default \"csv\"."
@@ -160,7 +160,7 @@ download_block_arguments <- function() {
     ),
     # Arbitrary-key map of writer options; `type` left unset, inferred from
     # the worked example.
-    args = new_block_arg(
+    args = new_arg_spec(
       paste0(
         "Named list of extra arguments forwarded to the underlying writer."
       ),

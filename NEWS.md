@@ -1,6 +1,21 @@
 # blockr.io (development version)
 
+## Internal
+
+- Block argument specs now use blockr.core's renamed `new_arg_specs()` /
+  `new_arg_spec()` (blockr.core #295); the old `new_block_args()` /
+  `new_block_arg()` names are deprecated upstream and were raising a
+  build-time warning.
+
 ## Bug fixes
+
+- `write_block`'s exported/eval'd expression now sets `expr_type = "bquoted"`
+  and marks its input slot with the `.()` marker, so blockr.core substitutes
+  the actual input name on eval and export. Exported code now reads e.g.
+  `readr::write_csv(x = sales, ...)` directly instead of being wrapped in
+  `with(list(.arg1 = sales), ...)`. The imperative save/download handlers
+  keep bare symbols, since their slot values are already bound in the eval
+  env.
 
 - `write_expr()` now fills empty (positional) slot display names with
   `data_1`, `data_2`, ... instead of using them verbatim. Variadic links

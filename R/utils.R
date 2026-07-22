@@ -198,6 +198,20 @@ dot_sym <- function(i) {
   paste0(".arg", i)
 }
 
+# Symbol constructors for the write expression builders. `as_bare_sym()` is for
+# expressions we evaluate ourselves (manual save, download handler), where the
+# slot values are already bound in the eval env. `as_dot_sym()` emits the
+# `.(name)` marker that blockr.core's `expr_type = "bquoted"` substitutes, so
+# exported code reads `readr::write_csv(x = sales, ...)` rather than being
+# wrapped in `with(list(.arg1 = sales), ...)`. Mirrors core's `as_dot_call()`.
+as_bare_sym <- function(x) {
+  as.name(x)
+}
+
+as_dot_sym <- function(x) {
+  call(".", as.name(x))
+}
+
 arg_refs <- function(nms) {
   unnamed <- !nzchar(nms)
   replace(nms, unnamed, dot_sym(seq_len(sum(unnamed))))

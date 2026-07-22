@@ -4,7 +4,7 @@
 \alias{write_expr_arrow}
 \title{Build expression to write data to Arrow format (Parquet or Feather)}
 \usage{
-write_expr_arrow(data_names, path, format = "parquet")
+write_expr_arrow(data_names, path, format = "parquet", as_sym = as_bare_sym)
 }
 \arguments{
 \item{data_names}{Character vector of data object names to write}

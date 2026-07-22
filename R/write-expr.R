@@ -68,7 +68,7 @@ generate_filename <- function(filename = "", timestamp = Sys.time()) {
 #'
 #' @return A language object (expression) that writes CSV file(s)
 #' @keywords internal
-write_expr_csv <- function(data_names, path, args = list()) {
+write_expr_csv <- function(data_names, path, args = list(), as_sym = as_bare_sym) {
   # Extract CSV-specific params with defaults
   sep <- if (is.null(args$sep)) "," else args$sep
   quote <- if (is.null(args$quote)) {
@@ -81,7 +81,7 @@ write_expr_csv <- function(data_names, path, args = list()) {
 
   # Single file case
   if (length(data_names) == 1) {
-    data_sym <- as.name(data_names[1])
+    data_sym <- as_sym(data_names[1])
 
     # Use write_csv for comma, write_delim for other separators
     if (sep == ",") {
@@ -105,7 +105,7 @@ write_expr_csv <- function(data_names, path, args = list()) {
   # Multiple files - write each to temp, then zip
   # Build list of write expressions
   write_calls <- lapply(seq_along(data_names), function(i) {
-    data_sym <- as.name(data_names[i])
+    data_sym <- as_sym(data_names[i])
     filename <- paste0(names(data_names)[i], ".csv")
 
     # Use write_csv for comma, write_delim for other separators
@@ -155,11 +155,11 @@ write_expr_csv <- function(data_names, path, args = list()) {
 #'
 #' @return A language object (expression) that writes Excel file
 #' @keywords internal
-write_expr_excel <- function(data_names, path) {
+write_expr_excel <- function(data_names, path, as_sym = as_bare_sym) {
   # Build named list for writexl
   # names(data_names) are sheet names, values are data object names
   data_list_expr <- lapply(seq_along(data_names), function(i) {
-    as.name(data_names[i])
+    as_sym(data_names[i])
   })
   names(data_list_expr) <- names(data_names)
 
@@ -178,7 +178,7 @@ write_expr_excel <- function(data_names, path) {
 #'
 #' @return A language object (expression) that writes Arrow file(s)
 #' @keywords internal
-write_expr_arrow <- function(data_names, path, format = "parquet") {
+write_expr_arrow <- function(data_names, path, format = "parquet", as_sym = as_bare_sym) {
   write_func <- if (format == "feather") {
     quote(arrow::write_feather)
   } else {
@@ -187,7 +187,7 @@ write_expr_arrow <- function(data_names, path, format = "parquet") {
 
   # Single file case
   if (length(data_names) == 1) {
-    data_sym <- as.name(data_names[1])
+    data_sym <- as_sym(data_names[1])
     return(bquote(.(write_func)(
       x = .(data_sym),
       sink = .(path)
@@ -197,7 +197,7 @@ write_expr_arrow <- function(data_names, path, format = "parquet") {
   # Multiple files - write each to temp, then zip
   ext <- if (format == "feather") ".feather" else ".parquet"
   write_calls <- lapply(seq_along(data_names), function(i) {
-    data_sym <- as.name(data_names[i])
+    data_sym <- as_sym(data_names[i])
     filename <- paste0(names(data_names)[i], ext)
     bquote(.(write_func)(
       x = .(data_sym),
@@ -270,7 +270,8 @@ write_expr <- function(
   directory,
   filename = "",
   format = unname(write_formats()),
-  args = list()
+  args = list(),
+  as_sym = as_bare_sym
 ) {
   format <- match.arg(format)
 
@@ -305,11 +306,11 @@ write_expr <- function(
 
   # Dispatch to appropriate handler
   write_call <- if (format == "csv") {
-    write_expr_csv(data_names, full_path, args)
+    write_expr_csv(data_names, full_path, args, as_sym = as_sym)
   } else if (format == "excel") {
-    write_expr_excel(data_names, full_path)
+    write_expr_excel(data_names, full_path, as_sym = as_sym)
   } else {
-    write_expr_arrow(data_names, full_path, format)
+    write_expr_arrow(data_names, full_path, format, as_sym = as_sym)
   }
 
   # The target directory is created here, at write time, and nowhere else —
