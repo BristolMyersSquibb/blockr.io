@@ -8,7 +8,7 @@
 
 # options(
 #   blockr.dock_is_locked = FALSE,
-#   blockr.html_table_preview = TRUE,
+#   blockr.tabular_display = blockr.ui::html_table_display,
 #   shiny.port = 3838L,
 #   shiny.host = "0.0.0.0"
 # )

@@ -46,7 +46,7 @@ write.csv(airquality, file.path(data_dir, "subdir", "air.csv"), row.names = FALS
 
 options(
   blockr.data_dir = data_dir,
-  blockr.html_table_preview = TRUE
+  blockr.tabular_display = blockr.ui::html_table_display
 )
 message("Demo data dir: ", data_dir)
 message("Write target suggestion: ", file.path(demo_root, "out"))

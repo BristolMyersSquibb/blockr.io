@@ -22,7 +22,7 @@ write.csv(mtcars, temp_csv, row.names = FALSE)
 
 
 options(
-  blockr.html_table_preview = TRUE
+  blockr.tabular_display = blockr.ui::html_table_display
 )
 
 
