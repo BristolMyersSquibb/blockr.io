@@ -1,5 +1,12 @@
 # blockr.io (development version)
 
+## Internal
+
+- Block argument specs now use blockr.core's renamed `new_arg_specs()` /
+  `new_arg_spec()` (blockr.core #295); the old `new_block_args()` /
+  `new_block_arg()` names are deprecated upstream and were raising a
+  build-time warning.
+
 ## Bug fixes
 
 - `write_block`'s exported/eval'd expression now sets `expr_type = "bquoted"`
