@@ -35,9 +35,13 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="blockrio-development-version">blockr.io (development version)<a class="anchor" aria-label="anchor" href="#blockrio-development-version"></a></h2>
 <div class="section level3">
+<h3 id="internal-development-version">Internal<a class="anchor" aria-label="anchor" href="#internal-development-version"></a></h3>
+<ul><li>Block argument specs now use blockr.core’s renamed <code><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/new_arg_spec.html" class="external-link">new_arg_specs()</a></code> / <code><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/new_arg_spec.html" class="external-link">new_arg_spec()</a></code> (blockr.core <a href="https://github.com/BristolMyersSquibb/blockr.io/issues/295" class="external-link">#295</a>); the old <code><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/new_arg_spec.html" class="external-link">new_block_args()</a></code> / <code><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/new_arg_spec.html" class="external-link">new_block_arg()</a></code> names are deprecated upstream and were raising a build-time warning.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>
-<code>write_expr()</code> now fills empty (positional) slot display names with <code>data_1</code>, <code>data_2</code>, … instead of using them verbatim. Variadic links added positionally (the blockr.ui / blockr.dock link menus) arrive with <code>""</code> names, which produced colliding <code>.csv</code> entries inside multi-input ZIP downloads (each write clobbering the last) and empty Excel sheet names.</li>
+<ul><li><p><code>write_block</code>’s exported/eval’d expression now sets <code>expr_type = "bquoted"</code> and marks its input slot with the <code><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/bbquote.html" class="external-link">.()</a></code> marker, so blockr.core substitutes the actual input name on eval and export. Exported code now reads e.g. <code>readr::write_csv(x = sales, ...)</code> directly instead of being wrapped in <code>with(list(.arg1 = sales), ...)</code>. The imperative save/download handlers keep bare symbols, since their slot values are already bound in the eval env.</p></li>
+<li><p><code>write_expr()</code> now fills empty (positional) slot display names with <code>data_1</code>, <code>data_2</code>, … instead of using them verbatim. Variadic links added positionally (the blockr.ui / blockr.dock link menus) arrive with <code>""</code> names, which produced colliding <code>.csv</code> entries inside multi-input ZIP downloads (each write clobbering the last) and empty Excel sheet names.</p></li>
 </ul></div>
 <div class="section level3">
 <h3 id="design-system-alignment-development-version">Design-system alignment<a class="anchor" aria-label="anchor" href="#design-system-alignment-development-version"></a></h3>

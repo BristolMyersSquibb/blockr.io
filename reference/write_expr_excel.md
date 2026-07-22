@@ -5,7 +5,7 @@ Build expression to write data to Excel file with multiple sheets
 ## Usage
 
 ``` r
-write_expr_excel(data_names, path)
+write_expr_excel(data_names, path, as_sym = as_bare_sym)
 ```
 
 ## Arguments

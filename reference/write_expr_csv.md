@@ -5,7 +5,7 @@ Build expression to write data to CSV file(s)
 ## Usage
 
 ``` r
-write_expr_csv(data_names, path, args = list())
+write_expr_csv(data_names, path, args = list(), as_sym = as_bare_sym)
 ```
 
 ## Arguments
