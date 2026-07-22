@@ -4,7 +4,7 @@
 \alias{write_expr_csv}
 \title{Build expression to write data to CSV file(s)}
 \usage{
-write_expr_csv(data_names, path, args = list())
+write_expr_csv(data_names, path, args = list(), as_sym = as_bare_sym)
 }
 \arguments{
 \item{data_names}{Character vector of data object names to write}
