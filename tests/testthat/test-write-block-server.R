@@ -1,9 +1,15 @@
-# A passthrough expression is `{ <input-name> }`: a language object (core
-# requires one; a bare symbol is not) that carries no write call.
+# A passthrough expression is `{ .(<input-name>) }`: a language object (core
+# requires one; a bare symbol is not) that carries no write call. The `.()`
+# wrapper is the `expr_type = "bquoted"` marker that blockr.core substitutes
+# on eval and export, so the generated code names its input directly instead
+# of being wrapped in `with(list(.arg1 = ...), ...)`.
 expect_passthrough <- function(expr, name) {
   expect_true(is.call(expr))
   expect_false(grepl("write", paste(deparse(expr), collapse = " ")))
-  expect_equal(deparse(expr[[2]]), name)
+  marker <- expr[[2]]
+  expect_true(is.call(marker))
+  expect_identical(marker[[1]], as.name("."))
+  expect_equal(deparse(marker[[2]]), name)
 }
 
 test_that("write_block expr_server with auto_write=FALSE is a passthrough", {
