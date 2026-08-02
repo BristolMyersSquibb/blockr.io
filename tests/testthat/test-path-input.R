@@ -189,3 +189,33 @@ test_that("list_dir_response returns empty listing for missing directories", {
   expect_equal(length(data$items), 0L)
   expect_equal(data$total, 0L)
 })
+
+test_that("the field is re-sent when the widget says it is on screen", {
+
+  # A block in a dock panel nobody has opened has not loaded this widget's
+  # script yet, so the push made at boot reached a Shiny with no handler for
+  # the message and was dropped -- somewhere no client-side queue can reach
+  # it. The widget announces itself on bind and the module answers, which is
+  # the only way the field can come up filled in.
+  #
+  sent <- character()
+  testthat::local_mocked_bindings(
+    path_input_send_value = function(session, id, value) {
+      sent <<- c(sent, value)
+    }
+  )
+
+  shiny::testServer(
+    path_input_server,
+    {
+      session$flushReact()
+      expect_identical(sent, "/tmp/here")
+
+      session$setInputs(path_text_ready = 1)
+      session$flushReact()
+
+      expect_identical(sent, c("/tmp/here", "/tmp/here"))
+    },
+    args = list(value = shiny::reactive("/tmp/here"))
+  )
+})

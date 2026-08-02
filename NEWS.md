@@ -9,6 +9,14 @@
 
 ## Bug fixes
 
+- The path field comes up filled in, and works, inside a dock panel that was
+  not open when the board loaded. Its script arrives with the panel, so the
+  value pushed at boot reached a Shiny with no handler for the message and
+  was dropped; and the only hook that wired the field's autocomplete was an
+  output event that had already fired. The widget now announces itself when
+  Shiny binds it, and `path_input_server()` gained a `value` argument so the
+  module answers -- callers no longer push at the field themselves.
+
 - The read block no longer treats the path field's bind-time echo as a user
   choosing a file. Inside a dock the field enters the DOM when its panel is
   first shown and immediately reports the path the block had written into it,

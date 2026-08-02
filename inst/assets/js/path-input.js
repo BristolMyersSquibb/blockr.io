@@ -86,9 +86,26 @@
       },
       // Runs when Shiny binds the input -- for dockview panels that is the
       // late bindAll on layout change, i.e. the first moment the element is
-      // guaranteed to exist. Replay whatever the server pushed too early.
+      // guaranteed to exist.
       initialize: function(el) {
+        // Wire the dropdown and keyboard handling for THIS element. The
+        // pass at load time cannot have done it: this file arrives as a
+        // dependency of the panel and runs before the panel's HTML is in
+        // the DOM, and the only other hook is `shiny:value`, an output
+        // event that may already have fired. Without this the field is
+        // inert -- no autocomplete, no browse.
+        initPathInputs();
+
         replayPending(el.id);
+
+        // A push the server made before this file was loaded reached a
+        // Shiny with no handler for the message and was dropped outright,
+        // where the queue above can never see it. Say we are here; the
+        // server answers with the value again.
+        if (window.Shiny && Shiny.setInputValue) {
+          Shiny.setInputValue(el.id + "_ready", Date.now(),
+                              { priority: "event" });
+        }
       }
     });
     Shiny.inputBindings.register(pathBinding, "blockr.pathText", 100);

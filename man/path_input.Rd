@@ -19,7 +19,8 @@ path_input_server(
   data_dir = reactive(""),
   mode = c("file", "directory"),
   extensions = NULL,
-  policy = NULL
+  policy = NULL,
+  value = NULL
 )
 }
 \arguments{
@@ -55,6 +56,11 @@ rio-supported formats. Use e.g. \code{"rtf"} to restrict to RTF files only.}
 \item{policy}{Which deployment file-access verifier applies to the
 directory-listing endpoint: \code{"read"} or \code{"write"} (see \link{file_policy}).
 Defaults to \code{"read"} for file mode and \code{"write"} for directory mode.}
+
+\item{value}{Optional reactive giving the path the field should show.
+Supply it and the module keeps the widget in step with it -- including
+after a dock panel mounts, which is the case a caller pushing on its
+own cannot get right (see the note in the body).}
 }
 \value{
 \code{path_input_ui()} returns a \code{tagList} with the widget HTML.

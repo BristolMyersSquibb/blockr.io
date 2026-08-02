@@ -293,26 +293,17 @@ new_read_block <- function(
             coal(get_board_option_or_null("data_dir", session), "")
           })
 
-          # Path input module for "Location" tab
+          # Path input module for "Location" tab. Handing it `value` makes
+          # the module responsible for keeping the field in step with the
+          # block's path -- including when the block's dock panel mounts
+          # long after the first push, which a block pushing on its own
+          # cannot get right.
           file_path <- path_input_server(
             "file_path",
             data_dir = data_dir_reactive,
-            mode = "file"
+            mode = "file",
+            value = r_path
           )
-
-          # R -> JS: the field shows the block's path, whoever set it --
-          # constructor, board restore, upload, or an external controller.
-          # `silent` suppresses the change event, so this cannot loop back
-          # through `file_path()`, and the handler queues the message when the
-          # element has not bound yet.
-          observe({
-            p <- r_path()
-            session$sendCustomMessage("blockr-path-set-value", list(
-              id = session$ns("file_path-path_text"),
-              value = if (length(p)) unname(p[[1]]) else "",
-              silent = TRUE
-            ))
-          })
 
           # JS -> R: the field commits on Enter, blur and browse, so this is
           # one write per user decision. Validation is not this observer's
@@ -430,8 +421,11 @@ new_read_block <- function(
             all(file.exists(paths) | dir.exists(paths))
           })
 
-          # Status badge for file type
+          # Status badge for file type. Re-sent when the widget reports it
+          # is on screen, for the same reason the value is: the first push
+          # can predate the panel that carries the badge.
           observe({
+            input[["file_path-path_text_ready"]]
             type <- detected_type()
             paths <- file_paths()
             resolved <- path_resolved()

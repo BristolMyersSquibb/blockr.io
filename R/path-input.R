@@ -118,13 +118,18 @@ path_input_ui <- function(id, prefix = NULL, upload_id = NULL,
 #' @param policy Which deployment file-access verifier applies to the
 #'   directory-listing endpoint: `"read"` or `"write"` (see [file_policy]).
 #'   Defaults to `"read"` for file mode and `"write"` for directory mode.
+#' @param value Optional reactive giving the path the field should show.
+#'   Supply it and the module keeps the widget in step with it -- including
+#'   after a dock panel mounts, which is the case a caller pushing on its
+#'   own cannot get right (see the note in the body).
 #'
 #' @rdname path_input
 #' @export
 path_input_server <- function(id, data_dir = reactive(""),
                               mode = c("file", "directory"),
                               extensions = NULL,
-                              policy = NULL) {
+                              policy = NULL,
+                              value = NULL) {
   mode <- match.arg(mode)
 
   if (is.null(policy)) {
@@ -134,6 +139,28 @@ path_input_server <- function(id, data_dir = reactive(""),
 
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    # R -> JS: the field shows what the caller says it shows, whoever set
+    # it -- a constructor, a board restore, an upload, an external
+    # controller. `silent` suppresses the change event so this cannot loop
+    # back through the committed-value reactive below.
+    #
+    # `path_text_ready` is the widget reporting that it is on screen, and
+    # the reason this belongs to the module rather than to each caller: a
+    # block in a dock panel nobody has opened has not loaded this widget's
+    # script yet, so the push made at boot reached a Shiny with no handler
+    # for the message and was dropped where no client-side queue could
+    # reach it. The field came up blank and inert.
+    if (!is.null(value)) {
+      observe({
+        input$path_text_ready
+        v <- value()
+        path_input_send_value(
+          session, ns("path_text"),
+          if (length(v)) unname(v[[1]]) else ""
+        )
+      })
+    }
 
     # Register directory listing data object endpoint
     # NOTE: registerDataObj callbacks run in HTTP context, not reactive context.
@@ -346,7 +373,20 @@ list_dir_response <- function(path_val, dir_root = "", mode = "file",
 #' the number in two places.
 #'
 #' @keywords internal
-path_input_asset_version <- function() "0.5.0"
+path_input_asset_version <- function() "0.6.0"
+
+#' Send a value to a path field
+#'
+#' Its own function so a test can see the push: the message itself is
+#' invisible from `testServer`.
+#'
+#' @noRd
+path_input_send_value <- function(session, id, value) {
+  session$sendCustomMessage(
+    "blockr-path-set-value",
+    list(id = id, value = value, silent = TRUE)
+  )
+}
 
 #' htmlDependency for path input widget assets
 #' @keywords internal
