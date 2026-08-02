@@ -9,6 +9,11 @@
 
 ## Bug fixes
 
+- The write block's directory field fills itself in on a late-mounted panel
+  too. Its push ran `once = TRUE`, so it could not even be re-sent, and it
+  duplicated the module's prefix strip (empty-remainder flaw included).
+  It now hands `value` to `path_input_server()` like the read block.
+
 - A path that *is* the board's data directory is no longer stripped to the
   empty string for display. The field went blank a moment after the value
   landed -- placeholder back, prefix span hidden, so the block read as

@@ -174,32 +174,18 @@ new_write_block <- function(
             coal(get_board_option_or_null("data_dir", session), "")
           })
 
-          # Path input module for directory selection
+          # Path input module for directory selection. `value` hands the
+          # module the job of keeping the field in step, which it can do
+          # after a dock panel mounts and a block cannot: the push this used
+          # to make itself went out once, before the widget's script was
+          # loaded, and was dropped. It also strips the data-directory
+          # prefix for display, so the block does not have to.
           dir_path <- path_input_server(
             "dir_path",
             data_dir = data_dir_reactive,
-            mode = "directory"
+            mode = "directory",
+            value = r_directory
           )
-
-          # Populate path text input on restore / init
-          if (nzchar(directory)) {
-            observe({
-              # Strip data_dir prefix for display if applicable
-              display_path <- directory
-              dd <- data_dir_reactive()
-              if (nzchar(dd)) {
-                prefix <- paste0(dd, "/")
-                if (startsWith(directory, prefix)) {
-                  display_path <- substr(directory, nchar(prefix) + 1, nchar(directory))
-                }
-              }
-              session$sendCustomMessage("blockr-path-set-value", list(
-                id = session$ns("dir_path-path_text"),
-                value = display_path,
-                silent = TRUE
-              ))
-            }) |> bindEvent(TRUE, once = TRUE)
-          }
 
           # Handle directory path changes -- store relative path in state
           observeEvent(dir_path(), {
@@ -455,7 +441,10 @@ new_write_block <- function(
           # Status badge for directory validation. Runs on committed path
           # changes only (Enter/blur/selection), so the dir.exists() check
           # is cheap. "New directory" signals it will be created on save.
+          # Re-sent when the widget reports it is on screen, for the same
+          # reason the value is.
           observe({
+            input[["dir_path-path_text_ready"]]
             dir <- r_directory()
             if (nzchar(dir) && dir.exists(resolved_directory())) {
               session$sendCustomMessage("blockr-path-status", list(
