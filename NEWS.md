@@ -9,6 +9,14 @@
 
 ## Bug fixes
 
+- A path that *is* the board's data directory is no longer stripped to the
+  empty string for display. The field went blank a moment after the value
+  landed -- placeholder back, prefix span hidden, so the block read as
+  unconfigured while it was reading its data perfectly well. The strip is
+  also silent now: it is the field being normalised, not somebody choosing a
+  file, and the change event it fired reported the shortened path back as a
+  commit.
+
 - The path field comes up filled in, and works, inside a dock panel that was
   not open when the board loaded. Its script arrives with the panel, so the
   value pushed at boot reached a Shiny with no handler for the message and

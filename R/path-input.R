@@ -189,8 +189,10 @@ path_input_server <- function(id, data_dir = reactive(""),
       ))
     })
 
-    # Update prefix when data_dir changes
+    # Update prefix when data_dir changes, and again when the widget says it
+    # is on screen: this push has the same boot-time fate as the value.
     observe({
+      input$path_text_ready
       prefix <- data_dir()
       display_prefix <- if (nzchar(prefix)) paste0(prefix, "/") else ""
       session$sendCustomMessage("blockr-path-prefix", list(
@@ -199,23 +201,38 @@ path_input_server <- function(id, data_dir = reactive(""),
       ))
     })
 
-    # Auto-strip data directory prefix from pasted absolute paths
+    # Auto-strip the data directory prefix from absolute paths, so the field
+    # shows the part that is the user's to choose and the prefix span shows
+    # the rest.
     observeEvent(input$path_text, {
       val <- input$path_text
       dir_val <- data_dir()
-      if (nzchar(dir_val) && nzchar(val)) {
-        # If user pasted an absolute path that starts with the data dir, strip it
-        dir_prefix <- paste0(dir_val, "/")
-        if (startsWith(val, dir_prefix)) {
-          stripped <- substr(val, nchar(dir_prefix) + 1, nchar(val))
-          # Use sendCustomMessage so JS updatePrefixVisibility re-runs
-          # (updateTextInput doesn't fire DOM input event, leaving prefix hidden)
-          session$sendCustomMessage("blockr-path-set-value", list(
-            id = ns("path_text"),
-            value = stripped
-          ))
-        }
+
+      if (!nzchar(dir_val) || !nzchar(val)) {
+        return()
       }
+
+      dir_prefix <- paste0(dir_val, "/")
+
+      if (!startsWith(val, dir_prefix)) {
+        return()
+      }
+
+      stripped <- substr(val, nchar(dir_prefix) + 1, nchar(val))
+
+      # A path that IS the data directory strips to nothing, and an empty
+      # field reads as "no path chosen": the placeholder comes back and the
+      # prefix span hides itself, so the block appears unconfigured while it
+      # is happily reading. Leave it whole -- there is nothing here for the
+      # prefix to carry.
+      if (!nzchar(stripped)) {
+        return()
+      }
+
+      # Silent: this is the field being normalised for display, not somebody
+      # choosing a file. A change event here reports the shortened path back
+      # as if it had been committed.
+      path_input_send_value(session, ns("path_text"), stripped)
     }, ignoreInit = TRUE)
 
     reactive(input$path_text %||% "")
@@ -373,7 +390,7 @@ list_dir_response <- function(path_val, dir_root = "", mode = "file",
 #' the number in two places.
 #'
 #' @keywords internal
-path_input_asset_version <- function() "0.6.0"
+path_input_asset_version <- function() "0.6.1"
 
 #' Send a value to a path field
 #'

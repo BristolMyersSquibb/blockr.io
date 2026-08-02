@@ -219,3 +219,31 @@ test_that("the field is re-sent when the widget says it is on screen", {
     args = list(value = shiny::reactive("/tmp/here"))
   )
 })
+
+test_that("a path that is the data directory is not stripped to nothing", {
+
+  # A board whose data directory IS the study folder, holding a block that
+  # reads that folder: the prefix strip left the field empty, which reads as
+  # "no path chosen" -- placeholder back, prefix span hidden -- while the
+  # block went on reading perfectly well. It landed a fraction of a second
+  # after the restored value, so the path appeared and then vanished.
+  sent <- character()
+  testthat::local_mocked_bindings(
+    path_input_send_value = function(session, id, value) sent <<- c(sent, value)
+  )
+
+  shiny::testServer(
+    path_input_server,
+    {
+      session$setInputs(path_text = "/study/adam/")
+      session$flushReact()
+      expect_identical(sent, character())
+
+      # A path BELOW the data directory still strips, which is the point.
+      session$setInputs(path_text = "/study/adam/raw")
+      session$flushReact()
+      expect_identical(sent, "raw")
+    },
+    args = list(data_dir = shiny::reactive("/study/adam"))
+  )
+})
