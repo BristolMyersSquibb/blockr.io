@@ -41,6 +41,10 @@ set_names <- function(x, nm) {
 #' from the path widget beside it, reading one file while showing another.
 #' Exported so there is one answer.
 #'
+#' @param paths Character vector of paths, each absolute, relative or a URL.
+#' @param data_dir The board's data directory. `""` (the default) leaves every
+#'   path alone, which is what a board without one wants.
+#' @return `paths`, unnamed, with the relative ones prefixed by `data_dir`.
 #' @export
 resolve_data_dir <- function(paths, data_dir = "") {
   if (!length(paths) || !nzchar(data_dir)) {

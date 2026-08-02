@@ -6,6 +6,15 @@
 \usage{
 resolve_data_dir(paths, data_dir = "")
 }
+\arguments{
+\item{paths}{Character vector of paths, each absolute, relative or a URL.}
+
+\item{data_dir}{The board's data directory. \code{""} (the default) leaves every
+path alone, which is what a board without one wants.}
+}
+\value{
+\code{paths}, unnamed, with the relative ones prefixed by \code{data_dir}.
+}
 \description{
 Relative paths are taken to be relative to the data directory; absolute
 ones and URLs are left alone. Vectorized, so a multi-file read resolves in
