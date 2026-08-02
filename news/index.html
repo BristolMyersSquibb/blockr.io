@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">blockr.io</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9007</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9008</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,7 +40,8 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li><p>The path field comes up filled in, and works, inside a dock panel that was not open when the board loaded. Its script arrives with the panel, so the value pushed at boot reached a Shiny with no handler for the message and was dropped; and the only hook that wired the field’s autocomplete was an output event that had already fired. The widget now announces itself when Shiny binds it, and <code><a href="../reference/path_input.html">path_input_server()</a></code> gained a <code>value</code> argument so the module answers – callers no longer push at the field themselves.</p></li>
+<ul><li><p>A path that <em>is</em> the board’s data directory is no longer stripped to the empty string for display. The field went blank a moment after the value landed – placeholder back, prefix span hidden, so the block read as unconfigured while it was reading its data perfectly well. The strip is also silent now: it is the field being normalised, not somebody choosing a file, and the change event it fired reported the shortened path back as a commit.</p></li>
+<li><p>The path field comes up filled in, and works, inside a dock panel that was not open when the board loaded. Its script arrives with the panel, so the value pushed at boot reached a Shiny with no handler for the message and was dropped; and the only hook that wired the field’s autocomplete was an output event that had already fired. The widget now announces itself when Shiny binds it, and <code><a href="../reference/path_input.html">path_input_server()</a></code> gained a <code>value</code> argument so the module answers – callers no longer push at the field themselves.</p></li>
 <li><p>The read block no longer treats the path field’s bind-time echo as a user choosing a file. Inside a dock the field enters the DOM when its panel is first shown and immediately reports the path the block had written into it, which relabelled an uploaded file’s source as a plain path.</p></li>
 <li><p><code>write_block</code>’s exported/eval’d expression now sets <code>expr_type = "bquoted"</code> and marks its input slot with the <code><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/bbquote.html" class="external-link">.()</a></code> marker, so blockr.core substitutes the actual input name on eval and export. Exported code now reads e.g. <code>readr::write_csv(x = sales, ...)</code> directly instead of being wrapped in <code>with(list(.arg1 = sales), ...)</code>. The imperative save/download handlers keep bare symbols, since their slot values are already bound in the eval env.</p></li>
 <li><p><code>write_expr()</code> now fills empty (positional) slot display names with <code>data_1</code>, <code>data_2</code>, … instead of using them verbatim. Variadic links added positionally (the blockr.ui / blockr.dock link menus) arrive with <code>""</code> names, which produced colliding <code>.csv</code> entries inside multi-input ZIP downloads (each write clobbering the last) and empty Excel sheet names.</p></li>
