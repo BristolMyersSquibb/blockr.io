@@ -20,7 +20,8 @@ path_input_server(
   data_dir = reactive(""),
   mode = c("file", "directory"),
   extensions = NULL,
-  policy = NULL
+  policy = NULL,
+  value = NULL
 )
 ```
 
@@ -77,6 +78,13 @@ path_input_server(
   endpoint: `"read"` or `"write"` (see
   [file_policy](https://bristolmyerssquibb.github.io/blockr.io/reference/file_policy.md)).
   Defaults to `"read"` for file mode and `"write"` for directory mode.
+
+- value:
+
+  Optional reactive giving the path the field should show. Supply it and
+  the module keeps the widget in step with it – including after a dock
+  panel mounts, which is the case a caller pushing on its own cannot get
+  right (see the note in the body).
 
 ## Value
 

@@ -11,7 +11,7 @@ browser widgets."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">blockr.io</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9005</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9007</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -58,7 +58,8 @@ browser widgets.</p>
 <span>  data_dir <span class="op">=</span> <span class="fu">reactive</span><span class="op">(</span><span class="st">""</span><span class="op">)</span>,</span>
 <span>  mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"file"</span>, <span class="st">"directory"</span><span class="op">)</span>,</span>
 <span>  extensions <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  policy <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  policy <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  value <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -115,6 +116,13 @@ rio-supported formats. Use e.g. <code>"rtf"</code> to restrict to RTF files only
 <dd><p>Which deployment file-access verifier applies to the
 directory-listing endpoint: <code>"read"</code> or <code>"write"</code> (see <a href="file_policy.html">file_policy</a>).
 Defaults to <code>"read"</code> for file mode and <code>"write"</code> for directory mode.</p></dd>
+
+
+<dt id="arg-value">value<a class="anchor" aria-label="anchor" href="#arg-value"></a></dt>
+<dd><p>Optional reactive giving the path the field should show.
+Supply it and the module keeps the widget in step with it – including
+after a dock panel mounts, which is the case a caller pushing on its
+own cannot get right (see the note in the body).</p></dd>
 
 </dl></div>
     <div class="section level2">
