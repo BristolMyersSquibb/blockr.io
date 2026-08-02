@@ -29,6 +29,46 @@ set_names <- function(x, nm) {
   x
 }
 
+#' Resolve paths against the board's data directory
+#'
+#' Relative paths are taken to be relative to the data directory; absolute
+#' ones and URLs are left alone. Vectorized, so a multi-file read resolves in
+#' one call.
+#'
+#' @keywords internal
+resolve_data_dir <- function(paths, data_dir = "") {
+  if (!length(paths) || !nzchar(data_dir)) {
+    return(unname(paths))
+  }
+
+  vapply(
+    unname(paths),
+    function(p) {
+      if (grepl("^(/|~|[A-Za-z]:)", p) || is_valid_url(p)) {
+        p
+      } else {
+        file.path(data_dir, p)
+      }
+    },
+    character(1)
+  )
+}
+
+#' Is this path one the app itself manages?
+#'
+#' Uploads and URL downloads land in the app's own sandboxes, so the
+#' deployment file-access policy (which governs paths the USER chooses) does
+#' not apply to them.
+#'
+#' @keywords internal
+in_app_sandbox <- function(path, upload_path) {
+  roots <- normalizePath(
+    c(tempdir(), upload_path), winslash = "/", mustWork = FALSE
+  )
+  np <- normalizePath(path, winslash = "/", mustWork = FALSE)
+  any(startsWith(np, paste0(roots, "/")))
+}
+
 #' Validate URL format
 #' @keywords internal
 is_valid_url <- function(url) {

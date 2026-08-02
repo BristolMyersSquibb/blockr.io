@@ -209,6 +209,13 @@
     el.scrollLeft = el.scrollWidth;
     updatePrefixVisibility(msg.id);
     updateChip(msg.id);
+    // An open dropdown is a listing of the OLD path's directory: leaving it
+    // up next to a value it no longer describes invites clicking an entry
+    // that belongs somewhere else. The value came from elsewhere (restore,
+    // upload, an external controller), so the browse the user started is
+    // over.
+    st.items = [];
+    closeDropdown(msg.id);
     if (!msg.silent) {
       $(el).trigger("change");
     }

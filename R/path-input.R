@@ -337,12 +337,23 @@ list_dir_response <- function(path_val, dir_root = "", mode = "file",
   )
 }
 
+#' Asset version for the path input
+#'
+#' Bump on every change to `inst/assets/js/path-input.js` or its stylesheet:
+#' the version is what busts a browser's cached copy, so shipping JS without
+#' bumping it means users keep running the old file. Named rather than
+#' inlined so a test can assert the dependency carries it without hardcoding
+#' the number in two places.
+#'
+#' @keywords internal
+path_input_asset_version <- function() "0.5.0"
+
 #' htmlDependency for path input widget assets
 #' @keywords internal
 path_input_dep <- memoise0(function() {
   htmltools::htmlDependency(
     name = "blockr-path-input",
-    version = "0.4.0",
+    version = path_input_asset_version(),
     src = system.file("assets", package = "blockr.io"),
     script = "js/path-input.js",
     stylesheet = "css/path-input.css"

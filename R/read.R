@@ -19,6 +19,16 @@
 #'     `skip` (default: 0), `n_max` (default: Inf), `col_names` (default: TRUE)
 #' @param ... Forwarded to [blockr.core::new_data_block()]
 #'
+#' @section External control:
+#' `path`, `source`, `combine` and `args` are externally controllable (see
+#' [blockr.core::external_ctrl_vars()]), so a board update, an assistant or a
+#' parent app can retarget the block with a `mod` delta instead of replacing
+#' it. This holds because the block's expression is a pure function of that
+#' state: writing `path` moves the read, and the path field, the type badge
+#' and the settings band follow. A path that does not resolve is reported on
+#' the badge and as a block error rather than failing the constructor, so a
+#' board restores even when its data has not landed yet.
+#'
 #' @section Configuration:
 #' The following settings are retrieved from options and not stored in block state:
 #' - **upload_path**: Directory for persistent file storage. Set via
@@ -94,6 +104,15 @@ new_read_block <- function(
   source <- match.arg(source, c("upload", "path"))
   combine <- match.arg(combine, c("auto", "rbind", "cbind", "first"))
 
+  # Read inside the server closure, i.e. after this call returns: left as
+  # promises they carry the caller's environment, and any route that revives
+  # the app object in a fresh R process (shinytest2, a callr worker) forces
+  # them there, where the caller's locals are gone.
+  force(path)
+  force(source)
+  force(combine)
+  force(args)
+
   # Get upload_path from options (not constructor parameter)
   # Runtime configuration, not persisted state
   upload_path <- blockr_option(
@@ -118,133 +137,156 @@ new_read_block <- function(
           # File type-specific options stored as a single list
           r_args <- reactiveVal(args)
 
-          # Path storage
-          # r_path: State-persisted value (URL or file path string)
-          # r_file_paths: Actual file paths for reading (temp file when URL)
-
-          # Handle URL paths at init time
-          if (length(path) > 0 && nzchar(path[[1]]) && is_valid_url(path[[1]])) {
-            # URL mode: r_path stores the URL string for state persistence
-            r_path <- reactiveVal(path[[1]])
-
-            # Download URL and set r_file_paths to temp file for reading
-            initial_file_paths <- tryCatch(
-              {
-                temp_file <- download_url_to_temp(path[[1]])
-                url_display <- basename(strsplit(path[[1]], "?", fixed = TRUE)[[
-                  1
-                ]][1])
-                set_names(temp_file, url_display)
-              },
-              error = function(e) {
-                character()
-              }
-            )
-            r_file_paths <- reactiveVal(initial_file_paths)
+          # `path` is the state -- the URL or file path as given, whether or
+          # not it resolves here. A board can be restored before its data
+          # lands, and an external controller can point the block at a path
+          # this session cannot see; both are reported (badge, block error),
+          # never turned into a constructor failure that takes the board down
+          # with it.
+          initial_path <- if (length(path) > 0 && nzchar(path[[1]])) {
+            if (is_valid_url(path[[1]])) {
+              path[[1]]
+            } else {
+              set_names(path, basename(path))
+            }
           } else {
-            # Local path mode: r_path and r_file_paths are the same
-            if (length(path) > 0) {
-              # Validate that provided paths exist (skip relative paths —
-              # they'll be resolved against data_dir at runtime)
-              is_absolute <- grepl("^(/|~|[A-Za-z]:)", path)
-              abs_paths <- path[is_absolute]
-              missing_files <- abs_paths[!file.exists(abs_paths)]
-              if (length(missing_files) > 0) {
-                stop(
-                  "File(s) not found: ",
-                  paste(missing_files, collapse = ", "),
-                  call. = FALSE
+            character()
+          }
+
+          r_path <- reactiveVal(initial_path)
+
+          # Set by the input observers just before they write the state they
+          # own, so the observers mirroring that state back into the widgets
+          # can skip their own echo.
+          self_write <- new.env(parent = emptyenv())
+          self_write$combine <- FALSE
+          self_write$args <- FALSE
+
+          # What actually gets read. Derived, not stored: an expression that
+          # depends on a separate copy of the path is an expression that can
+          # disagree with the state the block reports and serializes -- write
+          # `path` and the block would go on reading the previous file.
+          # A URL is fetched here, so a failed download surfaces as no data
+          # rather than as a silent stale read.
+          file_paths <- reactive({
+            p <- r_path()
+
+            if (!length(p) || !nzchar(p[[1]])) {
+              return(character())
+            }
+
+            if (is_valid_url(p[[1]])) {
+              return(
+                tryCatch(
+                  {
+                    temp_file <- download_url_to_temp(p[[1]])
+                    url_display <- basename(
+                      strsplit(p[[1]], "?", fixed = TRUE)[[1]][1]
+                    )
+                    set_names(temp_file, url_display)
+                  },
+                  error = function(e) character()
                 )
-              }
-              initial_path <- set_names(path, basename(path))
-            } else {
-              initial_path <- character()
+              )
             }
-            r_path <- reactiveVal(initial_path)
-            r_file_paths <- reactiveVal(initial_path)
+
+            set_names(unname(p), basename(unname(p)))
+          })
+
+          detected_type <- reactive({
+            paths <- file_paths()
+
+            if (!length(paths)) {
+              return("unknown")
+            }
+
+            file_category(resolve_data_dir(paths[[1]], data_dir_reactive()))
+          })
+
+          # Non-empty when the deployment's file-access policy rejects the
+          # current path. Derived on the same terms for a typed path, a
+          # restored one and an externally set one.
+          r_path_blocked <- reactive({
+            paths <- file_paths()
+
+            if (!length(paths)) {
+              return("")
+            }
+
+            blocked <- ""
+
+            for (p in resolve_data_dir(paths, data_dir_reactive())) {
+              if (is_valid_url(p)) next
+              if (in_app_sandbox(p, upload_path)) next
+              blocked <- tryCatch(
+                {
+                  resolve_and_check(p, "read")
+                  ""
+                },
+                error = function(e) conditionMessage(e)
+              )
+              if (nzchar(blocked)) break
+            }
+
+            blocked
+          })
+
+          # Update state from inputs. Each write flags itself so the mirror
+          # observers below can tell it apart from an external write.
+          set_arg <- function(name, value) {
+            current <- r_args()
+            current[[name]] <- value
+            self_write$args <- TRUE
+            r_args(current)
           }
 
-          # Detected file type
-          initial_type <- if (
-            length(path) > 0 && nzchar(path[[1]]) && is_valid_url(path[[1]])
-          ) {
-            if (exists("initial_file_paths") && length(initial_file_paths) > 0) {
-              file_category(initial_file_paths[1])
-            } else {
-              "unknown"
-            }
-          } else if (length(path) > 0) {
-            file_category(path[1])
-          } else {
-            "unknown"
+          num_or <- function(x, empty) {
+            if (identical(x, "")) empty else as.numeric(x)
           }
-          detected_type <- reactiveVal(initial_type)
 
-          # Non-empty when the deployment's file-access policy rejected the
-          # current path; surfaced as an error on the path-status badge.
-          r_path_blocked <- reactiveVal("")
+          null_if_empty <- function(x) {
+            if (identical(x, "")) NULL else x
+          }
 
-          # Update state from inputs
-          observeEvent(input$combine, r_combine(input$combine))
+          observeEvent(input$combine, {
+            self_write$combine <- TRUE
+            r_combine(input$combine)
+          })
 
           # CSV parameter updates - collect into args list
-          observeEvent(input$csv_sep, {
-            current <- r_args()
-            current$sep <- input$csv_sep
-            r_args(current)
-          })
-          observeEvent(input$csv_quote, {
-            current <- r_args()
-            current$quote <- input$csv_quote
-            r_args(current)
-          })
-          observeEvent(input$csv_encoding, {
-            current <- r_args()
-            current$encoding <- input$csv_encoding
-            r_args(current)
-          })
-          observeEvent(input$csv_skip, {
-            current <- r_args()
-            current$skip <- if (input$csv_skip == "") 0 else as.numeric(input$csv_skip)
-            r_args(current)
-          })
-          observeEvent(input$csv_n_max, {
-            current <- r_args()
-            current$n_max <- if (input$csv_n_max == "") Inf else as.numeric(input$csv_n_max)
-            r_args(current)
-          })
-          observeEvent(input$csv_col_names, {
-            current <- r_args()
-            current$col_names <- input$csv_col_names
-            r_args(current)
-          })
+          observeEvent(input$csv_sep, set_arg("sep", input$csv_sep))
+          observeEvent(input$csv_quote, set_arg("quote", input$csv_quote))
+          observeEvent(
+            input$csv_encoding, set_arg("encoding", input$csv_encoding)
+          )
+          observeEvent(
+            input$csv_skip, set_arg("skip", num_or(input$csv_skip, 0))
+          )
+          observeEvent(
+            input$csv_n_max, set_arg("n_max", num_or(input$csv_n_max, Inf))
+          )
+          observeEvent(
+            input$csv_col_names, set_arg("col_names", input$csv_col_names)
+          )
 
           # Excel parameter updates - collect into args list
-          observeEvent(input$excel_sheet, {
-            current <- r_args()
-            current$sheet <- if (input$excel_sheet == "") NULL else input$excel_sheet
-            r_args(current)
-          })
-          observeEvent(input$excel_range, {
-            current <- r_args()
-            current$range <- if (input$excel_range == "") NULL else input$excel_range
-            r_args(current)
-          })
-          observeEvent(input$excel_skip, {
-            current <- r_args()
-            current$skip <- if (input$excel_skip == "") 0 else as.numeric(input$excel_skip)
-            r_args(current)
-          })
-          observeEvent(input$excel_n_max, {
-            current <- r_args()
-            current$n_max <- if (input$excel_n_max == "") Inf else as.numeric(input$excel_n_max)
-            r_args(current)
-          })
-          observeEvent(input$excel_col_names, {
-            current <- r_args()
-            current$col_names <- input$excel_col_names
-            r_args(current)
-          })
+          observeEvent(
+            input$excel_sheet,
+            set_arg("sheet", null_if_empty(input$excel_sheet))
+          )
+          observeEvent(
+            input$excel_range,
+            set_arg("range", null_if_empty(input$excel_range))
+          )
+          observeEvent(
+            input$excel_skip, set_arg("skip", num_or(input$excel_skip, 0))
+          )
+          observeEvent(
+            input$excel_n_max, set_arg("n_max", num_or(input$excel_n_max, Inf))
+          )
+          observeEvent(
+            input$excel_col_names, set_arg("col_names", input$excel_col_names)
+          )
 
           # Data directory from board options
           data_dir_reactive <- reactive({
@@ -258,83 +300,35 @@ new_read_block <- function(
             mode = "file"
           )
 
-          # Populate path text input on restore / init
-          if (length(path) > 0 && nzchar(path[[1]])) {
-            observe({
-              display_path <- if (is_valid_url(path[[1]])) {
-                path[[1]]
-              } else {
-                unname(path[1])
-              }
-              session$sendCustomMessage("blockr-path-set-value", list(
-                id = session$ns("file_path-path_text"),
-                value = display_path,
-                silent = TRUE
-              ))
-            })
-          }
+          # R -> JS: the field shows the block's path, whoever set it --
+          # constructor, board restore, upload, or an external controller.
+          # `silent` suppresses the change event, so this cannot loop back
+          # through `file_path()`, and the handler queues the message when the
+          # element has not bound yet.
+          observe({
+            p <- r_path()
+            session$sendCustomMessage("blockr-path-set-value", list(
+              id = session$ns("file_path-path_text"),
+              value = if (length(p)) unname(p[[1]]) else "",
+              silent = TRUE
+            ))
+          })
 
-          # Handle path input changes (paths or URLs)
+          # JS -> R: the field commits on Enter, blur and browse, so this is
+          # one write per user decision. Validation is not this observer's
+          # job -- it records what was asked for, and the derived reactives
+          # above say what came of it.
           observeEvent(file_path(), {
             path_val <- file_path()
             req(nzchar(path_val))
 
-            if (is_valid_url(path_val)) {
-              # URL: download to temp file
-              r_path(path_val)
-              tryCatch(
-                {
-                  temp_file <- download_url_to_temp(path_val)
-                  url_display <- basename(
-                    strsplit(path_val, "?", fixed = TRUE)[[1]][1]
-                  )
-                  r_file_paths(set_names(temp_file, url_display))
-                  detected_type(file_category(temp_file))
-                },
-                error = function(e) {
-                  r_file_paths(character())
-                }
-              )
-            } else {
-              # Local path: resolve relative to data directory
-              resolved <- path_val
-              data_dir <- data_dir_reactive()
-              if (
-                nzchar(data_dir) &&
-                !grepl("^(/|~|[A-Za-z]:)", path_val)
-              ) {
-                resolved <- file.path(data_dir, path_val)
-              }
-
-              # Deployment file-access policy: reject paths outside the
-              # allowed roots before the path can be read. tryCatch so a
-              # stop() from the verifier becomes a block error, not an
-              # uncaught observer crash.
-              blocked <- tryCatch(
-                {
-                  resolve_and_check(resolved, "read")
-                  ""
-                },
-                error = function(e) conditionMessage(e)
-              )
-
-              if (nzchar(blocked)) {
-                r_path_blocked(blocked)
-                r_file_paths(character())
-                detected_type("unknown")
+            r_path(
+              if (is_valid_url(path_val)) {
+                path_val
               } else {
-                r_path_blocked("")
-                if (file.exists(resolved) && !dir.exists(resolved)) {
-                  named_path <- set_names(path_val, basename(resolved))
-                  r_path(named_path)
-                  r_file_paths(named_path)
-                  detected_type(file_category(resolved))
-                } else if (!dir.exists(resolved)) {
-                  r_file_paths(character())
-                  detected_type("unknown")
-                }
+                set_names(path_val, basename(path_val))
               }
-            }
+            )
 
             r_source("path")
           }, ignoreInit = TRUE)
@@ -373,32 +367,36 @@ new_read_block <- function(
 
             names(permanent_paths) <- original_names
 
-            # For upload mode, r_path and r_file_paths are the same
+            # The `r_path()` observer above mirrors this into the text field.
             r_path(permanent_paths)
-            r_file_paths(permanent_paths)
-
-            # Detect file type from first file
-            detected_type(file_category(permanent_paths[1]))
 
             # Update source to "upload" now that we have uploaded files
             r_source("upload")
-
-            # Show uploaded file path in the text input
-            display_path <- if (length(permanent_paths) == 1) {
-              unname(permanent_paths[1])
-            } else {
-              paste0(permanent_paths[1], " + ", length(permanent_paths) - 1, " more")
-            }
-            session$sendCustomMessage("blockr-path-set-value", list(
-              id = session$ns("file_path-path_text"),
-              value = display_path,
-              silent = TRUE
-            ))
           })
+
+          # R -> JS for the remaining state. Without these an externally set
+          # `combine` or `args` would drive the read while the settings band
+          # kept showing the old values, and the user's next edit would revert
+          # what was set. The guard skips the echo of the user's own edits.
+          observeEvent(r_combine(), {
+            if (self_write$combine) {
+              self_write$combine <- FALSE
+              return()
+            }
+            updateSelectInput(session, "combine", selected = r_combine())
+          }, ignoreInit = TRUE)
+
+          observeEvent(r_args(), {
+            if (self_write$args) {
+              self_write$args <- FALSE
+              return()
+            }
+            push_read_args(session, r_args())
+          }, ignoreInit = TRUE, ignoreNULL = FALSE)
 
           # Combination strategy info
           output$combine_info <- renderText({
-            current_file_paths <- r_file_paths()
+            current_file_paths <- file_paths()
             if (length(current_file_paths) <= 1) {
               return("")
             }
@@ -412,22 +410,19 @@ new_read_block <- function(
             )
           })
 
-          # Does the current path_text input resolve to an existing file?
+          # Does the block's path resolve to an existing file? Read off the
+          # state, not the input, so the badge follows an externally set path
+          # as well as a typed one.
           path_resolved <- reactive({
-            val <- file_path()
-            if (!nzchar(val) || is_valid_url(val)) return(TRUE)
-            resolved <- val
-            data_dir <- data_dir_reactive()
-            if (nzchar(data_dir) && !grepl("^(/|~|[A-Za-z]:)", val)) {
-              resolved <- file.path(data_dir, val)
-            }
-            file.exists(resolved) || dir.exists(resolved)
+            paths <- resolve_data_dir(file_paths(), data_dir_reactive())
+            if (!length(paths) || is_valid_url(paths[[1]])) return(TRUE)
+            all(file.exists(paths) | dir.exists(paths))
           })
 
           # Status badge for file type
           observe({
             type <- detected_type()
-            paths <- r_file_paths()
+            paths <- file_paths()
             resolved <- path_resolved()
             type_labels <- c(
               csv = "CSV", excel = "Excel", arrow = "Parquet",
@@ -447,7 +442,7 @@ new_read_block <- function(
                 text = label,
                 state = "success"
               ))
-            } else if (!resolved && nzchar(file_path())) {
+            } else if (!resolved && length(paths) > 0) {
               session$sendCustomMessage("blockr-path-status", list(
                 id = session$ns("file_path-path_text"),
                 text = "Not found",
@@ -472,7 +467,7 @@ new_read_block <- function(
           })
 
           output$show_multi_file_options <- reactive({
-            length(r_file_paths()) > 1
+            length(file_paths()) > 1
           })
 
           outputOptions(output, "show_csv_options", suspendWhenHidden = FALSE)
@@ -485,45 +480,17 @@ new_read_block <- function(
 
           list(
             expr = reactive({
-              # Resolve data directory for relative paths
-              file_paths <- r_file_paths()
-              if (length(file_paths) > 0) {
-                data_dir <- data_dir_reactive()
-                if (nzchar(data_dir)) {
-                  file_paths <- vapply(file_paths, function(p) {
-                    if (!grepl("^(/|~|[A-Za-z]:)", p) && !is_valid_url(p)) {
-                      file.path(data_dir, p)
-                    } else {
-                      p
-                    }
-                  }, character(1))
-                }
-              }
+              paths <- resolve_data_dir(file_paths(), data_dir_reactive())
 
-              # Authoritative file-access policy check: the path-status
-              # observer covers live input, but a restored/serialized board
-              # populates r_file_paths via the constructor without firing it.
-              # Enforce here, the single point where paths become a read, and
-              # surface a rejection as a block error. URL downloads and uploads
-              # land in app-managed sandboxes (tempdir / upload_path) and are
-              # exempt — only user-chosen filesystem paths are policed.
-              sandbox_roots <- normalizePath(
-                c(tempdir(), upload_path), winslash = "/", mustWork = FALSE
-              )
-              for (p in file_paths) {
-                if (is_valid_url(p)) next
-                np <- normalizePath(p, winslash = "/", mustWork = FALSE)
-                if (any(startsWith(np, paste0(sandbox_roots, "/")))) next
-                blocked <- tryCatch(
-                  {
-                    resolve_and_check(p, "read")
-                    ""
-                  },
-                  error = function(e) conditionMessage(e)
-                )
-                if (nzchar(blocked)) {
-                  return(bquote(stop(.(blocked), call. = FALSE)))
-                }
+              # The file-access policy is enforced here, the single point
+              # where a path becomes a read, and a rejection rides in the
+              # expression so blockr.core's per-block error boundary reports
+              # it. URL downloads and uploads land in app-managed sandboxes
+              # and are exempt -- only user-chosen paths are policed.
+              blocked <- r_path_blocked()
+
+              if (nzchar(blocked)) {
+                return(bquote(stop(.(blocked), call. = FALSE)))
               }
 
               # Use read_expr() to generate expression, passing args via do.call
@@ -531,7 +498,7 @@ new_read_block <- function(
                 read_expr,
                 c(
                   list(
-                    paths = file_paths,
+                    paths = paths,
                     file_type = detected_type(),
                     combine = r_combine()
                   ),
@@ -830,6 +797,55 @@ new_read_block <- function(
     },
     class = "read_block",
     allow_empty_state = TRUE,
+    external_ctrl = c("path", "source", "combine", "args"),
     ...
   )
+}
+
+#' Push a read block's format arguments back into its settings band
+#'
+#' The band is a dozen separate inputs over one `args` list, so an external
+#' write has to be fanned back out. Only fields present in `args` are pushed:
+#' an absent field means "unchanged", not "reset to empty".
+#'
+#' @noRd
+push_read_args <- function(session, args) {
+
+  if (!length(args)) {
+    return(invisible(NULL))
+  }
+
+  text_of <- function(x) {
+    if (is.null(x) || identical(x, Inf)) "" else as.character(x)
+  }
+
+  fields <- list(
+    sep = list(id = "csv_sep", fun = updateTextInput),
+    quote = list(id = "csv_quote", fun = updateTextInput),
+    encoding = list(id = "csv_encoding", fun = updateSelectInput),
+    col_names = list(id = "csv_col_names", fun = updateCheckboxInput),
+    sheet = list(id = "excel_sheet", fun = updateTextInput),
+    range = list(id = "excel_range", fun = updateTextInput)
+  )
+
+  for (nm in intersect(names(fields), names(args))) {
+    spec <- fields[[nm]]
+    val <- args[[nm]]
+    if (identical(spec$fun, updateCheckboxInput)) {
+      updateCheckboxInput(session, spec$id, value = isTRUE(val))
+    } else if (identical(spec$fun, updateSelectInput)) {
+      updateSelectInput(session, spec$id, selected = text_of(val))
+    } else {
+      updateTextInput(session, spec$id, value = text_of(val))
+    }
+  }
+
+  # `skip` and `n_max` exist twice, once per format band; both are text.
+  for (nm in intersect(c("skip", "n_max"), names(args))) {
+    for (prefix in c("csv_", "excel_")) {
+      updateTextInput(session, paste0(prefix, nm), value = text_of(args[[nm]]))
+    }
+  }
+
+  invisible(NULL)
 }

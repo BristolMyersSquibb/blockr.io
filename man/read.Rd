@@ -88,6 +88,18 @@ When multiple files are selected:
 }
 }
 }
+\section{External control}{
+
+\code{path}, \code{source}, \code{combine} and \code{args} are externally controllable (see
+\code{\link[blockr.core:block_name]{blockr.core::external_ctrl_vars()}}), so a board update, an assistant or a
+parent app can retarget the block with a \code{mod} delta instead of replacing
+it. This holds because the block's expression is a pure function of that
+state: writing \code{path} moves the read, and the path field, the type badge
+and the settings band follow. A path that does not resolve is reported on
+the badge and as a block error rather than failing the constructor, so a
+board restores even when its data has not landed yet.
+}
+
 \section{Configuration}{
 
 The following settings are retrieved from options and not stored in block state:

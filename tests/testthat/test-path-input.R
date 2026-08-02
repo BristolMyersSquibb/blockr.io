@@ -5,7 +5,7 @@ test_that("path_input_dep returns htmlDependency object", {
 
   expect_s3_class(dep, "html_dependency")
   expect_equal(dep$name, "blockr-path-input")
-  expect_equal(dep$version, "0.3.0")
+  expect_equal(dep$version, blockr.io:::path_input_asset_version())
 })
 
 test_that("required path_input_ui carries the amber required-empty affordance", {
