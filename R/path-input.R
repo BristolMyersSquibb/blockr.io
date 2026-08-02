@@ -181,12 +181,15 @@ path_input_server <- function(id, data_dir = reactive(""),
       )
     })
 
-    # Send the list_dir URL to JS
+    # Send the list_dir URL to JS. This fires once and has no reactive
+    # dependency of its own, so for a block in a dock panel nobody has
+    # opened it went out before this widget's script was loaded and was
+    # dropped -- leaving `st.listUrl` null on the client and the dropdown
+    # with nowhere to fetch from. The field looked alive and typed fine; it
+    # just never suggested anything, forever. Re-send on the announce.
     observe({
-      session$sendCustomMessage("blockr-path-list-url", list(
-        id = ns("path_text"),
-        url = list_url
-      ))
+      input$path_text_ready
+      path_input_send_list_url(session, ns("path_text"), list_url)
     })
 
     # Update prefix when data_dir changes, and again when the widget says it
@@ -402,6 +405,18 @@ path_input_send_value <- function(session, id, value) {
   session$sendCustomMessage(
     "blockr-path-set-value",
     list(id = id, value = value, silent = TRUE)
+  )
+}
+
+#' Send the directory-listing URL to a path field
+#'
+#' Its own function so a test can see the push, as for the value.
+#'
+#' @noRd
+path_input_send_list_url <- function(session, id, url) {
+  session$sendCustomMessage(
+    "blockr-path-list-url",
+    list(id = id, url = url)
   )
 }
 

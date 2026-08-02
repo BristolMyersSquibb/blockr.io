@@ -247,3 +247,30 @@ test_that("a path that is the data directory is not stripped to nothing", {
     args = list(data_dir = shiny::reactive("/study/adam"))
   )
 })
+
+test_that("the listing URL is re-sent when the widget says it is on screen", {
+
+  # The dropdown fetches from a per-session URL the server registers and
+  # pushes once, with no reactive dependency of its own. For a block in a
+  # dock panel nobody has opened, that push went out before the widget's
+  # script existed and was dropped: the field typed fine and never suggested
+  # anything, for the life of the session.
+  sent <- 0L
+  testthat::local_mocked_bindings(
+    path_input_send_list_url = function(session, id, url) sent <<- sent + 1L
+  )
+
+  shiny::testServer(
+    path_input_server,
+    {
+      session$flushReact()
+      expect_identical(sent, 1L)
+
+      session$setInputs(path_text_ready = 1)
+      session$flushReact()
+
+      expect_identical(sent, 2L)
+    },
+    args = list()
+  )
+})
