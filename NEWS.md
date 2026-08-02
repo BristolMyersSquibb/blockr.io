@@ -7,6 +7,14 @@
   `new_block_arg()` names are deprecated upstream and were raising a
   build-time warning.
 
+## Features
+
+- `resolve_data_dir()` is exported. Resolving a path against the board's
+  data directory was written out longhand in every block that takes one --
+  same regex, four copies -- which is how a block ends up resolving
+  differently from the path widget next to it, reading one file while
+  showing another.
+
 ## Bug fixes
 
 - The write block's directory field fills itself in on a late-mounted panel

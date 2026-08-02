@@ -198,12 +198,7 @@ new_write_block <- function(
           resolved_directory <- reactive({
             dir_val <- r_directory()
             if (!nzchar(dir_val)) return("")
-            data_dir <- data_dir_reactive()
-            if (nzchar(data_dir) && !grepl("^(/|~|[A-Za-z]:)", dir_val)) {
-              file.path(data_dir, dir_val)
-            } else {
-              dir_val
-            }
+            resolve_data_dir(dir_val, data_dir_reactive())
           })
 
           # Deployment file-access policy: reject write targets outside the
