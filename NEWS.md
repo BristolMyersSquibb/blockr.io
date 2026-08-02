@@ -9,6 +9,11 @@
 
 ## Bug fixes
 
+- The read block no longer treats the path field's bind-time echo as a user
+  choosing a file. Inside a dock the field enters the DOM when its panel is
+  first shown and immediately reports the path the block had written into it,
+  which relabelled an uploaded file's source as a plain path.
+
 - `write_block`'s exported/eval'd expression now sets `expr_type = "bquoted"`
   and marks its input slot with the `.()` marker, so blockr.core substitutes
   the actual input name on eval and export. Exported code now reads e.g.

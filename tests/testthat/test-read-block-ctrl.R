@@ -161,3 +161,30 @@ test_that("the policy still rejects a path outside the allowed roots", {
     args = list(x = block, data = list())
   )
 })
+
+test_that("the path field's bind-time echo is not a user decision", {
+
+  # A field reports its value the moment it binds, and inside a dock that
+  # happens after the block has written its own path into it. Taken at face
+  # value that echo relabels an uploaded file as a plain path, so a board
+  # re-saved after someone merely looked at the block claims a provenance it
+  # does not have.
+  dir <- withr::local_tempdir()
+  f <- local_csv(dir, "20260802_120000_report.csv", 1:2)
+
+  block <- new_read_block(path = f, source = "upload")
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", block),
+    {
+      session$flushReact()
+
+      session$setInputs(`expr-file_path-path_text` = f)
+      session$flushReact()
+
+      expect_identical(session$returned$state$source(), "upload")
+      expect_identical(unname(session$returned$state$path()), f)
+    },
+    args = list(x = block, data = list())
+  )
+})

@@ -322,6 +322,17 @@ new_read_block <- function(
             path_val <- file_path()
             req(nzchar(path_val))
 
+            # A field reports its value the moment it binds, and inside a
+            # dock that happens after the observer above has written the
+            # block's own path into it. That echo is not a user choosing a
+            # file: acting on it renames an uploaded file to its stored
+            # basename and relabels the source as a path.
+            current <- r_path()
+
+            if (length(current) && identical(unname(current[[1]]), path_val)) {
+              return()
+            }
+
             r_path(
               if (is_valid_url(path_val)) {
                 path_val
