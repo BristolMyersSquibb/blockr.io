@@ -111,6 +111,18 @@ When multiple files are selected:
 
 - **"first"**: Uses only the first file
 
+## External control
+
+`path`, `source`, `combine` and `args` are externally controllable (see
+[`blockr.core::external_ctrl_vars()`](https://bristolmyerssquibb.github.io/blockr.core/reference/block_name.html)),
+so a board update, an assistant or a parent app can retarget the block
+with a `mod` delta instead of replacing it. This holds because the
+block's expression is a pure function of that state: writing `path`
+moves the read, and the path field, the type badge and the settings band
+follow. A path that does not resolve is reported on the badge and as a
+block error rather than failing the constructor, so a board restores
+even when its data has not landed yet.
+
 ## Configuration
 
 The following settings are retrieved from options and not stored in
@@ -132,7 +144,7 @@ block
 #> Name: "Read"
 #> No data inputs
 #> Initial block state:
-#>  $ path   : chr "/tmp/RtmprSfeeA/file19721ec02c80.csv"
+#>  $ path   : chr "/tmp/RtmpJA99Bk/file1a773697ffa9.csv"
 #>  $ source : chr "upload"
 #>  $ combine: chr "auto"
 #>  $ args   : list()

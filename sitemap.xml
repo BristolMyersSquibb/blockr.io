@@ -16,6 +16,7 @@
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/format_extension.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/generate_filename.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/get_rio_extensions.html</loc></url>
+<url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/in_app_sandbox.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/index.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/is_string.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/is_valid_url.html</loc></url>
@@ -23,6 +24,7 @@
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/new_data_dir_option.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/normalize_for_policy.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/path_input.html</loc></url>
+<url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/path_input_asset_version.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/path_input_dep.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/read.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/read_expr_arrow.html</loc></url>
@@ -31,6 +33,7 @@
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/read_expr_rio.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/read_expr_single.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/read_file_expr.html</loc></url>
+<url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/resolve_data_dir.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/set_names.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/write.html</loc></url>
 <url><loc>https://bristolmyerssquibb.github.io/blockr.io/reference/write_expr_arrow.html</loc></url>
