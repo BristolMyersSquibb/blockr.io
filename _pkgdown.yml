@@ -25,5 +25,6 @@ reference:
   - new_data_dir_option
   - path_input
   - read_file_expr
+  - resolve_data_dir
   - write_file_expr
   - write_formats
