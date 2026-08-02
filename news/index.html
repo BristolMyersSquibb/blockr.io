@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">blockr.io</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9009</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9011</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,8 +39,14 @@
 <ul><li>Block argument specs now use blockr.core’s renamed <code><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/new_arg_spec.html" class="external-link">new_arg_specs()</a></code> / <code><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/new_arg_spec.html" class="external-link">new_arg_spec()</a></code> (blockr.core <a href="https://github.com/BristolMyersSquibb/blockr.io/issues/295" class="external-link">#295</a>); the old <code><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/new_arg_spec.html" class="external-link">new_block_args()</a></code> / <code><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/new_arg_spec.html" class="external-link">new_block_arg()</a></code> names are deprecated upstream and were raising a build-time warning.</li>
 </ul></div>
 <div class="section level3">
+<h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
+<ul><li>
+<code><a href="../reference/resolve_data_dir.html">resolve_data_dir()</a></code> is exported. Resolving a path against the board’s data directory was written out longhand in every block that takes one – same regex, four copies – which is how a block ends up resolving differently from the path widget next to it, reading one file while showing another.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li><p>A path that <em>is</em> the board’s data directory is no longer stripped to the empty string for display. The field went blank a moment after the value landed – placeholder back, prefix span hidden, so the block read as unconfigured while it was reading its data perfectly well. The strip is also silent now: it is the field being normalised, not somebody choosing a file, and the change event it fired reported the shortened path back as a commit.</p></li>
+<ul><li><p>The write block’s directory field fills itself in on a late-mounted panel too. Its push ran <code>once = TRUE</code>, so it could not even be re-sent, and it duplicated the module’s prefix strip (empty-remainder flaw included). It now hands <code>value</code> to <code><a href="../reference/path_input.html">path_input_server()</a></code> like the read block.</p></li>
+<li><p>A path that <em>is</em> the board’s data directory is no longer stripped to the empty string for display. The field went blank a moment after the value landed – placeholder back, prefix span hidden, so the block read as unconfigured while it was reading its data perfectly well. The strip is also silent now: it is the field being normalised, not somebody choosing a file, and the change event it fired reported the shortened path back as a commit.</p></li>
 <li><p>The path field comes up filled in, and works, inside a dock panel that was not open when the board loaded. Its script arrives with the panel, so the value pushed at boot reached a Shiny with no handler for the message and was dropped; and the only hook that wired the field’s autocomplete was an output event that had already fired. The widget now announces itself when Shiny binds it, and <code><a href="../reference/path_input.html">path_input_server()</a></code> gained a <code>value</code> argument so the module answers – callers no longer push at the field themselves.</p></li>
 <li><p>The read block no longer treats the path field’s bind-time echo as a user choosing a file. Inside a dock the field enters the DOM when its panel is first shown and immediately reports the path the block had written into it, which relabelled an uploaded file’s source as a plain path.</p></li>
 <li><p><code>write_block</code>’s exported/eval’d expression now sets <code>expr_type = "bquoted"</code> and marks its input slot with the <code><a href="https://bristolmyerssquibb.github.io/blockr.core/reference/bbquote.html" class="external-link">.()</a></code> marker, so blockr.core substitutes the actual input name on eval and export. Exported code now reads e.g. <code>readr::write_csv(x = sales, ...)</code> directly instead of being wrapped in <code>with(list(.arg1 = sales), ...)</code>. The imperative save/download handlers keep bare symbols, since their slot values are already bound in the eval env.</p></li>

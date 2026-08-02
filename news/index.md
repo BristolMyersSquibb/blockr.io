@@ -16,7 +16,22 @@
   [`new_block_arg()`](https://bristolmyerssquibb.github.io/blockr.core/reference/new_arg_spec.html)
   names are deprecated upstream and were raising a build-time warning.
 
+### Features
+
+- [`resolve_data_dir()`](https://bristolmyerssquibb.github.io/blockr.io/reference/resolve_data_dir.md)
+  is exported. Resolving a path against the board’s data directory was
+  written out longhand in every block that takes one – same regex, four
+  copies – which is how a block ends up resolving differently from the
+  path widget next to it, reading one file while showing another.
+
 ### Bug fixes
+
+- The write block’s directory field fills itself in on a late-mounted
+  panel too. Its push ran `once = TRUE`, so it could not even be
+  re-sent, and it duplicated the module’s prefix strip (empty-remainder
+  flaw included). It now hands `value` to
+  [`path_input_server()`](https://bristolmyerssquibb.github.io/blockr.io/reference/path_input.md)
+  like the read block.
 
 - A path that *is* the board’s data directory is no longer stripped to
   the empty string for display. The field went blank a moment after the

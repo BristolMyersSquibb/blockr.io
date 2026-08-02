@@ -95,6 +95,8 @@ Helper functions for file handling and configuration
   : Path input widget
 - [`read_file_expr()`](https://bristolmyerssquibb.github.io/blockr.io/reference/read_file_expr.md)
   : Create a read expression for a single file
+- [`resolve_data_dir()`](https://bristolmyerssquibb.github.io/blockr.io/reference/resolve_data_dir.md)
+  : Resolve paths against the board's data directory
 - [`write_file_expr()`](https://bristolmyerssquibb.github.io/blockr.io/reference/write_file_expr.md)
   : Create a write expression for a single file
 - [`write_formats()`](https://bristolmyerssquibb.github.io/blockr.io/reference/write_formats.md)
