@@ -1,52 +1,13 @@
 on:
-  push:
-    branches: main
   pull_request:
     branches: main
+  merge_group:
 
 name: ci
 
 jobs:
-
-  # lint:
-  #
-  #   uses: ./.github/workflows/lint.yaml
-  #
-  #   secrets: inherit
-
-  smoke:
-
-    # needs: lint  # Temporarily disabled linting
-
-    uses: ./.github/workflows/smoke.yaml
-
+  ci:
+    uses: BristolMyersSquibb/blockr.ci/.github/workflows/ci.yaml@main
     secrets: inherit
-
-  check:
-
-    needs: smoke
-
-    if: github.event_name != 'pull_request'
-
-    uses: ./.github/workflows/check.yaml
-
-    secrets: inherit
-
-  coverage:
-
-    needs: smoke
-
-    uses: ./.github/workflows/coverage.yaml
-
-    secrets: inherit
-
-  pkgdown:
-
-    needs: smoke
-
-    uses: ./.github/workflows/pkgdown.yaml
-
-    secrets: inherit
-
     permissions:
       contents: write
