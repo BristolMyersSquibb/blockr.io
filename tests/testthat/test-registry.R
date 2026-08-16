@@ -228,3 +228,22 @@ test_that("providers are recorded for the restore hint", {
   dir <- withr::local_tempdir()
   expect_identical(blockr.io:::container_provider(dir), "blockr.io")
 })
+
+test_that("container options are uniform member options: semicolon CSVs", {
+  dir <- withr::local_tempdir()
+  writeLines(c("x;y", "1;a", "2;b"), file.path(dir, "adsl.csv"))
+  writeLines(c("z;w", "9;c"), file.path(dir, "adae.csv"))
+
+  expr <- container_read_expr(dir, sep = ";")
+  expect_match(deparse1(expr), 'delim = ";"')
+
+  val <- eval(expr)
+  expect_identical(names(val), c("adae", "adsl"))
+  expect_identical(names(val$adsl), c("x", "y"))
+  expect_identical(nrow(val$adsl), 2L)
+
+  # the same folder without the option mis-parses into one column,
+  # which is what makes the channel worth having
+  bad <- eval(container_read_expr(dir))
+  expect_identical(ncol(bad$adsl), 1L)
+})

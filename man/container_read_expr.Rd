@@ -11,7 +11,10 @@ container_read_expr(path, tables = NULL, ...)
 
 \item{tables}{Character vector of table names to read, or \code{NULL} for all.}
 
-\item{...}{Options forwarded to the entry.}
+\item{...}{Uniform member options, forwarded by the entry into each
+member's format entry, which picks the parameters it understands:
+\code{container_read_expr(dir, sep = ";")} reads every csv in the folder as
+semicolon-separated and leaves the other formats untouched.}
 }
 \value{
 A language object that, when evaluated, produces a named list of

@@ -22,7 +22,12 @@ short display string per table (\code{"CSV 2.1 MB"}).}
 \item{read}{\verb{function(path, tables, ...)} returning one unevaluated
 expression that evaluates to a named list of data frames, restricted to
 \code{tables} (\code{NULL} means all). The expression may compose member reads via
-\code{\link[=format_read_expr]{format_read_expr()}} at build time, and may only call reader packages.}
+\code{\link[=format_read_expr]{format_read_expr()}} at build time, and may only call reader packages.
+\code{...} carries uniform member options: an entry that holds files of other
+formats should forward it into each member's \code{\link[=format_read_expr]{format_read_expr()}} call,
+where the member's entry picks the parameters it understands (so
+\code{sep = ";"} reaches every csv in a folder and everything else ignores
+it).}
 }
 \value{
 Invisible \code{NULL}, called for its side effect.

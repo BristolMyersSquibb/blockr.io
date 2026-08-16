@@ -80,7 +80,10 @@ directory_read_expr <- function(path, tables, ...) {
     tables
   )
 
-  as.call(c(quote(list), lapply(files, format_read_expr)))
+  # `...` is uniform member options: every member's entry receives it and
+  # picks the parameters it understands (`sep` reaches the csv reads, the
+  # parquet entry ignores it). A folder of semicolon CSVs is the use case.
+  as.call(c(quote(list), lapply(files, function(f) format_read_expr(f, ...))))
 }
 
 # --- zip ---------------------------------------------------------------------
@@ -105,7 +108,8 @@ zip_read_expr <- function(path, tables, ...) {
   exprs <- lapply(members, function(m) {
     format_read_expr_impl(
       tolower(tools::file_ext(m)),
-      bquote(file.path(tmp, .(m)))
+      bquote(file.path(tmp, .(m))),
+      ...
     )
   })
 

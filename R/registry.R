@@ -157,6 +157,11 @@ register_format <- function(extensions, read) {
 #'   expression that evaluates to a named list of data frames, restricted to
 #'   `tables` (`NULL` means all). The expression may compose member reads via
 #'   [format_read_expr()] at build time, and may only call reader packages.
+#'   `...` carries uniform member options: an entry that holds files of other
+#'   formats should forward it into each member's [format_read_expr()] call,
+#'   where the member's entry picks the parameters it understands (so
+#'   `sep = ";"` reaches every csv in a folder and everything else ignores
+#'   it).
 #' @return Invisible `NULL`, called for its side effect.
 #' @seealso [register_format()], [container_list_tables()],
 #'   [container_read_expr()]
@@ -310,7 +315,10 @@ container_table_info <- function(path) {
 #'
 #' @param path Character. A resolved location.
 #' @param tables Character vector of table names to read, or `NULL` for all.
-#' @param ... Options forwarded to the entry.
+#' @param ... Uniform member options, forwarded by the entry into each
+#'   member's format entry, which picks the parameters it understands:
+#'   `container_read_expr(dir, sep = ";")` reads every csv in the folder as
+#'   semicolon-separated and leaves the other formats untouched.
 #' @return A language object that, when evaluated, produces a named list of
 #'   data frames.
 #' @export
