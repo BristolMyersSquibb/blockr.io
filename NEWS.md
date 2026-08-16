@@ -22,6 +22,20 @@
   which picks the parameters it understands -- `sep = ";"` reaches every
   csv in a folder and the parquet next to them ignores it.
 
+- An entry declares what it accepts. `register_format(options = ...)` takes
+  a named list of `opt_choice()` / `opt_text()` / `opt_number()` /
+  `opt_flag()` specs, and `format_options()` / `source_options()` answer
+  "what can be set when reading this?" for a file or a whole container (a
+  folder of CSVs offers the csv options; a folder of parquet offers none).
+  Blocks generate their settings fields from the answer with
+  `format_options_ui()` / `format_options_values()` instead of hardcoding
+  per-format panels, so a format registered by another package gets its
+  options offered -- fields, gear, read-back -- without any block changing.
+  The read block's csv and excel panels and its eleven per-field observers
+  are now one declaration and one generic observer; a side effect is that
+  an external write to the delimiter lands, which the hand-maintained
+  fan-out never did (it pushed a `selectize` with `updateTextInput`).
+
 - `gear_band_ui()` exports the gear-and-band settings affordance this
   package's blocks use, so sibling packages mount the same one.
 

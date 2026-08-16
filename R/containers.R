@@ -250,14 +250,59 @@ rdata_read_expr <- function(path, tables, ...) {
 # expr.R always had; rio is the fallback for the long tail. Re-registration
 # from this namespace replaces, so load_all() is safe.
 register_io_formats <- function() {
+  # The declarations are the same parameters the builders in expr.R have
+  # always taken; saying so out loud is what lets a block generate its
+  # fields instead of hardcoding them, and what makes "does this source
+  # offer anything to set?" a question with an answer.
   register_format(
     extensions = c("csv", "tsv", "txt", "dat", "tab"),
-    read = read_expr_csv
+    read = read_expr_csv,
+    options = list(
+      sep = opt_choice(
+        "Delimiter",
+        choices = c(
+          "Comma (,)" = ",", "Semicolon (;)" = ";",
+          "Tab (\\t)" = "\t", "Pipe (|)" = "|"
+        ),
+        default = ",",
+        create = TRUE
+      ),
+      quote = opt_text("Quote character", default = "\""),
+      encoding = opt_choice(
+        "Encoding",
+        choices = c("UTF-8", "Latin-1", "Windows-1252", "ISO-8859-1"),
+        default = "UTF-8"
+      ),
+      skip = opt_number("Skip rows", default = 0),
+      n_max = opt_number(
+        "Max rows to read", default = Inf,
+        placeholder = "default: all rows"
+      ),
+      col_names = opt_flag("First row is header", default = TRUE)
+    )
   )
   register_format(
     extensions = c("xls", "xlsx", "xlsm", "xlsb"),
-    read = read_expr_excel
+    read = read_expr_excel,
+    options = list(
+      sheet = opt_text(
+        "Sheet name or number", default = NULL,
+        placeholder = "default: first sheet"
+      ),
+      range = opt_text(
+        "Cell range", default = NULL,
+        placeholder = "default: all cells (e.g., A1:C10)"
+      ),
+      skip = opt_number("Skip rows", default = 0),
+      n_max = opt_number(
+        "Max rows to read", default = Inf,
+        placeholder = "default: all rows"
+      ),
+      col_names = opt_flag("First row is header", default = TRUE)
+    )
   )
+  # Arrow formats and rio's long tail are read as they come: no parameters
+  # in their builders, so nothing to declare and no gear anywhere.
   register_format(
     extensions = c("parquet", "feather", "arrow"),
     read = read_expr_arrow
@@ -270,12 +315,21 @@ register_io_formats <- function() {
   register_container(
     opens = "directory",
     list_tables = directory_list_tables,
-    read = directory_read_expr
+    read = directory_read_expr,
+    options = function(path) {
+      member_options(
+        list.files(
+          path, pattern = readable_pattern(), ignore.case = TRUE,
+          full.names = TRUE
+        )
+      )
+    }
   )
   register_container(
     opens = "zip",
     list_tables = zip_list_tables,
-    read = zip_read_expr
+    read = zip_read_expr,
+    options = function(path) member_options(zip_members(path)$Name)
   )
   register_container(
     opens = c("xls", "xlsx"),

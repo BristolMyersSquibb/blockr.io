@@ -115,10 +115,15 @@ lookup_entry <- function(mode, key) {
 #'   `...` carries format options forwarded by the calling block. `path` is a
 #'   resolved location and may be a language object (a container splicing
 #'   member reads against a run-time prefix), so splice it, do not inspect it.
+#' @param options Named list of [format_opt] specs declaring what `read`
+#'   accepts through `...`, or `NULL` for a format with nothing to tune.
+#'   Blocks generate their settings fields from this and show no settings
+#'   affordance at all when it is empty, so a format declaring options gets
+#'   them offered everywhere without any block changing.
 #' @return Invisible `NULL`, called for its side effect.
-#' @seealso [register_container()], [format_read_expr()]
+#' @seealso [register_container()], [format_read_expr()], [format_opt]
 #' @export
-register_format <- function(extensions, read) {
+register_format <- function(extensions, read, options = NULL) {
   stopifnot(is.character(extensions), length(extensions) > 0)
   stopifnot(is.function(read))
 
@@ -128,7 +133,10 @@ register_format <- function(extensions, read) {
     register_entry(
       "single",
       ext,
-      list(extensions = tolower(extensions), read = read, package = pkg)
+      list(
+        extensions = tolower(extensions), read = read, options = options,
+        package = pkg
+      )
     )
   }
 
@@ -162,11 +170,16 @@ register_format <- function(extensions, read) {
 #'   where the member's entry picks the parameters it understands (so
 #'   `sep = ";"` reaches every csv in a folder and everything else ignores
 #'   it).
+#' @param options What the container accepts through `read`'s `...`: a named
+#'   list of [format_opt] specs, or a `function(path)` returning one, since a
+#'   container that holds files of other formats cannot know its options
+#'   until it is pointed somewhere ([member_options()] over its members is
+#'   the usual answer). `NULL` for a container with nothing to tune.
 #' @return Invisible `NULL`, called for its side effect.
 #' @seealso [register_format()], [container_list_tables()],
-#'   [container_read_expr()]
+#'   [container_read_expr()], [format_opt]
 #' @export
-register_container <- function(opens, list_tables, read) {
+register_container <- function(opens, list_tables, read, options = NULL) {
   stopifnot(is.character(opens), length(opens) > 0)
   stopifnot(is.function(list_tables), is.function(read))
 
@@ -180,6 +193,7 @@ register_container <- function(opens, list_tables, read) {
         opens = tolower(opens),
         list_tables = list_tables,
         read = read,
+        options = options,
         package = pkg
       )
     )
@@ -191,10 +205,11 @@ register_container <- function(opens, list_tables, read) {
 # rio's long tail, registered once with lowest precedence. A fallback is
 # never a collision: a package registering "csv" shadows rio deliberately
 # rather than by accident.
-register_format_fallback <- function(extensions, read) {
+register_format_fallback <- function(extensions, read, options = NULL) {
   .registry$fallback <- list(
     extensions = tolower(extensions),
     read = read,
+    options = options,
     package = registrant_package(parent.frame())
   )
   invisible(NULL)

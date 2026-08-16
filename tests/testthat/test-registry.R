@@ -313,3 +313,103 @@ test_that("gear_band_ui wires the button to the band", {
   expect_match(html, "blockr-settings--beak")
   expect_match(html, 'aria-label="Opts"')
 })
+
+test_that("an entry declares what it accepts, and blocks can ask", {
+  specs <- format_options("study.csv")
+  expect_named(
+    specs, c("sep", "quote", "encoding", "skip", "n_max", "col_names")
+  )
+  expect_s3_class(specs$sep, "blockr_format_opt")
+  expect_identical(specs$sep$default, ",")
+  expect_true(specs$sep$create)
+
+  # a bare extension answers the same as a path
+  expect_identical(names(format_options("csv")), names(specs))
+
+  # formats read as they come declare nothing -- the honest empty answer
+  expect_length(format_options("a.parquet"), 0)
+  expect_length(format_options("a.sav"), 0)
+  expect_length(format_options("a.unregistered"), 0)
+})
+
+test_that("a container's options are its members', by declaration", {
+  dir <- withr::local_tempdir()
+  write.csv(data.frame(x = 1), file.path(dir, "a.csv"), row.names = FALSE)
+
+  # a folder of csv offers the csv options; the same folder in single mode
+  # is not a file and offers nothing
+  expect_named(source_options(dir, "container"), names(format_options("a.csv")))
+
+  # a folder holding only formats that declare nothing offers nothing, so
+  # the block that asks shows no settings affordance
+  pq <- withr::local_tempdir()
+  file.create(file.path(pq, "t.parquet"))
+  expect_length(source_options(pq, "container"), 0)
+
+  # mixed: the union, so an option any member takes is settable
+  file.create(file.path(dir, "t.parquet"))
+  expect_named(
+    source_options(dir, "container"), names(format_options("a.csv"))
+  )
+
+  # a workbook read sheet-wise takes no per-member options
+  book <- withr::local_tempfile(fileext = ".xlsx")
+  writexl::write_xlsx(list(a = data.frame(x = 1)), book)
+  expect_length(source_options(book, "container"), 0)
+  # ... though the same file read as ONE sheet does
+  expect_gt(length(source_options(book, "single")), 0)
+})
+
+test_that("a zip's options come from its members without extracting", {
+  dir <- withr::local_tempdir()
+  writeLines(c("x;y", "1;a"), file.path(dir, "a.csv"))
+  archive <- file.path(dir, "z.zip")
+  zip::zip(archive, "a.csv", root = dir, mode = "cherry-pick")
+
+  expect_named(
+    source_options(archive, "container"), names(format_options("a.csv"))
+  )
+})
+
+test_that("declared fields render, read back, and drop their defaults", {
+  specs <- format_options("a.csv")
+  ns <- function(x) paste0("blk-", x)
+
+  html <- as.character(format_options_ui(specs, ns, list(sep = ";")))
+  expect_match(html, 'id="blk-sep"')
+  expect_match(html, "Delimiter")
+  expect_match(html, "First row is header")
+  # a value at its default shows the default, a deviation shows itself
+  expect_match(html, 'placeholder="default: 0"')
+
+  # read-back keeps only what deviates
+  input <- list(
+    sep = ";", quote = "\"", encoding = "UTF-8", skip = "0", n_max = "",
+    col_names = TRUE
+  )
+  expect_identical(format_options_values(input, specs), list(sep = ";"))
+
+  input$skip <- "2"
+  input$col_names <- FALSE
+  expect_identical(
+    format_options_values(input, specs),
+    list(sep = ";", skip = 2, col_names = FALSE)
+  )
+
+  # nothing touched, nothing carried
+  expect_identical(
+    format_options_values(
+      list(sep = ",", quote = "\"", encoding = "UTF-8", skip = "",
+           n_max = "", col_names = TRUE),
+      specs
+    ),
+    list()
+  )
+
+  # an unmounted band reads NULL everywhere and says nothing
+  expect_identical(format_options_values(list(), specs), list())
+})
+
+test_that("no fields for a format that declares nothing", {
+  expect_null(format_options_ui(list(), function(x) x))
+})

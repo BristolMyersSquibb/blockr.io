@@ -11,12 +11,15 @@
 #'   input. Default: "upload". Automatically set based on path parameter.
 #' @param combine Strategy for combining multiple files: "auto", "rbind", "cbind", "first"
 #' @param args Named list of format-specific reading parameters. Only specify values
-#'   that differ from defaults. Available parameters:
+#'   that differ from defaults. Which parameters a file accepts is declared by
+#'   its format's registry entry, so [format_options()] is the live answer and
+#'   the settings band is generated from it. As shipped:
 #'   - **For CSV files:** `sep` (default: ","), `quote` (default: '"'),
 #'     `encoding` (default: "UTF-8"), `skip` (default: 0),
 #'     `n_max` (default: Inf), `col_names` (default: TRUE)
 #'   - **For Excel files:** `sheet` (default: NULL), `range` (default: NULL),
 #'     `skip` (default: 0), `n_max` (default: Inf), `col_names` (default: TRUE)
+#'   - **Everything else:** nothing to set, and no settings affordance shown
 #' @param ... Forwarded to [blockr.core::new_data_block()]
 #'
 #' @section External control:
@@ -57,10 +60,14 @@
 #'
 #' ## Smart Adaptive UI
 #'
-#' After file selection, the UI detects file type and shows relevant options:
-#' - **CSV/TSV:** Delimiter, quote character, encoding options
-#' - **Excel:** Sheet selection, cell range
-#' - **Other formats:** Minimal or no options (handled automatically)
+#' After file selection the block asks the registry what this format allows
+#' ([format_options()]) and generates the settings band from the answer:
+#' - **CSV/TSV:** Delimiter, quote character, encoding, skip, max rows, header
+#' - **Excel:** Sheet, cell range, skip, max rows, header
+#' - **Other formats:** nothing to set, so no gear at all
+#'
+#' A format registered by another package ([register_format()]) declares its
+#' own options and gets fields here without this block changing.
 #'
 #' ## Multi-file Support
 #'
@@ -231,62 +238,49 @@ new_read_block <- function(
             blocked
           })
 
-          # Update state from inputs. Each write flags itself so the mirror
-          # observers below can tell it apart from an external write.
-          set_arg <- function(name, value) {
-            current <- r_args()
-            current[[name]] <- value
-            self_write$args <- TRUE
-            r_args(current)
-          }
-
-          num_or <- function(x, empty) {
-            if (identical(x, "")) empty else as.numeric(x)
-          }
-
-          null_if_empty <- function(x) {
-            if (identical(x, "")) NULL else x
-          }
-
           observeEvent(input$combine, {
             self_write$combine <- TRUE
             r_combine(input$combine)
           })
 
-          # CSV parameter updates - collect into args list
-          observeEvent(input$csv_sep, set_arg("sep", input$csv_sep))
-          observeEvent(input$csv_quote, set_arg("quote", input$csv_quote))
-          observeEvent(
-            input$csv_encoding, set_arg("encoding", input$csv_encoding)
-          )
-          observeEvent(
-            input$csv_skip, set_arg("skip", num_or(input$csv_skip, 0))
-          )
-          observeEvent(
-            input$csv_n_max, set_arg("n_max", num_or(input$csv_n_max, Inf))
-          )
-          observeEvent(
-            input$csv_col_names, set_arg("col_names", input$csv_col_names)
-          )
+          # What this file's format says can be set when reading it. The
+          # block asks rather than knowing: a format registered by another
+          # package declares its own options and gets fields here without
+          # this block changing (and a format with nothing to tune -- most
+          # of them -- gets no fields and no gear).
+          opt_specs <- reactive({
+            paths <- file_paths()
 
-          # Excel parameter updates - collect into args list
-          observeEvent(
-            input$excel_sheet,
-            set_arg("sheet", null_if_empty(input$excel_sheet))
-          )
-          observeEvent(
-            input$excel_range,
-            set_arg("range", null_if_empty(input$excel_range))
-          )
-          observeEvent(
-            input$excel_skip, set_arg("skip", num_or(input$excel_skip, 0))
-          )
-          observeEvent(
-            input$excel_n_max, set_arg("n_max", num_or(input$excel_n_max, Inf))
-          )
-          observeEvent(
-            input$excel_col_names, set_arg("col_names", input$excel_col_names)
-          )
+            if (!length(paths)) {
+              return(list())
+            }
+
+            source_options(paths[[1]], "single")
+          })
+
+          # Fields -> state, for every declared option at once. Values still
+          # at their default drop out, so a block nobody has touched carries
+          # no options and serializes clean.
+          observe({
+            specs <- opt_specs()
+            req(length(specs) > 0)
+
+            mounted <- any(
+              vapply(names(specs), function(nm) !is.null(input[[nm]]), logical(1))
+            )
+
+            # Before the band renders every field reads NULL, which is not
+            # the user clearing them: writing then would wipe the options a
+            # board was constructed or restored with.
+            req(mounted)
+
+            vals <- format_options_values(input, specs)
+
+            if (!identical(vals, isolate(r_args()))) {
+              self_write$args <- TRUE
+              r_args(vals)
+            }
+          })
 
           # Data directory from board options
           data_dir_reactive <- reactive({
@@ -388,12 +382,14 @@ new_read_block <- function(
             updateSelectInput(session, "combine", selected = r_combine())
           }, ignoreInit = TRUE)
 
+          # State -> fields, for an external write. Moved rather than
+          # re-rendered, so a write mid-edit does not drop focus.
           observeEvent(r_args(), {
             if (self_write$args) {
               self_write$args <- FALSE
               return()
             }
-            push_read_args(session, r_args())
+            format_options_update(session, opt_specs(), r_args())
           }, ignoreInit = TRUE, ignoreNULL = FALSE)
 
           # Combination strategy info
@@ -473,33 +469,38 @@ new_read_block <- function(
             }
           })
 
-          # Show/hide format-specific options based on file type
-          output$show_csv_options <- reactive({
-            identical(detected_type(), "csv")
+          # The format's declared fields, generated. Depends on the spec set
+          # only, with the values isolated: re-rendering on every keystroke
+          # would fight the user for the cursor. It also means a dock panel
+          # that mounts late renders its fields already carrying the block's
+          # options, rather than waiting for a push it may have missed.
+          output$format_options <- renderUI({
+            format_options_ui(opt_specs(), session$ns, isolate(r_args()))
           })
+          outputOptions(output, "format_options", suspendWhenHidden = FALSE)
 
-          output$show_excel_options <- reactive({
-            identical(detected_type(), "excel")
+          output$show_format_options <- reactive({
+            length(opt_specs()) > 0
           })
+          outputOptions(
+            output, "show_format_options", suspendWhenHidden = FALSE
+          )
 
           output$show_multi_file_options <- reactive({
             length(file_paths()) > 1
           })
-
-          outputOptions(output, "show_csv_options", suspendWhenHidden = FALSE)
-          outputOptions(output, "show_excel_options", suspendWhenHidden = FALSE)
           outputOptions(
             output,
             "show_multi_file_options",
             suspendWhenHidden = FALSE
           )
 
-          # No options, no gear: the band only carries fields for csv and
-          # excel (plus the multi-file combine section), so any other
-          # detected format -- a parquet, a registered rtf, rio's long tail
-          # -- would open a band with nothing in it.
+          # No options, no gear. Both halves are now the registry's answer:
+          # a format that declares nothing -- a parquet, a registered rtf,
+          # rio's long tail -- opens no band, and the multi-file combine
+          # section is the block's own option rather than a format's.
           output$show_gear <- reactive({
-            read_gear_visible(detected_type(), length(file_paths()))
+            length(opt_specs()) > 0 || length(file_paths()) > 1
           })
           outputOptions(output, "show_gear", suspendWhenHidden = FALSE)
 
@@ -609,180 +610,11 @@ new_read_block <- function(
                 class = "blockr-path-hint blockr-settings__field--full"
               ),
 
-              div(class = "blockr-settings__title", "Format options"),
-
               conditionalPanel(
-                condition = "output['show_csv_options']",
+                condition = "output['show_format_options']",
                 ns = NS(id),
-                class = "blockr-settings__grid",
-                div(
-                  class = "blockr-settings__field",
-                  tags$label(
-                    class = "blockr-label",
-                    `for` = NS(id, "csv_sep"),
-                    "Delimiter"
-                  ),
-                  selectizeInput(
-                    inputId = NS(id, "csv_sep"),
-                    label = NULL,
-                    choices = c(
-                      "Comma (,)" = ",",
-                      "Semicolon (;)" = ";",
-                      "Tab (\\t)" = "\t",
-                      "Pipe (|)" = "|"
-                    ),
-                    selected = if (!is.null(args$sep)) args$sep else ",",
-                    options = list(create = TRUE),
-                    width = "100%"
-                  )
-                ),
-                div(
-                  class = "blockr-settings__field",
-                  tags$label(
-                    class = "blockr-label",
-                    `for` = NS(id, "csv_quote"),
-                    "Quote character"
-                  ),
-                  textInput(
-                    inputId = NS(id, "csv_quote"),
-                    label = NULL,
-                    value = if (!is.null(args$quote)) args$quote else "\"",
-                    placeholder = "default: \"",
-                    width = "100%"
-                  )
-                ),
-                div(
-                  class = "blockr-settings__field",
-                  tags$label(
-                    class = "blockr-label",
-                    `for` = NS(id, "csv_encoding"),
-                    "Encoding"
-                  ),
-                  selectInput(
-                    inputId = NS(id, "csv_encoding"),
-                    label = NULL,
-                    choices = c(
-                      "UTF-8",
-                      "Latin-1",
-                      "Windows-1252",
-                      "ISO-8859-1"
-                    ),
-                    selected = if (!is.null(args$encoding)) args$encoding else "UTF-8",
-                    width = "100%"
-                  )
-                ),
-                div(
-                  class = "blockr-settings__field",
-                  tags$label(
-                    class = "blockr-label",
-                    `for` = NS(id, "csv_skip"),
-                    "Skip rows"
-                  ),
-                  textInput(
-                    inputId = NS(id, "csv_skip"),
-                    label = NULL,
-                    value = if (!is.null(args$skip)) as.character(args$skip) else "",
-                    placeholder = "default: 0",
-                    width = "100%"
-                  )
-                ),
-                div(
-                  class = "blockr-settings__field",
-                  tags$label(
-                    class = "blockr-label",
-                    `for` = NS(id, "csv_n_max"),
-                    "Max rows to read"
-                  ),
-                  textInput(
-                    inputId = NS(id, "csv_n_max"),
-                    label = NULL,
-                    value = if (!is.null(args$n_max) && !is.infinite(args$n_max)) as.character(args$n_max) else "",
-                    placeholder = "default: all rows",
-                    width = "100%"
-                  )
-                ),
-                div(
-                  class = "blockr-settings__field",
-                  checkboxInput(
-                    inputId = NS(id, "csv_col_names"),
-                    label = "First row is header",
-                    value = if (!is.null(args$col_names)) args$col_names else TRUE
-                  )
-                )
-              ),
-
-              conditionalPanel(
-                condition = "output['show_excel_options']",
-                ns = NS(id),
-                class = "blockr-settings__grid",
-                div(
-                  class = "blockr-settings__field",
-                  tags$label(
-                    class = "blockr-label",
-                    `for` = NS(id, "excel_sheet"),
-                    "Sheet name or number"
-                  ),
-                  textInput(
-                    inputId = NS(id, "excel_sheet"),
-                    label = NULL,
-                    value = if (!is.null(args$sheet)) as.character(args$sheet) else "",
-                    placeholder = "default: first sheet",
-                    width = "100%"
-                  )
-                ),
-                div(
-                  class = "blockr-settings__field",
-                  tags$label(
-                    class = "blockr-label",
-                    `for` = NS(id, "excel_range"),
-                    "Cell range"
-                  ),
-                  textInput(
-                    inputId = NS(id, "excel_range"),
-                    label = NULL,
-                    value = if (!is.null(args$range)) args$range else "",
-                    placeholder = "default: all cells (e.g., A1:C10)",
-                    width = "100%"
-                  )
-                ),
-                div(
-                  class = "blockr-settings__field",
-                  tags$label(
-                    class = "blockr-label",
-                    `for` = NS(id, "excel_skip"),
-                    "Skip rows"
-                  ),
-                  textInput(
-                    inputId = NS(id, "excel_skip"),
-                    label = NULL,
-                    value = if (!is.null(args$skip)) as.character(args$skip) else "",
-                    placeholder = "default: 0",
-                    width = "100%"
-                  )
-                ),
-                div(
-                  class = "blockr-settings__field",
-                  tags$label(
-                    class = "blockr-label",
-                    `for` = NS(id, "excel_n_max"),
-                    "Max rows to read"
-                  ),
-                  textInput(
-                    inputId = NS(id, "excel_n_max"),
-                    label = NULL,
-                    value = if (!is.null(args$n_max) && !is.infinite(args$n_max)) as.character(args$n_max) else "",
-                    placeholder = "default: all rows",
-                    width = "100%"
-                  )
-                ),
-                div(
-                  class = "blockr-settings__field",
-                  checkboxInput(
-                    inputId = NS(id, "excel_col_names"),
-                    label = "First row is header",
-                    value = if (!is.null(args$col_names)) args$col_names else TRUE
-                  )
-                )
+                div(class = "blockr-settings__title", "Format options"),
+                uiOutput(NS(id, "format_options"))
               ),
 
               conditionalPanel(
@@ -854,64 +686,4 @@ new_read_block <- function(
     external_ctrl = c("path", "source", "combine", "args"),
     ...
   )
-}
-
-#' Push a read block's format arguments back into its settings band
-#'
-#' The band is a dozen separate inputs over one `args` list, so an external
-#' write has to be fanned back out. Only fields present in `args` are pushed:
-#' an absent field means "unchanged", not "reset to empty".
-#'
-#' @noRd
-push_read_args <- function(session, args) {
-
-  if (!length(args)) {
-    return(invisible(NULL))
-  }
-
-  text_of <- function(x) {
-    if (is.null(x) || identical(x, Inf)) "" else as.character(x)
-  }
-
-  fields <- list(
-    sep = list(id = "csv_sep", fun = updateTextInput),
-    quote = list(id = "csv_quote", fun = updateTextInput),
-    encoding = list(id = "csv_encoding", fun = updateSelectInput),
-    col_names = list(id = "csv_col_names", fun = updateCheckboxInput),
-    sheet = list(id = "excel_sheet", fun = updateTextInput),
-    range = list(id = "excel_range", fun = updateTextInput)
-  )
-
-  for (nm in intersect(names(fields), names(args))) {
-    spec <- fields[[nm]]
-    val <- args[[nm]]
-    if (identical(spec$fun, updateCheckboxInput)) {
-      updateCheckboxInput(session, spec$id, value = isTRUE(val))
-    } else if (identical(spec$fun, updateSelectInput)) {
-      updateSelectInput(session, spec$id, selected = text_of(val))
-    } else {
-      updateTextInput(session, spec$id, value = text_of(val))
-    }
-  }
-
-  # `skip` and `n_max` exist twice, once per format band; both are text.
-  for (nm in intersect(c("skip", "n_max"), names(args))) {
-    for (prefix in c("csv_", "excel_")) {
-      updateTextInput(session, paste0(prefix, nm), value = text_of(args[[nm]]))
-    }
-  }
-
-  invisible(NULL)
-}
-
-
-#' Whether the read block's gear has anything to show
-#'
-#' The settings band carries fields for the csv and excel formats and the
-#' multi-file combine section, and nothing else; a format the band has no
-#' fields for gets no gear.
-#'
-#' @noRd
-read_gear_visible <- function(type, n_paths) {
-  identical(type, "csv") || identical(type, "excel") || n_paths > 1
 }

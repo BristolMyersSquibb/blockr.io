@@ -4,7 +4,7 @@
 \alias{register_format}
 \title{Register a file format}
 \usage{
-register_format(extensions, read)
+register_format(extensions, read, options = NULL)
 }
 \arguments{
 \item{extensions}{Character vector of file extensions (without dots).}
@@ -15,6 +15,12 @@ package (e.g. \code{bquote(your.pkg::read_special(.(path)))}), never blockr.
 \code{...} carries format options forwarded by the calling block. \code{path} is a
 resolved location and may be a language object (a container splicing
 member reads against a run-time prefix), so splice it, do not inspect it.}
+
+\item{options}{Named list of \link{format_opt} specs declaring what \code{read}
+accepts through \code{...}, or \code{NULL} for a format with nothing to tune.
+Blocks generate their settings fields from this and show no settings
+affordance at all when it is empty, so a format declaring options gets
+them offered everywhere without any block changing.}
 }
 \value{
 Invisible \code{NULL}, called for its side effect.
@@ -33,5 +39,5 @@ two packages claiming the same extension and mode error at first lookup,
 naming both.
 }
 \seealso{
-\code{\link[=register_container]{register_container()}}, \code{\link[=format_read_expr]{format_read_expr()}}
+\code{\link[=register_container]{register_container()}}, \code{\link[=format_read_expr]{format_read_expr()}}, \link{format_opt}
 }

@@ -4,7 +4,7 @@
 \alias{register_container}
 \title{Register a container}
 \usage{
-register_container(opens, list_tables, read)
+register_container(opens, list_tables, read, options = NULL)
 }
 \arguments{
 \item{opens}{Character vector of file extensions (without dots), or the
@@ -28,6 +28,12 @@ formats should forward it into each member's \code{\link[=format_read_expr]{form
 where the member's entry picks the parameters it understands (so
 \code{sep = ";"} reaches every csv in a folder and everything else ignores
 it).}
+
+\item{options}{What the container accepts through \code{read}'s \code{...}: a named
+list of \link{format_opt} specs, or a \verb{function(path)} returning one, since a
+container that holds files of other formats cannot know its options
+until it is pointed somewhere (\code{\link[=member_options]{member_options()}} over its members is
+the usual answer). \code{NULL} for a container with nothing to tune.}
 }
 \value{
 Invisible \code{NULL}, called for its side effect.
@@ -41,5 +47,5 @@ this package.
 }
 \seealso{
 \code{\link[=register_format]{register_format()}}, \code{\link[=container_list_tables]{container_list_tables()}},
-\code{\link[=container_read_expr]{container_read_expr()}}
+\code{\link[=container_read_expr]{container_read_expr()}}, \link{format_opt}
 }

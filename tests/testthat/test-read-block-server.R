@@ -462,15 +462,30 @@ test_that("an unregistered extension becomes a stop() inside the expression", {
   )
 })
 
-test_that("no options, no gear: the band gates on the detected format", {
-  # the band has fields for csv and excel (and the multi-file section);
-  # everything else -- a registered rtf, parquet, rio's long tail -- has
-  # no fields there and so no gear
-  expect_true(blockr.io:::read_gear_visible(file_category("a.csv"), 1))
-  expect_true(blockr.io:::read_gear_visible(file_category("a.xlsx"), 1))
-  expect_false(blockr.io:::read_gear_visible(file_category("a.rtf"), 1))
-  expect_false(blockr.io:::read_gear_visible(file_category("a.parquet"), 1))
-  expect_false(blockr.io:::read_gear_visible(file_category("a.sav"), 1))
-  # several files always get the combine section
-  expect_true(blockr.io:::read_gear_visible(file_category("a.sav"), 2))
+test_that("no options, no gear: the gate is the registry's declaration", {
+  # what a format allows is the entry's to declare, so the block's gate is
+  # a lookup rather than a list of formats it knows about
+  expect_gt(length(source_options("a.csv")), 0)
+  expect_gt(length(source_options("a.xlsx")), 0)
+  expect_length(source_options("a.parquet"), 0)
+  expect_length(source_options("a.sav"), 0)
+
+  # a format registered with options gets them offered; one without does not
+  withr::defer({
+    blockr.io:::unregister_entry("single", "opt1")
+    blockr.io:::unregister_entry("single", "opt0")
+  })
+
+  register_format(
+    extensions = "opt1",
+    read = function(path, ...) bquote(pkg::rd(.(path))),
+    options = list(mode = opt_choice("Mode", c("a", "b"), default = "a"))
+  )
+  register_format(
+    extensions = "opt0",
+    read = function(path, ...) bquote(pkg::rd(.(path)))
+  )
+
+  expect_named(source_options("x.opt1"), "mode")
+  expect_length(source_options("x.opt0"), 0)
 })
