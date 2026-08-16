@@ -23,13 +23,16 @@ input. Default: "upload". Automatically set based on path parameter.}
 \item{combine}{Strategy for combining multiple files: "auto", "rbind", "cbind", "first"}
 
 \item{args}{Named list of format-specific reading parameters. Only specify values
-that differ from defaults. Available parameters:
+that differ from defaults. Which parameters a file accepts is declared by
+its format's registry entry, so \code{\link[=format_options]{format_options()}} is the live answer and
+the settings band is generated from it. As shipped:
 \itemize{
 \item \strong{For CSV files:} \code{sep} (default: ","), \code{quote} (default: '"'),
 \code{encoding} (default: "UTF-8"), \code{skip} (default: 0),
 \code{n_max} (default: Inf), \code{col_names} (default: TRUE)
 \item \strong{For Excel files:} \code{sheet} (default: NULL), \code{range} (default: NULL),
 \code{skip} (default: 0), \code{n_max} (default: Inf), \code{col_names} (default: TRUE)
+\item \strong{Everything else:} nothing to set, and no settings affordance shown
 }}
 
 \item{...}{Forwarded to \code{\link[blockr.core:new_data_block]{blockr.core::new_data_block()}}}
@@ -69,12 +72,16 @@ the typed path is not yet applied
 
 \subsection{Smart Adaptive UI}{
 
-After file selection, the UI detects file type and shows relevant options:
+After file selection the block asks the registry what this format allows
+(\code{\link[=format_options]{format_options()}}) and generates the settings band from the answer:
 \itemize{
-\item \strong{CSV/TSV:} Delimiter, quote character, encoding options
-\item \strong{Excel:} Sheet selection, cell range
-\item \strong{Other formats:} Minimal or no options (handled automatically)
+\item \strong{CSV/TSV:} Delimiter, quote character, encoding, skip, max rows, header
+\item \strong{Excel:} Sheet, cell range, skip, max rows, header
+\item \strong{Other formats:} nothing to set, so no gear at all
 }
+
+A format registered by another package (\code{\link[=register_format]{register_format()}}) declares its
+own options and gets fields here without this block changing.
 }
 
 \subsection{Multi-file Support}{

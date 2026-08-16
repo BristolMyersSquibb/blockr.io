@@ -171,6 +171,7 @@ download_block_arguments <- function() {
 
 .onLoad <- function(libname, pkgname) {
   register_io_blocks()
+  register_io_formats()
 
   invisible(NULL)
 } # nocov end

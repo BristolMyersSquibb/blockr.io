@@ -10,7 +10,10 @@ file_extensions()
 Character vector of file extensions (without dots)
 }
 \description{
-Returns a character vector of file extensions (without dots) supported by
-the read block. Useful for sibling packages that need to filter or validate
-file paths before passing them to blockr.io.
+Returns a character vector of file extensions (without dots) readable in
+single mode: the registry's named entries plus the rio fallback's claims.
+Useful for sibling packages that need to filter or validate file paths
+before passing them to blockr.io. The set grows exactly when the registry
+does -- a format registered via \code{\link[=register_format]{register_format()}} shows up here, and
+with it in the file browser filter and upload accept lists.
 }

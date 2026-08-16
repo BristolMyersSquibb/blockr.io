@@ -1,5 +1,60 @@
 # blockr.io (development version)
 
+## Features
+
+- A file format registry. `register_format()` teaches blockr.io a file
+  format at load time and `register_container()` a container (a location
+  holding several tables: a directory, a zip, a workbook read sheet-wise);
+  the registry is consulted when a block builds its read expression and
+  never appears in the code it builds. Containers produce a bare named
+  list of data frames -- no class; whatever the list should become is the
+  consuming block's wrap. Four container entries ship in-box (directory,
+  zip, excel sheets, rds/rdata lists), the bespoke csv/excel/arrow
+  builders are named entries, and rio is one fallback entry with lowest
+  precedence, so existing boards read exactly as they did.
+  `file_extensions()` returns named entries plus the fallback's claims and
+  grows with registration (upload accept lists included). Same-key
+  registrations from two namespaces error at first lookup naming both;
+  same-namespace re-registration replaces, so `load_all()` is safe.
+
+- Options passed at a container read are uniform member options: the
+  directory and zip entries forward them into every member's format entry,
+  which picks the parameters it understands -- `sep = ";"` reaches every
+  csv in a folder and the parquet next to them ignores it.
+
+- An entry declares what it accepts. `register_format(options = ...)` takes
+  a named list of `opt_choice()` / `opt_text()` / `opt_number()` /
+  `opt_flag()` specs, and `format_options()` / `source_options()` answer
+  "what can be set when reading this?" for a file or a whole container (a
+  folder of CSVs offers the csv options; a folder of parquet offers none).
+  Blocks generate their settings fields from the answer with
+  `format_options_ui()` / `format_options_values()` instead of hardcoding
+  per-format panels, so a format registered by another package gets its
+  options offered -- fields, gear, read-back -- without any block changing.
+  The read block's csv and excel panels and its eleven per-field observers
+  are now one declaration and one generic observer; a side effect is that
+  an external write to the delimiter lands, which the hand-maintained
+  fan-out never did (it pushed a `selectize` with `updateTextInput`).
+
+- `gear_band_ui()` exports the gear-and-band settings affordance this
+  package's blocks use, so sibling packages mount the same one.
+
+## Bug fixes
+
+- The read block badges a directory as "Directory" and reports it on the
+  block ("a directory holds several tables and needs a multi-table
+  block") instead of badging it as a readable "File" and throwing out of
+  the expression build, which left a stale preview and a log-only error.
+  Any other build failure (an unregistered extension, a registry
+  collision) rides in the expression the same way.
+
+- No options, no gear: the read block's gear only shows when the settings
+  band has fields for the detected format (csv, excel, or several files
+  for the combine section) -- on any other format it opened an empty band.
+
+- The upload dialog's accept list derives from `file_extensions()` rather
+  than the rio list directly, so a registered format is uploadable.
+
 ## Internal
 
 - Block argument specs now use blockr.core's renamed `new_arg_specs()` /

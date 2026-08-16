@@ -9,7 +9,7 @@ read_expr_single(path, file_type, ...)
 \arguments{
 \item{path}{Character. Single file path}
 
-\item{file_type}{Character. Type of file}
+\item{file_type}{Character. Type of file (unused, kept for callers)}
 
 \item{...}{Parameters for the reader function}
 }
@@ -17,6 +17,10 @@ read_expr_single(path, file_type, ...)
 A language object (expression)
 }
 \description{
-Create expression for a single file
+Dispatches through the format registry by extension. \code{file_type} is kept
+for callers but no longer decides the reader: the registry's named entries
+cover the same mapping \code{file_category()} used to hardcode, and per-path
+dispatch means a mixed multi-file read no longer sends every file to the
+first file's reader.
 }
 \keyword{internal}

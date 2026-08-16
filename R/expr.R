@@ -70,17 +70,20 @@ read_expr <- function(
 
 #' Create expression for a single file
 #'
+#' Dispatches through the format registry by extension. `file_type` is kept
+#' for callers but no longer decides the reader: the registry's named entries
+#' cover the same mapping `file_category()` used to hardcode, and per-path
+#' dispatch means a mixed multi-file read no longer sends every file to the
+#' first file's reader.
+#'
 #' @param path Character. Single file path
-#' @param file_type Character. Type of file
+#' @param file_type Character. Type of file (unused, kept for callers)
 #' @param ... Parameters for the reader function
 #'
 #' @return A language object (expression)
 #' @keywords internal
 read_expr_single <- function(path, file_type, ...) {
-  if (file_type == "csv")   return(read_expr_csv(path, ...))
-  if (file_type == "excel") return(read_expr_excel(path, ...))
-  if (file_type == "arrow") return(read_expr_arrow(path, ...))
-  read_expr_rio(path, ...)
+  format_read_expr_impl(tolower(tools::file_ext(path)), path, ...)
 }
 
 
