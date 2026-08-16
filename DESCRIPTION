@@ -1,6 +1,6 @@
 Package: blockr.io
 Title: Interactive File Import and Export Blocks
-Version: 0.1.0.9011
+Version: 0.1.0.9012
 Authors@R:
     c(person(given = "Christoph",
              family = "Sax",
@@ -54,6 +54,7 @@ Suggests:
     knitr,
     nanoparquet,
     rmarkdown,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    withr
 Config/testthat/edition: 3
 Config/testthat/parallel: true
