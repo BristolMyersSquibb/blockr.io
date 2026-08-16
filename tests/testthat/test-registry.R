@@ -247,3 +247,69 @@ test_that("container options are uniform member options: semicolon CSVs", {
   bad <- eval(container_read_expr(dir))
   expect_identical(ncol(bad$adsl), 1L)
 })
+
+test_that("uniform member options flow through the zip container too", {
+  dir <- withr::local_tempdir()
+  writeLines(c("junk", "", "x;y", "1;a"), file.path(dir, "adsl.csv"))
+  archive <- file.path(dir, "a.zip")
+  zip::zip(archive, "adsl.csv", root = dir, mode = "cherry-pick")
+
+  expr <- container_read_expr(archive, sep = ";", skip = 2)
+  txt <- paste(deparse(expr), collapse = " ")
+  expect_match(txt, 'delim = ";"')
+  expect_match(txt, "skip = 2")
+
+  val <- eval(expr)
+  expect_identical(names(val$adsl), c("x", "y"))
+})
+
+test_that("container keys collide at lookup like format keys do", {
+  withr::defer(blockr.io:::unregister_entry("container", "spcont"))
+
+  entry <- function(pkg) {
+    list(
+      opens = "spcont",
+      list_tables = function(path) "t",
+      read = function(path, tables, ...) quote(list()),
+      package = pkg
+    )
+  }
+
+  blockr.io:::register_entry("container", "spcont", entry("pkg.a"))
+  blockr.io:::register_entry("container", "spcont", entry("pkg.b"))
+  expect_error(container_list_tables("x.spcont"), "pkg.a and pkg.b")
+})
+
+test_that("a named entry shadows the fallback deliberately", {
+  withr::defer(blockr.io:::unregister_entry("single", "sav"))
+
+  # rio claims sav; before the registration the fallback serves it
+  expect_match(deparse1(format_read_expr("a.sav")), "rio::import")
+
+  register_format(
+    extensions = "sav",
+    read = function(path, ...) bquote(haven::read_spss(.(path)))
+  )
+  expect_match(deparse1(format_read_expr("a.sav")), "haven::read_spss")
+})
+
+test_that("rdata containers honor the table selection", {
+  path <- withr::local_tempfile(fileext = ".rdata")
+  adsl <- data.frame(x = 1:3)
+  ae <- data.frame(y = 4:6)
+  save(adsl, ae, file = path)
+
+  val <- eval(container_read_expr(path, tables = "ae"))
+  expect_identical(names(val), "ae")
+})
+
+test_that("gear_band_ui wires the button to the band", {
+  html <- as.character(htmltools::tagList(
+    gear_band_ui("g1", "b1", htmltools::div("field"), band_label = "Opts")
+  ))
+  expect_match(html, "blockr-gear-btn")
+  expect_match(html, 'aria-controls="b1"')
+  expect_match(html, "blockrIoGearToggle\\(&#39;g1&#39;,&#39;b1&#39;\\)")
+  expect_match(html, "blockr-settings--beak")
+  expect_match(html, 'aria-label="Opts"')
+})
