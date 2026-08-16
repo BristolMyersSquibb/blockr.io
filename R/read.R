@@ -434,10 +434,21 @@ new_read_block <- function(
               statistical = "Stats", web = "Web data",
               r_format = "R data", other = "File"
             )
+            is_dir <- length(paths) > 0 &&
+              any(dir.exists(resolve_data_dir(paths, data_dir_reactive())))
             if (nzchar(r_path_blocked())) {
               session$sendCustomMessage("blockr-path-status", list(
                 id = session$ns("file_path-path_text"),
                 text = "Blocked",
+                state = "error"
+              ))
+            } else if (is_dir) {
+              # A directory resolves (path_resolved() counts dir.exists), but
+              # this block cannot read one -- without this branch it badges
+              # as a readable "File".
+              session$sendCustomMessage("blockr-path-status", list(
+                id = session$ns("file_path-path_text"),
+                text = "Directory",
                 state = "error"
               ))
             } else if (length(paths) > 0 && type != "unknown") {
@@ -498,17 +509,40 @@ new_read_block <- function(
                 return(bquote(stop(.(blocked), call. = FALSE)))
               }
 
-              # Use read_expr() to generate expression, passing args via do.call
-              do.call(
-                read_expr,
-                c(
-                  list(
-                    paths = paths,
-                    file_type = detected_type(),
-                    combine = r_combine()
-                  ),
-                  r_args()
+              # A directory is a container, not a file: it holds several
+              # tables and this block returns one data frame. Said on the
+              # block rather than thrown from this reactive -- an unhandled
+              # throw here never reaches the per-block error boundary and
+              # leaves a stale preview on screen.
+              if (any(dir.exists(paths))) {
+                msg <- paste0(
+                  "'", basename(paths[dir.exists(paths)][[1]]), "' is a ",
+                  "directory. This block reads one file into one data ",
+                  "frame; a directory holds several tables and needs a ",
+                  "multi-table block."
                 )
+                return(bquote(stop(.(msg), call. = FALSE)))
+              }
+
+              # Use read_expr() to generate expression, passing args via
+              # do.call. Build failures (an unregistered extension, a
+              # registry collision) ride in the expression for the same
+              # reason the blocked-path message does.
+              tryCatch(
+                do.call(
+                  read_expr,
+                  c(
+                    list(
+                      paths = paths,
+                      file_type = detected_type(),
+                      combine = r_combine()
+                    ),
+                    r_args()
+                  )
+                ),
+                error = function(e) {
+                  bquote(stop(.(conditionMessage(e)), call. = FALSE))
+                }
               )
             }),
             state = list(

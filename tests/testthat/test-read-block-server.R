@@ -420,3 +420,44 @@ test_that("read_block honors blockr.verify_read_path policy via framework", {
     args = list(x = block2, data = list())
   )
 })
+
+test_that("a directory becomes a stop() inside the expression, not a throw", {
+  dir <- withr::local_tempdir()
+  write.csv(data.frame(x = 1), file.path(dir, "a.csv"), row.names = FALSE)
+
+  block <- new_read_block(path = dir, source = "path")
+
+  testServer(
+    blockr.core:::get_s3_method("block_server", block),
+    {
+      session$flushReact()
+      # The failure rides in the expression so the per-block error boundary
+      # reports it; a throw out of the expr reactive would leave a stale
+      # preview and a log-only error.
+      expect_match(
+        rlang::expr_text(session$returned$expr()),
+        "is a directory"
+      )
+    },
+    args = list(x = block, data = list())
+  )
+})
+
+test_that("an unregistered extension becomes a stop() inside the expression", {
+  path <- withr::local_tempfile(fileext = ".xyz")
+  writeLines("not data", path)
+
+  block <- new_read_block(path = path, source = "path")
+
+  testServer(
+    blockr.core:::get_s3_method("block_server", block),
+    {
+      session$flushReact()
+      expect_match(
+        rlang::expr_text(session$returned$expr()),
+        "No reader registered for extension"
+      )
+    },
+    args = list(x = block, data = list())
+  )
+})
