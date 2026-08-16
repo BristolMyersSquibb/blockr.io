@@ -494,6 +494,15 @@ new_read_block <- function(
             suspendWhenHidden = FALSE
           )
 
+          # No options, no gear: the band only carries fields for csv and
+          # excel (plus the multi-file combine section), so any other
+          # detected format -- a parquet, a registered rtf, rio's long tail
+          # -- would open a band with nothing in it.
+          output$show_gear <- reactive({
+            read_gear_visible(detected_type(), length(file_paths()))
+          })
+          outputOptions(output, "show_gear", suspendWhenHidden = FALSE)
+
           list(
             expr = reactive({
               paths <- resolve_data_dir(file_paths(), data_dir_reactive())
@@ -565,6 +574,9 @@ new_read_block <- function(
           class = "block-container io-block read-block-container",
           div(
             class = "block-section io-file-location",
+            conditionalPanel(
+            condition = "output['show_gear']",
+            ns = NS(id),
             div(
               class = "blockr-gear-row",
               tags$button(
@@ -803,6 +815,7 @@ new_read_block <- function(
                   )
                 )
               )
+            )
             ),
 
             # The placeholder already covers browsing and uploading, and the
@@ -820,7 +833,9 @@ new_read_block <- function(
                 inputId = NS(id, "file_upload"),
                 label = NULL,
                 multiple = TRUE,
-                accept = paste0(".", get_rio_extensions())
+                # file_extensions(), not the rio list: a registered format
+                # must be uploadable, or it is dead on arrival in upload mode
+                accept = paste0(".", file_extensions())
               )
             ),
 
@@ -887,4 +902,16 @@ push_read_args <- function(session, args) {
   }
 
   invisible(NULL)
+}
+
+
+#' Whether the read block's gear has anything to show
+#'
+#' The settings band carries fields for the csv and excel formats and the
+#' multi-file combine section, and nothing else; a format the band has no
+#' fields for gets no gear.
+#'
+#' @noRd
+read_gear_visible <- function(type, n_paths) {
+  identical(type, "csv") || identical(type, "excel") || n_paths > 1
 }

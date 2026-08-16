@@ -461,3 +461,16 @@ test_that("an unregistered extension becomes a stop() inside the expression", {
     args = list(x = block, data = list())
   )
 })
+
+test_that("no options, no gear: the band gates on the detected format", {
+  # the band has fields for csv and excel (and the multi-file section);
+  # everything else -- a registered rtf, parquet, rio's long tail -- has
+  # no fields there and so no gear
+  expect_true(blockr.io:::read_gear_visible(file_category("a.csv"), 1))
+  expect_true(blockr.io:::read_gear_visible(file_category("a.xlsx"), 1))
+  expect_false(blockr.io:::read_gear_visible(file_category("a.rtf"), 1))
+  expect_false(blockr.io:::read_gear_visible(file_category("a.parquet"), 1))
+  expect_false(blockr.io:::read_gear_visible(file_category("a.sav"), 1))
+  # several files always get the combine section
+  expect_true(blockr.io:::read_gear_visible(file_category("a.sav"), 2))
+})
