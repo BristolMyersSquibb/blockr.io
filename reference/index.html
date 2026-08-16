@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">blockr.io</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9011</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9014</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -62,6 +62,115 @@
         </dt>
         <dd>Download-only file export block</dd>
       </dl></div><div class="section level2">
+      <h2 id="format-registry">Format Registry<a class="anchor" aria-label="anchor" href="#format-registry"></a></h2>
+
+      <div class="section-desc"><p>Teach blockr.io a file format or a container – a location holding several tables – and build read expressions from what is registered.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="register_format.html">register_format()</a></code>
+
+        </dt>
+        <dd>Register a file format</dd>
+
+        <dt>
+
+          <code><a href="register_container.html">register_container()</a></code>
+
+        </dt>
+        <dd>Register a container</dd>
+
+        <dt>
+
+          <code><a href="format_read_expr.html">format_read_expr()</a></code>
+
+        </dt>
+        <dd>Read expression for a single file</dd>
+
+        <dt>
+
+          <code><a href="container_read_expr.html">container_read_expr()</a></code>
+
+        </dt>
+        <dd>Read expression for a container</dd>
+
+        <dt>
+
+          <code><a href="container_kinds.html">container_kinds()</a></code>
+
+        </dt>
+        <dd>What containers are registered</dd>
+
+        <dt>
+
+          <code><a href="container_list_tables.html">container_list_tables()</a></code> <code><a href="container_list_tables.html">container_table_info()</a></code>
+
+        </dt>
+        <dd>Discover the tables in a container</dd>
+      </dl></div><div class="section level2">
+      <h2 id="declared-options">Declared Options<a class="anchor" aria-label="anchor" href="#declared-options"></a></h2>
+
+      <div class="section-desc"><p>An entry declares what it accepts, and blocks generate their settings fields from the answer.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="format_opt.html">opt_choice()</a></code> <code><a href="format_opt.html">opt_text()</a></code> <code><a href="format_opt.html">opt_number()</a></code> <code><a href="format_opt.html">opt_flag()</a></code>
+
+        </dt>
+        <dd>Declare a format's reader options</dd>
+
+        <dt>
+
+          <code><a href="format_options.html">format_options()</a></code>
+
+        </dt>
+        <dd>The options a format declares</dd>
+
+        <dt>
+
+          <code><a href="source_options.html">source_options()</a></code>
+
+        </dt>
+        <dd>The options a source offers</dd>
+
+        <dt>
+
+          <code><a href="member_options.html">member_options()</a></code>
+
+        </dt>
+        <dd>The options a set of files understands</dd>
+
+        <dt>
+
+          <code><a href="format_options_ui.html">format_options_ui()</a></code>
+
+        </dt>
+        <dd>Fields for a set of declared options</dd>
+
+        <dt>
+
+          <code><a href="format_options_values.html">format_options_values()</a></code>
+
+        </dt>
+        <dd>Read declared option fields back off the inputs</dd>
+
+        <dt>
+
+          <code><a href="format_options_update.html">format_options_update()</a></code>
+
+        </dt>
+        <dd>Push option values back into declared option fields</dd>
+      </dl></div><div class="section level2">
       <h2 id="utilities">Utilities<a class="anchor" aria-label="anchor" href="#utilities"></a></h2>
 
       <div class="section-desc"><p>Helper functions for file handling and configuration</p></div>
@@ -72,6 +181,13 @@
 
 
       <dl><dt>
+
+          <code><a href="gear_band_ui.html">gear_band_ui()</a></code>
+
+        </dt>
+        <dd>Gear button and settings band</dd>
+
+        <dt>
 
           <code><a href="file_category.html">file_category()</a></code>
 

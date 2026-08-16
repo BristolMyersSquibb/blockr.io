@@ -38,7 +38,11 @@ new_read_block(
 - args:
 
   Named list of format-specific reading parameters. Only specify values
-  that differ from defaults. Available parameters:
+  that differ from defaults. Which parameters a file accepts is declared
+  by its format's registry entry, so
+  [`format_options()`](https://bristolmyerssquibb.github.io/blockr.io/reference/format_options.md)
+  is the live answer and the settings band is generated from it. As
+  shipped:
 
   - **For CSV files:** `sep` (default: ","), `quote` (default: '"'),
     `encoding` (default: "UTF-8"), `skip` (default: 0), `n_max`
@@ -47,6 +51,9 @@ new_read_block(
   - **For Excel files:** `sheet` (default: NULL), `range` (default:
     NULL), `skip` (default: 0), `n_max` (default: Inf), `col_names`
     (default: TRUE)
+
+  - **Everything else:** nothing to set, and no settings affordance
+    shown
 
 - ...:
 
@@ -90,14 +97,21 @@ The block supports two modes:
 
 ### Smart Adaptive UI
 
-After file selection, the UI detects file type and shows relevant
-options:
+After file selection the block asks the registry what this format allows
+([`format_options()`](https://bristolmyerssquibb.github.io/blockr.io/reference/format_options.md))
+and generates the settings band from the answer:
 
-- **CSV/TSV:** Delimiter, quote character, encoding options
+- **CSV/TSV:** Delimiter, quote character, encoding, skip, max rows,
+  header
 
-- **Excel:** Sheet selection, cell range
+- **Excel:** Sheet, cell range, skip, max rows, header
 
-- **Other formats:** Minimal or no options (handled automatically)
+- **Other formats:** nothing to set, so no gear at all
+
+A format registered by another package
+([`register_format()`](https://bristolmyerssquibb.github.io/blockr.io/reference/register_format.md))
+declares its own options and gets fields here without this block
+changing.
 
 ### Multi-file Support
 
@@ -144,7 +158,7 @@ block
 #> Name: "Read"
 #> No data inputs
 #> Initial block state:
-#>  $ path   : chr "/tmp/RtmpMhYwHZ/file1a672d916630.csv"
+#>  $ path   : chr "/tmp/RtmpqbgTnR/file193e5e9e7408.csv"
 #>  $ source : chr "upload"
 #>  $ combine: chr "auto"
 #>  $ args   : list()
