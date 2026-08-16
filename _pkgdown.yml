@@ -15,9 +15,35 @@ reference:
   - new_write_block
   - new_download_block
 
+- title: Format Registry
+  desc: >
+    Teach blockr.io a file format or a container -- a location holding
+    several tables -- and build read expressions from what is registered.
+  contents:
+  - register_format
+  - register_container
+  - format_read_expr
+  - container_read_expr
+  - container_kinds
+  - container_list_tables
+
+- title: Declared Options
+  desc: >
+    An entry declares what it accepts, and blocks generate their settings
+    fields from the answer.
+  contents:
+  - format_opt
+  - format_options
+  - source_options
+  - member_options
+  - format_options_ui
+  - format_options_values
+  - format_options_update
+
 - title: Utilities
   desc: Helper functions for file handling and configuration
   contents:
+  - gear_band_ui
   - file_category
   - file_extensions
   - file_policy
