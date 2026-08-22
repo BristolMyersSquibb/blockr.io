@@ -279,7 +279,11 @@ register_io_formats <- function() {
         placeholder = "default: all rows"
       ),
       col_names = opt_flag("First row is header", default = TRUE)
-    )
+    ),
+    # readr opens a connection, so `read_csv("https://...")` is a read the
+    # emitted code can do for itself. That is what keeps an exported document
+    # pointing at the published file rather than at a temp download.
+    url_ok = TRUE
   )
   register_format(
     extensions = c("xls", "xlsx", "xlsm", "xlsb"),

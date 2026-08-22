@@ -120,12 +120,22 @@ lookup_entry <- function(mode, key) {
 #'   Blocks generate their settings fields from this and show no settings
 #'   affordance at all when it is empty, so a format declaring options gets
 #'   them offered everywhere without any block changing.
+#' @param url_ok Does this format's reader accept an `https://` location
+#'   where it accepts a path? `readr`'s delimited readers do; `readxl` and
+#'   `arrow` do not. Blocks reading a URL download it to a temp file so that
+#'   detection, size checks and a failed fetch all behave, and a format that
+#'   declares `url_ok = TRUE` gets the URL back in the EXPRESSION it emits,
+#'   so exported code names the source instead of a temp path that exists on
+#'   one machine for one session. Default `FALSE`, which is the safe answer
+#'   for a reader that cannot open a connection.
 #' @return Invisible `NULL`, called for its side effect.
 #' @seealso [register_container()], [format_read_expr()], [format_opt]
 #' @export
-register_format <- function(extensions, read, options = NULL) {
+register_format <- function(extensions, read, options = NULL,
+                            url_ok = FALSE) {
   stopifnot(is.character(extensions), length(extensions) > 0)
   stopifnot(is.function(read))
+  stopifnot(is.logical(url_ok), length(url_ok) == 1L, !is.na(url_ok))
 
   pkg <- registrant_package(parent.frame())
 
@@ -135,12 +145,30 @@ register_format <- function(extensions, read, options = NULL) {
       ext,
       list(
         extensions = tolower(extensions), read = read, options = options,
-        package = pkg
+        url_ok = url_ok, package = pkg
       )
     )
   }
 
   invisible(NULL)
+}
+
+# Does the reader registered for `ext` take a URL where it takes a path?
+# Consulted by the read block when it decides what its expression should
+# NAME: the temp download it actually read, or the URL the user gave it.
+# Unregistered or undeclared means FALSE, so a format has to opt in.
+format_reads_url <- function(ext) {
+  ext <- tolower(ext)
+  entry <- lookup_entry("single", ext)
+
+  if (is.null(entry)) {
+    fb <- .registry$fallback
+    if (!is.null(fb) && ext %in% fb$extensions) {
+      entry <- fb
+    }
+  }
+
+  isTRUE(entry$url_ok)
 }
 
 #' Register a container

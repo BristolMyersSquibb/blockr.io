@@ -534,6 +534,29 @@ new_read_block <- function(
                 return(bquote(stop(.(msg), call. = FALSE)))
               }
 
+              # WHAT THE EXPRESSION NAMES WHEN THE SOURCE IS A URL.
+              # `file_paths()` resolves a URL to the temp file it downloaded,
+              # which is what detection, the size checks and the "did the
+              # fetch fail" signal all need. It is not what the code should
+              # say: an exported script or qmd carrying
+              # `/tmp/RtmpXXXX/fileYYYY.csv` looks reproducible, runs on the
+              # machine that wrote it for as long as the temp dir survives,
+              # and fails everywhere else. A block whose whole claim is that
+              # its output is runnable elsewhere cannot emit that.
+              #
+              # So a format that declares `url_ok` (readr's delimited
+              # readers) gets the URL back for the emitted literal, while
+              # the read itself still goes through the download. Formats
+              # that cannot open a connection (readxl, arrow) keep the temp
+              # path, because for them it is the only thing that works.
+              raw <- r_path()
+              emit <- NULL
+              if (length(paths) == 1L && length(raw) &&
+                    is_valid_url(raw[[1]]) &&
+                    format_reads_url(tools::file_ext(paths[[1]]))) {
+                emit <- unname(raw[[1]])
+              }
+
               # Use read_expr() to generate expression, passing args via
               # do.call. Build failures (an unregistered extension, a
               # registry collision) ride in the expression for the same
@@ -545,7 +568,8 @@ new_read_block <- function(
                     list(
                       paths = paths,
                       file_type = detected_type(),
-                      combine = r_combine()
+                      combine = r_combine(),
+                      .emit = emit
                     ),
                     r_args()
                   )

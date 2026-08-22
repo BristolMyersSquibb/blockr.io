@@ -4,7 +4,7 @@
 \alias{read_expr_single}
 \title{Create expression for a single file}
 \usage{
-read_expr_single(path, file_type, ...)
+read_expr_single(path, file_type, ..., .emit = NULL)
 }
 \arguments{
 \item{path}{Character. Single file path}

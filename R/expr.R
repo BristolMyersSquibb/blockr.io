@@ -21,8 +21,19 @@ read_expr <- function(
   paths,
   file_type = c("csv", "excel", "arrow", "other"),
   combine = c("first", "rbind", "cbind", "auto"),
-  ...
+  ...,
+  .emit = NULL
 ) {
+  # What the expression NAMES, when that is not what was read. A URL is
+  # downloaded to a temp file before it is read, and the temp path is the
+  # right thing to detect the format from and the wrong thing to write into
+  # exported code. `.emit` carries the locations to embed instead; dispatch
+  # still runs off `paths`. NULL means "the same", which is every caller
+  # that is not the read block reading a URL.
+  if (is.null(.emit)) {
+    .emit <- paths
+  }
+  stopifnot(length(.emit) == length(paths))
   # Handle empty paths first (no file selected yet)
   if (length(paths) == 0) {
     return(NULL)
@@ -33,18 +44,18 @@ read_expr <- function(
 
   # Single file case - simple
   if (length(paths) == 1) {
-    return(read_expr_single(paths[1], file_type, ...))
+    return(read_expr_single(paths[1], file_type, ..., .emit = .emit[1]))
   }
 
   # Multi-file case
   if (combine == "first") {
     # Just use first file
-    return(read_expr_single(paths[1], file_type, ...))
+    return(read_expr_single(paths[1], file_type, ..., .emit = .emit[1]))
   }
 
   # Build expression for each file
-  file_exprs <- lapply(paths, function(p) {
-    read_expr_single(p, file_type, ...)
+  file_exprs <- lapply(seq_along(paths), function(i) {
+    read_expr_single(paths[i], file_type, ..., .emit = .emit[i])
   })
 
   # Combine based on strategy
@@ -82,8 +93,56 @@ read_expr <- function(
 #'
 #' @return A language object (expression)
 #' @keywords internal
-read_expr_single <- function(path, file_type, ...) {
-  format_read_expr_impl(tolower(tools::file_ext(path)), path, ...)
+read_expr_single <- function(path, file_type, ..., .emit = NULL) {
+  # Extension off `path` (what is on disk), literal from `.emit` (what the
+  # code should say). They differ only for a URL that was downloaded first.
+  format_read_expr_impl(
+    tolower(tools::file_ext(path)), .emit %||% path, ...
+  )
+}
+
+
+# Is `v` the value the reader would have used anyway?
+#
+# Numeric comparison rather than `identical()` on purpose: a settings field
+# hands back `0` where the default is `0L` (and `Inf` where the default is
+# `Inf`), and those are the same instruction to the reader even though they
+# are not the same R object.
+is_reader_default <- function(v, d) {
+  if (is.null(v) || is.null(d)) {
+    return(is.null(v) && is.null(d))
+  }
+  if (is.numeric(v) && is.numeric(d)) {
+    return(length(v) == 1L && length(d) == 1L && isTRUE(v == d))
+  }
+  identical(v, d)
+}
+
+# Drop the arguments left at their default, and any that are NULL.
+#
+# WHY THIS EXISTS. These expressions are not just what the block runs, they
+# are what it EXPORTS -- into a saved script, into a report's chunk, into
+# anything built off the block's code. A call that restates every default
+# reads as machine output:
+#
+#   readr::read_csv(file = "x.csv", col_names = TRUE, skip = 0, n_max = Inf,
+#       quote = "\"", locale = readr::locale(encoding = "UTF-8"),
+#       show_col_types = FALSE)
+#
+# where what the reader would have typed, and what carries the same meaning,
+# is `readr::read_csv("x.csv", show_col_types = FALSE)`. Set one of them to
+# something else and it appears; that is the point of showing it.
+prune_reader_args <- function(args, defaults) {
+  keep <- vapply(
+    names(args),
+    function(nm) {
+      v <- args[[nm]]
+      !is.null(v) && !(nm %in% names(defaults) &&
+                         is_reader_default(v, defaults[[nm]]))
+    },
+    logical(1)
+  )
+  args[keep]
 }
 
 
@@ -101,45 +160,46 @@ read_expr_csv <- function(path, ...) {
   col_names <- if (is.null(params$col_names)) TRUE else params$col_names
   skip <- if (is.null(params$skip)) 0 else params$skip
   n_max <- if (is.null(params$n_max)) Inf else params$n_max
-  quote <- if (is.null(params$quote)) "\"" else params$quote
+  quote_char <- if (is.null(params$quote)) "\"" else params$quote
   encoding <- if (is.null(params$encoding)) "UTF-8" else params$encoding
 
   # Remove names from path vector to avoid potential issues
   path <- unname(path)
 
-  # Choose appropriate readr function based on delimiter
-  if (sep == ",") {
-    bquote(readr::read_csv(
-      file = .(path),
-      col_names = .(col_names),
-      skip = .(skip),
-      n_max = .(n_max),
-      quote = .(quote),
-      locale = readr::locale(encoding = .(encoding)),
-      show_col_types = FALSE
-    ))
+  # The delimiter picks the function, so it is only ever an ARGUMENT for
+  # read_delim -- where it is required, and so never pruned.
+  fn <- if (sep == ",") {
+    quote(readr::read_csv)
   } else if (sep == "\t") {
-    bquote(readr::read_tsv(
-      file = .(path),
-      col_names = .(col_names),
-      skip = .(skip),
-      n_max = .(n_max),
-      quote = .(quote),
-      locale = readr::locale(encoding = .(encoding)),
-      show_col_types = FALSE
-    ))
+    quote(readr::read_tsv)
   } else {
-    bquote(readr::read_delim(
-      file = .(path),
-      delim = .(sep),
-      col_names = .(col_names),
-      skip = .(skip),
-      n_max = .(n_max),
-      quote = .(quote),
-      locale = readr::locale(encoding = .(encoding)),
-      show_col_types = FALSE
-    ))
+    quote(readr::read_delim)
   }
+
+  args <- list(
+    col_names = col_names,
+    skip = skip,
+    n_max = n_max,
+    quote = quote_char,
+    # readr's own default locale is UTF-8, so naming it adds a call that
+    # does nothing. A different encoding is a real instruction and stays.
+    locale = if (!is_reader_default(encoding, "UTF-8")) {
+      bquote(readr::locale(encoding = .(encoding)))
+    }
+  )
+  if (identical(fn, quote(readr::read_delim))) {
+    args <- c(list(delim = sep), args)
+  }
+
+  args <- prune_reader_args(
+    args,
+    list(col_names = TRUE, skip = 0, n_max = Inf, quote = "\"")
+  )
+
+  # `show_col_types = FALSE` is NOT a default and stays: readr prints a
+  # column spec on every read, which is noise in a block panel and noise in
+  # a rendered document.
+  as.call(c(fn, list(path), args, list(show_col_types = FALSE)))
 }
 
 
@@ -152,22 +212,23 @@ read_expr_csv <- function(path, ...) {
 #' @keywords internal
 read_expr_excel <- function(path, ...) {
   params <- list(...)
-  sheet <- params$sheet
-  range <- params$range
-  col_names <- if (is.null(params$col_names)) TRUE else params$col_names
-  skip <- if (is.null(params$skip)) 0 else params$skip
-  n_max <- if (is.null(params$n_max)) Inf else params$n_max
 
   path <- unname(path)
 
-  bquote(readxl::read_excel(
-    path = .(path),
-    sheet = .(sheet),
-    range = .(range),
-    col_names = .(col_names),
-    skip = .(skip),
-    n_max = .(n_max)
-  ))
+  # Same pruning as the csv builder, and the same reason: an unconfigured
+  # read should export as `readxl::read_excel("book.xlsx")`.
+  args <- prune_reader_args(
+    list(
+      sheet = params$sheet,
+      range = params$range,
+      col_names = if (is.null(params$col_names)) TRUE else params$col_names,
+      skip = if (is.null(params$skip)) 0 else params$skip,
+      n_max = if (is.null(params$n_max)) Inf else params$n_max
+    ),
+    list(sheet = NULL, range = NULL, col_names = TRUE, skip = 0, n_max = Inf)
+  )
+
+  as.call(c(quote(readxl::read_excel), list(path), args))
 }
 
 

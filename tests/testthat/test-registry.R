@@ -413,3 +413,57 @@ test_that("declared fields render, read back, and drop their defaults", {
 test_that("no fields for a format that declares nothing", {
   expect_null(format_options_ui(list(), function(x) x))
 })
+
+# A URL is downloaded to a temp file before it is read, so the expression the
+# read block builds names that temp path unless the format says its reader can
+# take the URL itself. Emitting the temp path produces code that runs on one
+# machine for one session and nowhere else.
+
+test_that("formats declare whether their reader accepts a URL", {
+  expect_true(format_reads_url("csv"))
+  expect_true(format_reads_url("tsv"))
+  expect_true(format_reads_url("CSV"))
+  expect_false(format_reads_url("xlsx"))
+  expect_false(format_reads_url("parquet"))
+  expect_false(format_reads_url("no_such_extension"))
+})
+
+test_that("url_ok defaults to FALSE for a format that does not declare it", {
+  withr::defer(blockr.io:::unregister_entry("single", "zzurl"))
+  register_format("zzurl", function(path, ...) bquote(rd(.(path))))
+  expect_false(format_reads_url("zzurl"))
+})
+
+test_that(".emit swaps the literal without changing dispatch", {
+  url <- "https://example.org/data.csv"
+  tmp <- "/tmp/Rtmp123/file456.csv"
+
+  plain <- deparse1(read_expr(tmp, "csv", "first"))
+  expect_match(plain, tmp, fixed = TRUE)
+
+  emitted <- deparse1(read_expr(tmp, "csv", "first", .emit = url))
+  expect_match(emitted, url, fixed = TRUE)
+  expect_false(grepl(tmp, emitted, fixed = TRUE))
+  # still readr::read_csv -- the extension came off the temp path
+  expect_match(emitted, "readr::read_csv", fixed = TRUE)
+})
+
+test_that(".emit is optional and every existing caller is unaffected", {
+  expect_identical(
+    read_expr("/data/a.csv", "csv", "first"),
+    read_expr("/data/a.csv", "csv", "first", .emit = NULL)
+  )
+  expect_error(
+    read_expr(c("/a.csv", "/b.csv"), "csv", "rbind", .emit = "/only-one.csv"),
+    "length"
+  )
+})
+
+test_that(".emit applies per file when several are combined", {
+  out <- deparse1(read_expr(
+    c("/tmp/a.csv", "/tmp/b.csv"), "csv", "rbind",
+    .emit = c("https://x.org/a.csv", "https://x.org/b.csv")
+  ))
+  expect_match(out, "https://x.org/a.csv", fixed = TRUE)
+  expect_match(out, "https://x.org/b.csv", fixed = TRUE)
+})

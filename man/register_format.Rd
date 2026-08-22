@@ -4,7 +4,7 @@
 \alias{register_format}
 \title{Register a file format}
 \usage{
-register_format(extensions, read, options = NULL)
+register_format(extensions, read, options = NULL, url_ok = FALSE)
 }
 \arguments{
 \item{extensions}{Character vector of file extensions (without dots).}
@@ -21,6 +21,15 @@ accepts through \code{...}, or \code{NULL} for a format with nothing to tune.
 Blocks generate their settings fields from this and show no settings
 affordance at all when it is empty, so a format declaring options gets
 them offered everywhere without any block changing.}
+
+\item{url_ok}{Does this format's reader accept an \verb{https://} location
+where it accepts a path? \code{readr}'s delimited readers do; \code{readxl} and
+\code{arrow} do not. Blocks reading a URL download it to a temp file so that
+detection, size checks and a failed fetch all behave, and a format that
+declares \code{url_ok = TRUE} gets the URL back in the EXPRESSION it emits,
+so exported code names the source instead of a temp path that exists on
+one machine for one session. Default \code{FALSE}, which is the safe answer
+for a reader that cannot open a connection.}
 }
 \value{
 Invisible \code{NULL}, called for its side effect.
