@@ -10,7 +10,7 @@ longer sends every file to the first file's reader.
 ## Usage
 
 ``` r
-read_expr_single(path, file_type, ...)
+read_expr_single(path, file_type, ..., .emit = NULL)
 ```
 
 ## Arguments

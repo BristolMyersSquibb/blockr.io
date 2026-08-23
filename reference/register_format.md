@@ -11,7 +11,7 @@ list.
 ## Usage
 
 ``` r
-register_format(extensions, read, options = NULL)
+register_format(extensions, read, options = NULL, url_ok = FALSE)
 ```
 
 ## Arguments
@@ -39,6 +39,17 @@ register_format(extensions, read, options = NULL)
   from this and show no settings affordance at all when it is empty, so
   a format declaring options gets them offered everywhere without any
   block changing.
+
+- url_ok:
+
+  Does this format's reader accept an `https://` location where it
+  accepts a path? `readr`'s delimited readers do; `readxl` and `arrow`
+  do not. Blocks reading a URL download it to a temp file so that
+  detection, size checks and a failed fetch all behave, and a format
+  that declares `url_ok = TRUE` gets the URL back in the EXPRESSION it
+  emits, so exported code names the source instead of a temp path that
+  exists on one machine for one session. Default `FALSE`, which is the
+  safe answer for a reader that cannot open a connection.
 
 ## Value
 
