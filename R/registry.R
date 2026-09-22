@@ -272,7 +272,7 @@ format_read_expr_impl <- function(ext, path, ...) {
 # The entry a location resolves to in container mode: a directory beats any
 # extension, then the extension in container mode. No fallback here.
 container_lookup <- function(path) {
-  key <- if (dir.exists(path)) "directory" else tolower(tools::file_ext(path))
+  key <- if (dir.exists(path)) "directory" else path_ext(path)
   entry <- lookup_entry("container", key)
 
   if (is.null(entry)) {
@@ -301,7 +301,7 @@ container_lookup <- function(path) {
 #' @export
 format_read_expr <- function(path, ...) {
   stopifnot(is_string(path), nzchar(path))
-  format_read_expr_impl(tolower(tools::file_ext(path)), path, ...)
+  format_read_expr_impl(path_ext(path), path, ...)
 }
 
 # An entry's list_tables may return a bare character vector or a data frame
@@ -390,7 +390,7 @@ container_provider <- function(path) {
 }
 
 format_provider <- function(path) {
-  ext <- tolower(tools::file_ext(path))
+  ext <- path_ext(path)
   entry <- lookup_entry("single", ext)
 
   if (is.null(entry)) {

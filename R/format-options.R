@@ -91,7 +91,7 @@ resolve_declared_options <- function(opts, path) {
 #' @return Named list of [format_opt] specs, possibly empty.
 #' @export
 format_options <- function(x) {
-  ext <- tolower(tools::file_ext(x))
+  ext <- path_ext(x)
 
   if (!nzchar(ext)) {
     ext <- tolower(x)

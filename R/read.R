@@ -553,7 +553,7 @@ new_read_block <- function(
               emit <- NULL
               if (length(paths) == 1L && length(raw) &&
                     is_valid_url(raw[[1]]) &&
-                    format_reads_url(tools::file_ext(paths[[1]]))) {
+                    format_reads_url(path_ext(paths[[1]]))) {
                 emit <- unname(raw[[1]])
               }
 

@@ -97,7 +97,7 @@ read_expr_single <- function(path, file_type, ..., .emit = NULL) {
   # Extension off `path` (what is on disk), literal from `.emit` (what the
   # code should say). They differ only for a URL that was downloaded first.
   format_read_expr_impl(
-    tolower(tools::file_ext(path)), .emit %||% path, ...
+    path_ext(path), .emit %||% path, ...
   )
 }
 
@@ -242,7 +242,7 @@ read_expr_excel <- function(path, ...) {
 #'   arrow::read_ipc_file for the Arrow-only feather and IPC formats
 #' @keywords internal
 read_expr_arrow <- function(path, ...) {
-  ext <- tolower(tools::file_ext(path))
+  ext <- path_ext(path)
 
   path <- unname(path)
 

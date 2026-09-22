@@ -2,7 +2,8 @@
 % Please edit documentation in R/utils.R
 \name{file_category}
 \alias{file_category}
-\title{File category from extension}
+\title{Categorizes a file by its extension into a broad format family that
+determines reader dispatch and UI adaptation.}
 \usage{
 file_category(path)
 }

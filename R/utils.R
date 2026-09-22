@@ -207,6 +207,27 @@ get_rio_extensions <- function() {
 
 #' File category from extension
 #'
+#' The file extension of a path that might be a URL
+#'
+#' `tools::file_ext()` anchors at the end of the string, so a URL that names
+#' its format before a query string loses it:
+#' `file_ext("https://x.org/series.csv?dataset=y")` is `""`, and the reader
+#' lookup then fails with "No reader registered for extension" on a path that
+#' says `.csv` in plain sight. Query and fragment come off first.
+#'
+#' Only for paths that reach us from a user. A zip member name or a directory
+#' entry cannot carry a query, and stripping one there would only be a way to
+#' mangle a file whose name contains a `?`.
+#'
+#' @param x Character. A file path or URL.
+#' @return Character. The extension, lower case, `""` when there is none.
+#' @keywords internal
+#' @export
+path_ext <- function(x) {
+  x <- sub("[?#].*$", "", x)
+  tolower(tools::file_ext(x))
+}
+
 #' Categorizes a file by its extension into a broad format family that
 #' determines reader dispatch and UI adaptation.
 #'
@@ -214,7 +235,7 @@ get_rio_extensions <- function() {
 #' @return One of `"csv"`, `"excel"`, `"arrow"`, `"other"`.
 #' @export
 file_category <- function(path) {
-  ext <- tolower(tools::file_ext(path))
+  ext <- path_ext(path)
 
   if (ext %in% c("csv", "tsv", "txt", "dat", "tab")) {
     return("csv")
