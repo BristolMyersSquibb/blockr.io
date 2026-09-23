@@ -60,7 +60,8 @@ Helper functions for file handling and configuration
 - [`gear_band_ui()`](https://bristolmyerssquibb.github.io/blockr.io/reference/gear_band_ui.md)
   : Gear button and settings band
 - [`file_category()`](https://bristolmyerssquibb.github.io/blockr.io/reference/file_category.md)
-  : File category from extension
+  : Categorizes a file by its extension into a broad format family that
+  determines reader dispatch and UI adaptation.
 - [`file_extensions()`](https://bristolmyerssquibb.github.io/blockr.io/reference/file_extensions.md)
   : Supported file extensions
 - [`resolve_and_check()`](https://bristolmyerssquibb.github.io/blockr.io/reference/file_policy.md)

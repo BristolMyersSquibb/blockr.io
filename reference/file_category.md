@@ -1,4 +1,4 @@
-# File category from extension
+# Categorizes a file by its extension into a broad format family that determines reader dispatch and UI adaptation.
 
 Categorizes a file by its extension into a broad format family that
 determines reader dispatch and UI adaptation.
