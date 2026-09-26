@@ -145,3 +145,11 @@ board_options.write_block <- function(x, ...) {
     NextMethod()
   )
 }
+
+#' @export
+board_options.download_block <- function(x, ...) {
+  combine_board_options(
+    new_data_dir_option(...),
+    NextMethod()
+  )
+}

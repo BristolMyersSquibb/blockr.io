@@ -40,14 +40,14 @@ register_io_blocks <- function() {
   register_blocks(
     "new_download_block",
     name = "Download Data",
-    description = "Download your data to the browser as CSV, Excel, Parquet, or Feather. A lighter alternative to Export Data when no server-side save is needed.",
+    description = "Download your data to the browser as CSV, Excel, Parquet, or Feather. The Export Data block with server saving off.",
     category = "output",
     icon = "download",
     arguments = download_block_arguments(),
     guidance = paste(
       "Downloads a data frame to the user's browser as CSV / Excel /",
-      "Parquet / Feather. Use as a terminal block when no server-side",
-      "save is needed."
+      "Parquet / Feather. It is an Export Data block with server saving",
+      "off; use it as a terminal block when no server-side save is needed."
     ),
     package = utils::packageName(),
     overwrite = TRUE
@@ -165,6 +165,22 @@ download_block_arguments <- function() {
         "Named list of extra arguments forwarded to the underlying writer."
       ),
       example = list()
+    ),
+    directory = new_arg_spec(
+      paste0(
+        "Character. Server folder to also save to. Default \"\": ",
+        "download only."
+      ),
+      example = "",
+      type = arg_string()
+    ),
+    auto_write = new_arg_spec(
+      paste0(
+        "Logical. With a `directory`, TRUE saves on every upstream ",
+        "update; FALSE (default) saves on a click."
+      ),
+      example = FALSE,
+      type = arg_boolean()
     )
   )
 }

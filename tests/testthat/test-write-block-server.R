@@ -1229,3 +1229,66 @@ test_that("a save sets the status, a failure says why", {
     }
   )
 })
+
+# ============================================================================
+# The download block is the write block with server saving off
+# ============================================================================
+
+test_that("new_download_block() is the write block without a folder", {
+  blk <- new_download_block(
+    args = list(sep = ",", quote = TRUE, na = ""), block_name = "Download"
+  )
+  expect_s3_class(blk, "download_block")
+  expect_identical(blockr.core::block_name(blk), "Download")
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(x = blk, data = list(...args = reactiveValues(data = iris))),
+    {
+      session$flushReact()
+      expect_equal(session$returned$state$directory(), "")
+      expect_identical(
+        session$returned$state$args(),
+        list(sep = ",", quote = TRUE, na = "")
+      )
+      expect_passthrough(session$returned$expr(), "data")
+    }
+  )
+})
+
+test_that("a board saved with the old download block restores", {
+  # the payload as the earlier download block wrote it
+  old <- list(
+    object = c("download_block", "rbind_block", "transform_block", "block",
+               "vctrs_vctr", "list"),
+    payload = list(
+      filename = "export", format = "parquet",
+      args = list(sep = ";", quote = TRUE, na = ""),
+      block_name = "Download"
+    ),
+    constructor = list(
+      object = "blockr_ctor", constructor = "new_download_block",
+      package = "blockr.io", version = "0.1.0.9011"
+    )
+  )
+
+  blk <- blockr.core::blockr_deser(old)
+  expect_s3_class(blk, "download_block")
+  expect_identical(blockr.core::block_name(blk), "Download")
+
+  state <- blockr.core:::initial_block_state(blk)
+  expect_identical(state$filename, "export")
+  expect_identical(state$format, "parquet")
+  expect_identical(state$args, list(sep = ";", quote = TRUE, na = ""))
+
+  # and it saves and restores again, now with the write block's state
+  ser <- blockr.core::blockr_ser(blk, state = list(
+    directory = "", filename = "export", format = "parquet",
+    auto_write = FALSE, args = list(sep = ";"), mode = NULL
+  ))
+  again <- blockr.core::blockr_deser(ser)
+  expect_s3_class(again, "download_block")
+  expect_identical(
+    blockr.core:::initial_block_state(again)$format, "parquet"
+  )
+})
