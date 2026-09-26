@@ -39,9 +39,8 @@ upload-aware file hint; pass e.g. "Enter directory path..." for
 directory-mode inputs.}
 
 \item{required}{Whether the field must be filled. When \code{TRUE}, an empty
-field carries a soft amber "needs a value" cue via the canonical
-\code{.blockr-field--required-empty} class (mirroring blockr.viz's
-required-empty mapping affordance) that clears once a value is entered.}
+field carries the design system's required-empty cue
+(\code{.blockr-field--required-empty}), which clears once there is a value.}
 
 \item{data_dir}{Reactive returning the current data directory path
 (from board options). Empty string means no data directory.}
@@ -78,8 +77,9 @@ Typing never commits: keystrokes only drive the autocomplete dropdown.
 The reactive value returned by \code{path_input_server()} updates when the user
 \emph{commits} — by pressing Enter, leaving the field (blur), or selecting a
 dropdown entry. While the typed text differs from the committed value, the
-field shows an "Enter ↵" chip; committing collapses it to a faded
-check mark. This follows the blockr design-system text-commit convention
-(decided 2026-07-02) and keeps half-typed paths from reaching the pipeline.
+field shows the "Enter ↵" button, and Escape reverts the edit. This is the
+design system's commit model for text fields, and it keeps half-typed
+paths from reaching the pipeline. Suggestions open on the menu surface
+of a field dropdown, from blockr.ui.
 }
 
