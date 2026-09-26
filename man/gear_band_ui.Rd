@@ -2,32 +2,35 @@
 % Please edit documentation in R/gear.R
 \name{gear_band_ui}
 \alias{gear_band_ui}
-\title{Gear button and settings band}
+\title{Gear button and settings tray}
 \usage{
-gear_band_ui(gear_id, band_id, ..., band_label = "Settings")
+gear_band_ui(gear_id, band_id = NULL, ..., band_label = "Settings")
 }
 \arguments{
-\item{gear_id, band_id}{Element ids (namespace them with \code{\link[shiny:NS]{shiny::NS()}}).
-The two are wired: the button toggles the band and carries the
-\code{aria-controls} linkage.}
+\item{gear_id}{The gear's id (namespace it with \code{\link[shiny:NS]{shiny::NS()}}). The
+tray's id is \verb{<gear_id>_tray}.}
 
-\item{...}{Band content.}
+\item{band_id}{Ignored; the tray takes its id from \code{gear_id}. Kept so
+existing calls keep working.}
 
-\item{band_label}{Accessible label for the band region.}
+\item{...}{Tray content.}
+
+\item{band_label}{Accessible label for the tray.}
 }
 \value{
-A \code{\link[htmltools:tagList]{htmltools::tagList()}} with the gear row and the band; place
-them together at the top of the block section they configure.
+A \code{\link[htmltools:tagList]{htmltools::tagList()}} with the gear row and the tray; place
+them together at the top of the block.
 }
 \description{
-The gear-and-band affordance blockr.io's blocks use for advanced
-settings: a small gear button, and an in-flow panel that opens beneath it
-(class-driven via \code{blockrIoGearToggle()}, so it pushes content down
-rather than overlaying it). Exported so sibling packages can mount the
-same affordance with the same styling; the required JS and CSS ride along
-as an html dependency.
+The gear and the tray it opens, as blockr.io's blocks draw them. A thin
+wrapper over \code{\link[blockr.ui:gear_tray]{blockr.ui::gear_tray()}}, kept for packages that built their
+settings on this function: the tray opens in flow under the gear, slides,
+and closes on the gear or Escape. \code{input[[gear_id]]} is \code{TRUE} while it
+is open.
 }
 \details{
-Lay fields out with \code{blockr-settings__grid} / \code{blockr-settings__field}
-divs and \code{blockr-label} labels, matching this package's own bands.
+Each item in \code{...} takes a whole row of the tray's field grid. An item
+that is itself a field of the grid (a \code{.blockr-settings__field}, such as
+the controls of \code{\link[blockr.ui:select_input]{blockr.ui::select_input()}} and its siblings) is placed
+as it is.
 }
