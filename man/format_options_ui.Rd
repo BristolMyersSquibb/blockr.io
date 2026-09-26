@@ -19,7 +19,8 @@ Field input ids are the spec names, namespaced.}
 A \link[htmltools:builder]{htmltools::tag}, or \code{NULL} when there are no specs.
 }
 \description{
-Renders one field per spec, laid out as this package's settings bands
-are. Values come from a block's option list; anything absent shows its
-declared default.
+Renders one field per spec with the blockr.ui controls: a select for a
+choice, a checkbox for a flag, and text and number fields that commit on
+Enter or blur. The fields sit in the gear tray's grid. Values come from
+a block's option list; anything absent shows its declared default.
 }
