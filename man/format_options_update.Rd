@@ -18,5 +18,6 @@ Invisible \code{NULL}.
 }
 \description{
 For an external write: moves the fields to match \code{values} without
-re-rendering them (which would drop focus mid-edit).
+re-rendering them (which would drop focus mid-edit). The fields do not
+report the move back as input; \code{\link[=format_options_values]{format_options_values()}} accounts for it.
 }
