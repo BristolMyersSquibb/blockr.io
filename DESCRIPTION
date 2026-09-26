@@ -37,9 +37,11 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 VignetteBuilder: knitr
 Remotes:
-    BristolMyersSquibb/blockr.core
+    BristolMyersSquibb/blockr.core,
+    BristolMyersSquibb/blockr.ui@feat/buttons-and-shiny-inputs
 Imports:
     blockr.core (>= 0.1.4),
+    blockr.ui (>= 0.0.1.9032),
     htmltools,
     jsonlite,
     readxl,
