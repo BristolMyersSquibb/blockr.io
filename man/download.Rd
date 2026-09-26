@@ -2,9 +2,16 @@
 % Please edit documentation in R/download.R
 \name{new_download_block}
 \alias{new_download_block}
-\title{Download-only file export block}
+\title{Download block}
 \usage{
-new_download_block(filename = "", format = "csv", args = list(), ...)
+new_download_block(
+  filename = "",
+  format = "csv",
+  args = list(),
+  directory = "",
+  auto_write = FALSE,
+  ...
+)
 }
 \arguments{
 \item{filename}{Character. Optional fixed filename (without extension).
@@ -17,28 +24,33 @@ If empty (default), a timestamped filename is generated.}
 \code{\link[=new_write_block]{new_write_block()}}). Only relevant values for the selected format are
 used.}
 
+\item{directory, auto_write}{Server saving, off by default: see
+\code{\link[=new_write_block]{new_write_block()}}. They are the block's state once server saving is
+switched on in the gear, so a saved board restores them.}
+
 \item{...}{Forwarded to \code{\link[blockr.core:new_transform_block]{blockr.core::new_transform_block()}}.}
 }
 \value{
-A blockr transform block exposing a download button.
+A block of class \code{download_block} that works as a write block.
 }
 \description{
-A variadic block that lets the user download one or more data frames as a
-file in the browser. Intended as a lightweight counterpart to
-\code{\link[=new_write_block]{new_write_block()}} for the common case where no server-side save is
-needed.
+The write block (\code{\link[=new_write_block]{new_write_block()}}) with server saving off: at rest a
+single "Download CSV" button (named after the chosen format), and the
+format, the filename and the format's options in the gear. Server saving
+can be switched on in the gear like in any write block.
 }
 \details{
+Kept as its own constructor and class for the boards and scripts that
+use it: a board saved with the earlier download block restores into this
+one with its filename, format and options.
+
 Multi-input behavior matches \code{\link[=new_write_block]{new_write_block()}}: multiple inputs produce
 a multi-sheet Excel file for \code{format = "excel"}, or a ZIP archive for CSV,
 Parquet, and Feather.
-
-Adding a new format (e.g. SAS) only requires extending
-\code{\link[=write_formats]{write_formats()}}, \code{format_extension()}, and the dispatch in
-\code{write_expr()} - both \code{\link[=new_write_block]{new_write_block()}} and \code{\link[=new_download_block]{new_download_block()}}
-pick it up automatically.
 }
 \examples{
+new_download_block(args = list(sep = ",", quote = TRUE, na = ""))
+
 if (interactive()) {
   library(blockr.core)
   serve(new_download_block())
