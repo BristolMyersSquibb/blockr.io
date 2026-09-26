@@ -9,9 +9,10 @@
 #' The reactive value returned by `path_input_server()` updates when the user
 #' *commits* — by pressing Enter, leaving the field (blur), or selecting a
 #' dropdown entry. While the typed text differs from the committed value, the
-#' field shows an "Enter ↵" chip; committing collapses it to a faded
-#' check mark. This follows the blockr design-system text-commit convention
-#' (decided 2026-07-02) and keeps half-typed paths from reaching the pipeline.
+#' field shows the "Enter ↵" button, and Escape reverts the edit. This is the
+#' design system's commit model for text fields, and it keeps half-typed
+#' paths from reaching the pipeline. Suggestions open on the menu surface
+#' of a field dropdown, from blockr.ui.
 #'
 #' @param id Module namespace ID.
 #' @param prefix Optional initial prefix text shown before the input
@@ -24,9 +25,8 @@
 #'   upload-aware file hint; pass e.g. "Enter directory path..." for
 #'   directory-mode inputs.
 #' @param required Whether the field must be filled. When `TRUE`, an empty
-#'   field carries a soft amber "needs a value" cue via the canonical
-#'   `.blockr-field--required-empty` class (mirroring blockr.viz's
-#'   required-empty mapping affordance) that clears once a value is entered.
+#'   field carries the design system's required-empty cue
+#'   (`.blockr-field--required-empty`), which clears once there is a value.
 #'
 #' @return `path_input_ui()` returns a `tagList` with the widget HTML.
 #'   `path_input_server()` returns a `reactive` containing the committed
@@ -42,12 +42,12 @@ path_input_ui <- function(id, prefix = NULL, upload_id = NULL,
 
   upload_btn <- if (!is.null(upload_id)) {
     tags$button(
-      class = "blockr-path-upload-btn",
+      class = "io-path-upload",
       type = "button",
-      title = "Upload file",
-      `aria-label` = "Upload file from computer",
+      `aria-label` = "Upload file",
+      `data-blockr-tooltip` = "Upload file",
       HTML(paste0(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" ',
+        '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" ',
         'fill="currentColor" viewBox="0 0 16 16">',
         '<path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 ',
         '1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5',
@@ -71,38 +71,38 @@ path_input_ui <- function(id, prefix = NULL, upload_id = NULL,
   tagList(
     path_input_dep(),
     div(
-      class = "blockr-path-input",
+      class = "io-path-input",
       `data-upload-target` = upload_id,
       `data-required` = if (required) "true",
       div(
-        # Required-but-empty file fields render with the amber cue from the
-        # start (the input is empty at UI render); JS clears it once a value
-        # is entered / committed.
+        # A required field starts empty, so it starts with the amber cue;
+        # the script clears it once there is a value.
         class = paste(
-          "blockr-path-input-field",
+          "io-path-field",
           if (required) "blockr-field--required-empty"
         ),
         tags$span(
           id = ns("path_text_prefix"),
-          class = "blockr-path-prefix",
+          class = "io-path-prefix",
           prefix
         ),
         tags$input(
           id = ns("path_text"),
           type = "text",
-          class = "blockr-path-text",
+          class = "io-path-text",
           placeholder = placeholder,
           autocomplete = "off"
         ),
         upload_btn,
         div(
           id = ns("path_text_dropdown"),
-          class = "blockr-path-dropdown"
+          class = "blockr-select__dropdown io-path-menu",
+          role = "listbox"
         )
       ),
       div(
         id = ns("path_text_status"),
-        class = "blockr-path-status"
+        class = "io-path-status"
       )
     )
   )
@@ -393,7 +393,7 @@ list_dir_response <- function(path_val, dir_root = "", mode = "file",
 #' the number in two places.
 #'
 #' @keywords internal
-path_input_asset_version <- function() "0.6.1"
+path_input_asset_version <- function() "0.7.0"
 
 #' Send a value to a path field
 #'
@@ -422,7 +422,14 @@ path_input_send_list_url <- function(session, id, url) {
 
 #' htmlDependency for path input widget assets
 #' @keywords internal
-path_input_dep <- memoise0(function() {
+path_input_dep <- function() {
+  tagList(
+    blockr.ui::controls_dep(),
+    path_input_asset_dep()
+  )
+}
+
+path_input_asset_dep <- memoise0(function() {
   htmltools::htmlDependency(
     name = "blockr-path-input",
     version = path_input_asset_version(),

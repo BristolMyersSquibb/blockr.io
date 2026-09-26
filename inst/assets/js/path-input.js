@@ -1,19 +1,25 @@
-// blockr path-input widget
-// Custom message handlers and autocomplete for server-side file browsing.
+// blockr.io path input: a text field with server-side file and directory
+// suggestions.
 //
-// Commit model (blockr design system, decided 2026-07-02): typing never
-// commits — keystrokes only drive the autocomplete dropdown. The Shiny input
-// updates on COMMIT only: Enter, blur, or a dropdown selection. While the
-// typed text differs from the committed value, an "Enter ↵" chip is shown;
-// committing swaps it for a faded check mark. See
-// blockr.docs/design-system/target/design-system.html §5.5.
+// Commit model (the design system's text fields): typing never commits,
+// keystrokes only drive the suggestions. The Shiny input updates on a
+// commit: Enter, blur, or picking a suggestion. While the typed text
+// differs from the committed value the field shows the Enter button, and
+// Escape reverts.
+//
+// The suggestions float on the menu surface of a field dropdown (the
+// .blockr-select__dropdown classes) and are placed by Blockr.place, both
+// from blockr.ui, which is loaded before this file.
 (function() {
   "use strict";
 
   // Inline SVG icons (Bootstrap Icons)
-  var FOLDER_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3H13.5a2 2 0 0 1 2 2v1H.5v.5A1.5 1.5 0 0 1 2 5h12a1.5 1.5 0 0 1 1.5 1.5v6A1.5 1.5 0 0 1 14 14H2a1.5 1.5 0 0 1-1.5-1.5V5z"/></svg>';
-  var FILE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V5.5L9.5 0H4z"/><path d="M9.5 0v4a1 1 0 0 0 1 1H14L9.5 0z"/></svg>';
-  var CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  var FOLDER_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3H13.5a2 2 0 0 1 2 2v1H.5v.5A1.5 1.5 0 0 1 2 5h12a1.5 1.5 0 0 1 1.5 1.5v6A1.5 1.5 0 0 1 14 14H2a1.5 1.5 0 0 1-1.5-1.5V5z"/></svg>';
+  var FILE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V5.5L9.5 0H4z"/><path d="M9.5 0v4a1 1 0 0 0 1 1H14L9.5 0z"/></svg>';
+
+  function confirmIcon() {
+    return (window.Blockr && Blockr.icons && Blockr.icons.confirm) || "";
+  }
 
   // Per-input state
   var state = {};
@@ -29,19 +35,18 @@
         debounceTimer: null,
         fetchSeq: 0,
         committed: "",
-        everCommitted: false
+        everCommitted: false,
+        placed: null
       };
     }
     return state[inputId];
   }
 
   // ----------------------------------------------------------------------
-  // Replay queue (mirrors blockr.dplyr's blockr-core.js _enqueue/_replay):
-  // inside a dockview panel the input reaches the DOM only when the panel
-  // mounts, which can be long after the server flushed its restore
-  // messages. A message that finds no element is held here, keyed by input
-  // id, and replayed when the element turns up (binding initialize / init
-  // scan). No expiry: a never-mounted panel just keeps its pending entry.
+  // Replay queue: inside a dockview panel the input reaches the DOM only
+  // when the panel mounts, which can be long after the server flushed its
+  // restore messages. A message that finds no element is held here, keyed
+  // by input id, and replayed when the element turns up.
   // ----------------------------------------------------------------------
   var pending = {};
 
@@ -59,16 +64,13 @@
   }
 
   // --------------------------------------------------------------------
-  // Shiny input binding: commit on "change" only (Enter / blur / dropdown
-  // selection). This replaces the default text binding, which would send
-  // every keystroke after a debounce — the source of half-typed paths
-  // reaching the pipeline.
+  // Shiny input binding: reports on "change" only (Enter, blur, a pick).
   // --------------------------------------------------------------------
   if (window.Shiny && window.Shiny.InputBinding) {
     var pathBinding = new Shiny.InputBinding();
     $.extend(pathBinding, {
       find: function(scope) {
-        return $(scope).find("input.blockr-path-text");
+        return $(scope).find("input.io-path-text");
       },
       getValue: function(el) {
         return el.value;
@@ -77,61 +79,52 @@
         el.value = value;
       },
       subscribe: function(el, callback) {
-        $(el).on("change.blockrPathText", function() {
+        $(el).on("change.ioPathText", function() {
           callback(false);
         });
       },
       unsubscribe: function(el) {
-        $(el).off(".blockrPathText");
+        $(el).off(".ioPathText");
       },
-      // Runs when Shiny binds the input -- for dockview panels that is the
-      // late bindAll on layout change, i.e. the first moment the element is
+      // Runs when Shiny binds the input; for dockview panels that is the
+      // late bindAll on layout change, the first moment the element is
       // guaranteed to exist.
       initialize: function(el) {
-        // Wire the dropdown and keyboard handling for THIS element. The
-        // pass at load time cannot have done it: this file arrives as a
-        // dependency of the panel and runs before the panel's HTML is in
-        // the DOM, and the only other hook is `shiny:value`, an output
-        // event that may already have fired. Without this the field is
-        // inert -- no autocomplete, no browse.
         initPathInputs();
-
         replayPending(el.id);
 
         // A push the server made before this file was loaded reached a
-        // Shiny with no handler for the message and was dropped outright,
-        // where the queue above can never see it. Say we are here; the
-        // server answers with the value again.
+        // Shiny with no handler for the message and was dropped. Say we
+        // are here; the server answers with the value again.
         if (window.Shiny && Shiny.setInputValue) {
           Shiny.setInputValue(el.id + "_ready", Date.now(),
                               { priority: "event" });
         }
       }
     });
-    Shiny.inputBindings.register(pathBinding, "blockr.pathText", 100);
+    Shiny.inputBindings.register(pathBinding, "blockr.io.pathText", 100);
     if (Shiny.inputBindings.setPriority) {
-      Shiny.inputBindings.setPriority("blockr.pathText", 100);
+      Shiny.inputBindings.setPriority("blockr.io.pathText", 100);
     }
   }
 
   // --------------------------------------------------------------------
-  // Commit chip ("Enter ↵" while dirty → faded ✓ once applied)
+  // The Enter button (blockr.ui's .blockr-expr-confirm)
   // --------------------------------------------------------------------
   function ensureChip(inputId) {
     var input = document.getElementById(inputId);
-    var field = input ? input.closest(".blockr-path-input-field") : null;
+    var field = input ? input.closest(".io-path-field") : null;
     if (!field) return null;
-    var chip = field.querySelector(".blockr-path-commit");
+    var chip = field.querySelector(".blockr-expr-confirm");
     if (!chip) {
       chip = document.createElement("button");
       chip.type = "button";
-      chip.className = "blockr-path-commit";
-      chip.title = "Apply (Enter)";
+      chip.className = "blockr-expr-confirm";
       chip.setAttribute("aria-label", "Apply (Enter)");
       chip.style.display = "none";
-      var upload = field.querySelector(".blockr-path-upload-btn");
+      var upload = field.querySelector(".io-path-upload");
       field.insertBefore(chip, upload);
-      // preventDefault keeps focus in the input so blur doesn't fire first
+      // Keeps focus in the input, so blur does not commit first.
       chip.addEventListener("mousedown", function(e) {
         e.preventDefault();
       });
@@ -149,37 +142,38 @@
     if (!chip || !input) return;
     var st = getState(inputId);
     if (input.value !== st.committed) {
-      // dirty: armed chip — verb + muted glyph (design system §5.5)
       chip.style.display = "";
       chip.classList.remove("confirmed");
       chip.innerHTML = 'Enter <span class="blockr-kbd">↵</span>';
     } else if (st.everCommitted) {
-      // committed: faded check — nothing left to do
       chip.style.display = "";
       chip.classList.add("confirmed");
-      chip.innerHTML = CHECK_ICON;
+      chip.innerHTML = confirmIcon();
     } else {
       chip.style.display = "none";
     }
     updateRequiredState(inputId);
   }
 
-  // Soft amber "needs a value" cue on required-but-empty fields, mirroring
-  // blockr.viz's .dd-role-required-empty. Toggled off the visible value, so
-  // it clears the moment the user types (and never shows on optional fields).
+  // The required-empty cue (blockr.ui's .blockr-field--required-empty) on
+  // a required field while it is empty; it clears as soon as there is text.
   function updateRequiredState(inputId) {
     var input = document.getElementById(inputId);
     if (!input) return;
-    var container = input.closest(".blockr-path-input");
-    var field = input.closest(".blockr-path-input-field");
+    var container = input.closest(".io-path-input");
+    var field = input.closest(".io-path-field");
     if (!container || !field) return;
     var required = container.getAttribute("data-required") === "true";
     var empty = !input.value || !input.value.trim();
-    field.classList.toggle("blockr-field--required-empty", required && empty);
+    var on = required && empty;
+    field.classList.toggle("blockr-field--required-empty", on);
+    // The field wrapper around a labelled path input carries the label's *.
+    var wrap = container.closest(".blockr-settings__field");
+    if (wrap && required) wrap.classList.toggle("blockr-field--required-empty", on);
   }
 
-  // Commit the current input value: this is the ONLY path through which
-  // the value reaches Shiny (the binding listens on "change").
+  // Commit the current value: the only way it reaches Shiny (the binding
+  // listens on "change").
   function commit(inputId) {
     var input = document.getElementById(inputId);
     if (!input) return;
@@ -194,43 +188,35 @@
     var isAbsolute = /^(\/|~|[A-Za-z]:)/.test(input.value);
     if (isAbsolute) {
       prefixEl.textContent = "";
-      prefixEl.classList.remove("blockr-path-prefix-active");
+      prefixEl.classList.remove("io-path-prefix--active");
     } else {
       prefixEl.textContent = st.prefix || "";
-      prefixEl.classList.toggle("blockr-path-prefix-active", !!st.prefix);
+      prefixEl.classList.toggle("io-path-prefix--active", !!st.prefix);
     }
   }
 
-  // Custom message handler: update prefix text
   Shiny.addCustomMessageHandler("blockr-path-prefix", function(msg) {
     var st = getState(msg.id);
     st.prefix = msg.prefix || "";
     updatePrefixVisibility(msg.id);
   });
 
-  // Custom message handler: store list_dir endpoint URL
   Shiny.addCustomMessageHandler("blockr-path-list-url", function(msg) {
     var st = getState(msg.id);
     st.listUrl = msg.url;
   });
 
-  // Set input value programmatically.
-  // msg.silent: if true, only update the display without triggering change
+  // Set the value from the server. msg.silent: update the field without
+  // reporting a change.
   function applySetValue(msg) {
     var el = document.getElementById(msg.id);
     var st = getState(msg.id);
     el.value = msg.value || "";
-    // Programmatic values are already applied — treat as committed
     st.committed = el.value;
-    // Scroll to end so filename is visible
     el.scrollLeft = el.scrollWidth;
     updatePrefixVisibility(msg.id);
     updateChip(msg.id);
-    // An open dropdown is a listing of the OLD path's directory: leaving it
-    // up next to a value it no longer describes invites clicking an entry
-    // that belongs somewhere else. The value came from elsewhere (restore,
-    // upload, an external controller), so the browse the user started is
-    // over.
+    // An open list belongs to the old value's directory.
     st.items = [];
     closeDropdown(msg.id);
     if (!msg.silent) {
@@ -246,45 +232,44 @@
     }
   });
 
-  // Button state for success animation timers
+  // The data directory option's Set button: enabled while the field holds
+  // a directory that differs from the saved one.
   var btnTimers = {};
+
+  function buttonLabel(btn) {
+    return btn.querySelector(".action-label") || btn;
+  }
 
   function resetBtn(id) {
     var btn = document.getElementById(id);
     if (!btn) return;
-    btn.classList.remove("blockr-datadir-btn-success");
-    btn.innerHTML = '<span class="action-label">Set data directory</span>';
+    var label = buttonLabel(btn);
+    if (btn.dataset.ioLabel) label.textContent = btn.dataset.ioLabel;
     btn.disabled = true;
     btnTimers[id] = null;
   }
 
-  // Custom message handler: enable/disable a button (clears success state)
   Shiny.addCustomMessageHandler("blockr-path-toggle-btn", function(msg) {
     var el = document.getElementById(msg.id);
     if (!el) return;
-    // Don't interrupt success animation — let the timer handle the reset
+    // A confirmation on show resets on its own timer.
     if (btnTimers[msg.id]) return;
     el.disabled = !msg.enabled;
-    el.classList.remove("blockr-datadir-btn-success");
   });
 
-  // Custom message handler: button success animation
   Shiny.addCustomMessageHandler("blockr-path-btn-success", function(msg) {
     var btn = document.getElementById(msg.id);
     if (!btn) return;
-    // Clear any pending timer
     if (btnTimers[msg.id]) clearTimeout(btnTimers[msg.id]);
-    // Switch to success state
+    var label = buttonLabel(btn);
+    if (!btn.dataset.ioLabel) btn.dataset.ioLabel = label.textContent;
     btn.disabled = true;
-    btn.classList.add("blockr-datadir-btn-success");
-    btn.innerHTML = '<span class="blockr-path-check"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Set successfully';
-    // Reset after 3 seconds
+    label.textContent = "Done";
     btnTimers[msg.id] = setTimeout(function() {
       resetBtn(msg.id);
     }, 3000);
   });
 
-  // Format file size
   function formatSize(bytes) {
     if (bytes == null) return "";
     if (bytes < 1024) return bytes + " B";
@@ -292,9 +277,8 @@
     return (bytes / 1048576).toFixed(1) + " MB";
   }
 
-  // Fetch directory listing from the registerDataObj endpoint.
-  // A per-input sequence number discards stale responses: without it a slow
-  // response for an older query can overwrite the dropdown for a newer one.
+  // Fetch a directory listing from the registerDataObj endpoint. A
+  // sequence number drops a slow response to an older query.
   function fetchListing(inputId, query) {
     var st = getState(inputId);
     if (!st.listUrl) return;
@@ -304,7 +288,7 @@
     fetch(url)
       .then(function(resp) { return resp.json(); })
       .then(function(data) {
-        if (seq !== st.fetchSeq) return; // stale response — ignore
+        if (seq !== st.fetchSeq) return;
         st.items = data.items || [];
         st.total = data.total || st.items.length;
         st.queryBase = data.base || "";
@@ -319,52 +303,20 @@
       });
   }
 
-  // Position the (body-mounted) dropdown under its input field
-  function positionDropdown(inputId) {
+  function isOpen(inputId) {
     var dropdown = document.getElementById(inputId + "_dropdown");
-    var input = document.getElementById(inputId);
-    var field = input ? input.closest(".blockr-path-input-field") : null;
-    if (!dropdown || !field) return;
-    var rect = field.getBoundingClientRect();
-    dropdown.style.position = "fixed";
-    dropdown.style.top = rect.bottom + "px";
-    dropdown.style.left = rect.left + "px";
-    dropdown.style.right = "auto";
-    dropdown.style.width = rect.width + "px";
+    return !!dropdown && dropdown.style.display === "block";
   }
 
-  // Keep open dropdowns glued to their inputs on scroll/resize (the
-  // dropdown lives on document.body with fixed coords, so any scrolling
-  // ancestor would otherwise leave it floating detached).
-  var repositionScheduled = false;
-  function repositionOpenDropdowns() {
-    if (repositionScheduled) return;
-    repositionScheduled = true;
-    requestAnimationFrame(function() {
-      repositionScheduled = false;
-      Object.keys(state).forEach(function(id) {
-        var dropdown = document.getElementById(id + "_dropdown");
-        if (!dropdown || dropdown.style.display !== "block") return;
-        if (!document.getElementById(id)) {
-          dropdown.style.display = "none";
-          return;
-        }
-        positionDropdown(id);
-      });
-    });
-  }
-  window.addEventListener("scroll", repositionOpenDropdowns, true);
-  window.addEventListener("resize", repositionOpenDropdowns);
-
-  // Render dropdown
   function renderDropdown(inputId) {
     var st = getState(inputId);
     var dropdown = document.getElementById(inputId + "_dropdown");
-    if (!dropdown) return;
+    var input = document.getElementById(inputId);
+    var field = input ? input.closest(".io-path-field") : null;
+    if (!dropdown || !field) return;
 
     if (st.items.length === 0) {
-      dropdown.style.display = "none";
-      st.activeIndex = -1;
+      closeDropdown(inputId);
       return;
     }
 
@@ -372,44 +324,46 @@
     for (var i = 0; i < st.items.length; i++) {
       var item = st.items[i];
       var icon = item.isdir ? FOLDER_ICON : FILE_ICON;
-      var sizeText = item.isdir ? "" : '<span class="blockr-path-size">' + formatSize(item.size) + '</span>';
-      html += '<div class="blockr-path-dropdown-item' + (i === st.activeIndex ? ' active' : '') + '" data-index="' + i + '">' +
-        '<span class="blockr-path-icon">' + icon + '</span>' +
-        '<span class="blockr-path-name">' + escapeHtml(item.name) + '</span>' +
-        sizeText +
-        '</div>';
+      var size = item.isdir ? "" :
+        '<span class="blockr-select__opt-label">' + formatSize(item.size) + "</span>";
+      html += '<div class="blockr-select__option io-path-option' +
+        (i === st.activeIndex ? " blockr-select__option--highlighted" : "") +
+        '" role="option" data-index="' + i + '">' +
+        '<span class="io-path-option__icon">' + icon + "</span>" +
+        '<span class="io-path-option__name">' + escapeHtml(item.name) + "</span>" +
+        size + "</div>";
     }
     if (st.total > st.items.length) {
-      html += '<div class="blockr-path-dropdown-footer">Showing ' +
-        st.items.length + " of " + st.total + " matches</div>";
+      html += '<div class="blockr-select__empty">' + st.items.length +
+        " of " + st.total + " shown. Type to narrow the list.</div>";
     }
 
     dropdown.innerHTML = html;
 
-    // Move dropdown to document.body so it escapes any overflow:auto/hidden
-    // ancestors (e.g. dockview panels). Position with fixed coords relative
-    // to the input field.
+    // On <body>, out of reach of the clipping of dock panels.
     if (dropdown.parentElement !== document.body) {
       document.body.appendChild(dropdown);
     }
-    if (!dropdown.dataset.blockrWired) {
-      dropdown.dataset.blockrWired = "true";
-      // One delegated handler instead of per-render listeners.
-      // preventDefault keeps the input focused (no blur-close race).
+    if (!dropdown.dataset.ioWired) {
+      dropdown.dataset.ioWired = "true";
+      // preventDefault keeps the input focused.
       dropdown.addEventListener("mousedown", function(e) {
         e.preventDefault();
-        var itemEl = e.target.closest(".blockr-path-dropdown-item");
+        var itemEl = e.target.closest(".io-path-option");
         if (itemEl) {
           selectItem(inputId, parseInt(itemEl.dataset.index, 10));
         }
       });
     }
-    positionDropdown(inputId);
     dropdown.style.display = "block";
+    if (!st.placed) {
+      st.placed = Blockr.place(dropdown, field, { minWidth: 190 });
+    } else {
+      st.placed.update();
+    }
 
-    // Keep the active item in view during keyboard navigation
     if (st.activeIndex >= 0) {
-      var active = dropdown.querySelector(".blockr-path-dropdown-item.active");
+      var active = dropdown.querySelector(".blockr-select__option--highlighted");
       if (active && active.scrollIntoView) {
         active.scrollIntoView({ block: "nearest" });
       }
@@ -422,10 +376,7 @@
     return div.innerHTML;
   }
 
-  // Compute the directory base from the current input value.
-  // If the value contains "/", base is everything up to and including the last
-  // "/".  Otherwise, if the value is non-empty the server treated the whole
-  // value as a directory name (e.g. "~"), so the base is value + "/".
+  // The directory part of the current value.
   function getBase(value) {
     var lastSlash = value.lastIndexOf("/");
     if (lastSlash >= 0) {
@@ -437,8 +388,7 @@
     return "";
   }
 
-  // Select an item from the dropdown. A selection is an explicit choice,
-  // so it always commits.
+  // A pick is an explicit choice, so it commits.
   function selectItem(inputId, idx) {
     var st = getState(inputId);
     var item = st.items[idx];
@@ -450,7 +400,7 @@
     var base = st.queryBase || getBase(input.value);
 
     if (item.isdir) {
-      // Folder: set base + name + "/", commit, and re-query to descend
+      // A folder: go into it and list it.
       input.value = base + item.name + "/";
       commit(inputId);
       clearTimeout(st.debounceTimer);
@@ -458,7 +408,6 @@
         fetchListing(inputId, input.value);
       }, 100);
     } else {
-      // File: set base + name, commit, and close dropdown
       input.value = base + item.name;
       commit(inputId);
       closeDropdown(inputId);
@@ -466,24 +415,23 @@
   }
 
   function closeDropdown(inputId) {
+    var st = getState(inputId);
     var dropdown = document.getElementById(inputId + "_dropdown");
+    if (st.placed) {
+      st.placed.stop();
+      st.placed = null;
+    }
     if (dropdown) {
       dropdown.style.display = "none";
-      // Reset fixed positioning so CSS defaults apply on next open
-      dropdown.style.position = "";
-      dropdown.style.top = "";
-      dropdown.style.left = "";
-      dropdown.style.width = "";
     }
-    var st = getState(inputId);
     st.activeIndex = -1;
   }
 
-  // Remove state and body-mounted dropdowns for inputs no longer in the DOM
-  // (e.g. a deleted block) so they don't accumulate.
+  // Drop state and body-mounted lists of inputs that left the page.
   function cleanupOrphans() {
     Object.keys(state).forEach(function(id) {
       if (document.getElementById(id)) return;
+      closeDropdown(id);
       var dropdown = document.getElementById(id + "_dropdown");
       if (dropdown && dropdown.parentElement === document.body) {
         dropdown.parentElement.removeChild(dropdown);
@@ -492,18 +440,21 @@
     });
   }
 
-  // Initialize path inputs on document ready and after Shiny re-renders
+  function realFileInput(uploadTarget) {
+    var fileEl = document.getElementById(uploadTarget);
+    var wrapper = fileEl ? fileEl.closest(".shiny-input-container") : null;
+    return wrapper ? wrapper.querySelector('input[type="file"]') : null;
+  }
+
   function initPathInputs() {
     cleanupOrphans();
 
-    var inputs = document.querySelectorAll(".blockr-path-text");
+    var inputs = document.querySelectorAll(".io-path-text");
     inputs.forEach(function(input) {
-      if (input.dataset.blockrInit) return;
-      input.dataset.blockrInit = "true";
+      if (input.dataset.ioInit) return;
+      input.dataset.ioInit = "true";
 
       var inputId = input.id;
-      // A restore push may have arrived before this element existed (lazy
-      // dockview panel): apply it now, before committed-state bookkeeping.
       replayPending(inputId);
       var st = getState(inputId);
       st.committed = input.value;
@@ -511,17 +462,14 @@
       updateRequiredState(inputId);
       updatePrefixVisibility(inputId);
 
-      // Track every commit (Enter, blur, selection, programmatic trigger):
-      // jQuery-bound so both native change events and $().trigger("change")
-      // land here.
-      $(input).on("change.blockrPathChip", function() {
+      // Every commit (Enter, blur, a pick, a trigger from here).
+      $(input).on("change.ioPathChip", function() {
         st.committed = input.value;
         st.everCommitted = true;
         updateChip(inputId);
       });
 
-      // Typing: only feeds the dropdown (debounced) and arms the chip.
-      // Nothing reaches Shiny from here.
+      // Typing feeds the list and arms the Enter button, nothing more.
       input.addEventListener("input", function() {
         updatePrefixVisibility(inputId);
         updateChip(inputId);
@@ -531,7 +479,6 @@
         }, 200);
       });
 
-      // Focus: trigger listing if URL available
       input.addEventListener("focus", function() {
         input.scrollLeft = 0;
         if (st.listUrl) {
@@ -539,9 +486,8 @@
         }
       });
 
-      // Blur: the native change event (fired before blur when the value
-      // was edited) has already committed. Scroll to end so the filename
-      // is visible, then close the dropdown.
+      // The native change event, fired before blur when the value was
+      // edited, has committed already.
       input.addEventListener("blur", function() {
         input.scrollLeft = input.scrollWidth;
         setTimeout(function() {
@@ -549,46 +495,43 @@
         }, 200);
       });
 
-      // Upload integration: wire icon click + drag-and-drop to hidden fileInput
-      var container = input.closest(".blockr-path-input");
+      // Upload: the icon and a drop on the field both feed the hidden
+      // fileInput.
+      var container = input.closest(".io-path-input");
       var uploadTarget = container && container.getAttribute("data-upload-target");
 
       if (uploadTarget && container) {
-        var uploadBtn = container.querySelector(".blockr-path-upload-btn");
+        var uploadBtn = container.querySelector(".io-path-upload");
         if (uploadBtn) {
           uploadBtn.addEventListener("click", function(e) {
             e.preventDefault();
-            var fileEl = document.getElementById(uploadTarget);
-            var wrapper = fileEl ? fileEl.closest(".shiny-input-container") : null;
-            var realInput = wrapper ? wrapper.querySelector('input[type="file"]') : null;
+            var realInput = realFileInput(uploadTarget);
             if (realInput) realInput.click();
           });
         }
 
-        var field = container.querySelector(".blockr-path-input-field");
+        var field = container.querySelector(".io-path-field");
 
         field.addEventListener("dragover", function(e) {
           e.preventDefault();
           e.stopPropagation();
-          field.classList.add("blockr-path-dragover");
+          field.classList.add("io-path-field--dragover");
         });
 
         field.addEventListener("dragleave", function(e) {
           e.preventDefault();
-          field.classList.remove("blockr-path-dragover");
+          field.classList.remove("io-path-field--dragover");
         });
 
         field.addEventListener("drop", function(e) {
           e.preventDefault();
           e.stopPropagation();
-          field.classList.remove("blockr-path-dragover");
+          field.classList.remove("io-path-field--dragover");
 
           var files = e.dataTransfer.files;
           if (!files.length) return;
 
-          var fileEl = document.getElementById(uploadTarget);
-          var wrapper = fileEl ? fileEl.closest(".shiny-input-container") : null;
-          var realInput = wrapper ? wrapper.querySelector('input[type="file"]') : null;
+          var realInput = realFileInput(uploadTarget);
           if (realInput) {
             var dt = new DataTransfer();
             for (var i = 0; i < files.length; i++) dt.items.add(files[i]);
@@ -598,12 +541,12 @@
         });
       }
 
-      // Keyboard: arrows navigate the dropdown; Enter selects the active
-      // item, or commits the typed value when nothing is highlighted;
-      // Escape closes the dropdown without committing.
+      // Arrows move through the list; Enter picks the keyboard row or
+      // commits the typed value; Escape closes the list, or else reverts
+      // an edit. Either way the key stops here, so a gear tray the field
+      // sits in stays open.
       input.addEventListener("keydown", function(e) {
-        var dropdown = document.getElementById(inputId + "_dropdown");
-        var open = dropdown && dropdown.style.display === "block";
+        var open = isOpen(inputId);
 
         if (e.key === "ArrowDown" && open) {
           e.preventDefault();
@@ -622,27 +565,29 @@
             closeDropdown(inputId);
           }
         } else if (e.key === "Escape") {
-          closeDropdown(inputId);
+          if (open) {
+            e.stopPropagation();
+            closeDropdown(inputId);
+          } else if (input.value !== st.committed) {
+            e.stopPropagation();
+            input.value = st.committed;
+            updatePrefixVisibility(inputId);
+            updateChip(inputId);
+          }
         }
       });
     });
   }
 
-  // File-type status badge. The badge element lives next to the input, so
-  // element presence is checked on the input id and the same replay queue
-  // applies.
+  // The status badge under the field: neutral, or danger for an error.
   function applyStatus(msg) {
     var el = document.getElementById(msg.id + "_status");
     if (!el) return;
-    if (msg.state === "success" && msg.text) {
-      el.innerHTML = '<span class="blockr-path-badge blockr-path-badge-success">' +
-        escapeHtml(msg.text) + '</span>';
-    } else if (msg.state === "error" && msg.text) {
-      el.innerHTML = '<span class="blockr-path-badge blockr-path-badge-error">' +
-        escapeHtml(msg.text) + '</span>';
-    } else if (msg.state === "info" && msg.text) {
-      el.innerHTML = '<span class="blockr-path-badge blockr-path-badge-info">' +
-        escapeHtml(msg.text) + '</span>';
+    if (msg.text && msg.state && msg.state !== "none") {
+      var danger = msg.state === "error";
+      el.innerHTML = '<span class="blockr-badge io-path-badge' +
+        (danger ? " blockr-badge--danger io-path-badge--danger" : "") + '">' +
+        escapeHtml(msg.text) + "</span>";
     } else {
       el.innerHTML = "";
     }
@@ -656,14 +601,13 @@
     }
   });
 
-  // Run on DOM ready
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initPathInputs);
   } else {
     initPathInputs();
   }
 
-  // Re-init after Shiny renders new content
+  // New content from a render.
   $(document).on("shiny:value", function() {
     setTimeout(initPathInputs, 100);
   });
