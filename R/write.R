@@ -370,7 +370,7 @@ write_block_impl <- function(
                 ))
               },
               error = function(e) {
-                r_error(sprintf("✗ Write failed: %s", conditionMessage(e)))
+                r_error(sprintf("\u2717 Write failed: %s", conditionMessage(e)))
               }
             )
           })
@@ -532,7 +532,7 @@ write_block_impl <- function(
             req(r_server())
 
             err <- if (nzchar(r_policy())) {
-              sprintf("✗ %s", r_policy())
+              sprintf("\u2717 %s", r_policy())
             } else {
               r_error()
             }
@@ -542,13 +542,13 @@ write_block_impl <- function(
             }
 
             text <- if (!nzchar(r_folder())) {
-              "Not saved yet · no folder chosen"
+              "Not saved yet \u00b7 no folder chosen"
             } else if (r_auto_write()) {
               last <- r_auto_time()
               paste0(
                 "Overwrites ", output_path(generate_filename(auto_filename())),
                 " on every change",
-                if (!is.null(last)) paste0(" · last ", format(last, "%H:%M"))
+                if (!is.null(last)) paste0(" \u00b7 last ", format(last, "%H:%M"))
               )
             } else if (is.null(r_saved())) {
               base <- if (nzchar(r_filename())) {
@@ -556,11 +556,11 @@ write_block_impl <- function(
               } else {
                 "data_<timestamp>"
               }
-              paste0("Not saved yet · ", output_path(base))
+              paste0("Not saved yet \u00b7 ", output_path(base))
             } else {
               saved <- r_saved()
               paste0(
-                "Saved ", saved$path, " · ", format(saved$time, "%H:%M")
+                "Saved ", saved$path, " \u00b7 ", format(saved$time, "%H:%M")
               )
             }
 
