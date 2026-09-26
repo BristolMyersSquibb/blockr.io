@@ -1,5 +1,40 @@
 # blockr.io (development version)
 
+## The blockr design system
+
+- blockr.io now imports blockr.ui and builds its blocks from its controls:
+  `select_input()`, `text_input()` and `number_input()` (commit on Enter or
+  blur), `checkbox_input()`, `segmented_input()`, the buttons and the gear
+  tray. io's copies of the settings band, the gear, the checkbox and select
+  restyles and the Manual/Auto toggle are gone, and io's remaining CSS reads
+  meaning tokens only, scoped to `io-` classes (the `blockr-path-*`,
+  `blockr-file-input` and `blockr-datadir-btn` classes are renamed).
+
+- The write block has a new face: one "Download CSV" button, named after the
+  chosen format. The format, the filename and the format's options are in the
+  gear, and so is "Save to the server" with the folder and "Save: On click /
+  On change" (`auto_write`). With server saving on and "On click", "Save to
+  server" stands beside the download, and a status line says where the file
+  goes and when it was written. Server saving is on while `directory` is
+  non-empty; the block's state is unchanged.
+
+- `new_download_block()` is the write block with server saving off. Its class
+  and constructor stay, so saved boards restore with their filename, format
+  and options; it gains `directory` and `auto_write` for when server saving
+  is switched on.
+
+- The read block's gear is blockr.ui's tray and appears only when the file's
+  format has options or several files are read. The path field's
+  suggestions open on the menu surface, its status is a capsule badge
+  (neutral, or danger for "Not found" and "Blocked"), and tooltips replace
+  native `title`s.
+
+- `gear_band_ui()` is a wrapper over `blockr.ui::gear_tray()`; `band_id` is
+  ignored. `format_options_ui()` builds blockr.ui controls, and
+  `format_options_values()` takes the values `format_options_update()`
+  pushed into account, since blockr.ui's controls do not report a push back
+  as input.
+
 ## Features
 
 - A file format registry. `register_format()` teaches blockr.io a file
