@@ -15,10 +15,10 @@ new_write_block(
 )
 }
 \arguments{
-\item{directory}{Character. Default directory for file output. When non-empty,
-enables server-side writing. Can be configured via
-\code{options(blockr.write_dir = "/path")} or environment variable
-\code{BLOCKR_WRITE_DIR}. Default: \code{""} (empty -- download-only until user sets a path).}
+\item{directory}{Character. Folder on the server to save to. Non-empty
+turns server saving on; empty (the default) means the block only
+downloads. Relative paths are resolved against the board's data
+directory.}
 
 \item{filename}{Character. Optional fixed filename (without extension).
 \itemize{
@@ -32,9 +32,10 @@ of littering the directory
 \item{format}{Character. Output format: "csv", "excel", "parquet", or "feather".
 Default: "csv"}
 
-\item{auto_write}{Logical. When TRUE, automatically writes files when data changes
-(requires a non-empty directory). When FALSE (default), the user must click
-"Save to Server", and each click writes exactly once.}
+\item{auto_write}{Logical. When TRUE, saves to the server whenever the
+data changes ("On change"; requires a non-empty directory). When FALSE
+(default), the user clicks "Save to server" ("On click"), and each
+click writes exactly once.}
 
 \item{args}{Named list of format-specific writing parameters. Only specify values
 that differ from defaults. Available parameters:
@@ -45,9 +46,8 @@ that differ from defaults. Available parameters:
 }}
 
 \item{mode}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Previously selected between
-"browse" and "download" tabs. Now ignored -- both download and server-save
-are always available. Kept for backwards compatibility; emits a deprecation
-warning when non-NULL.}
+"browse" and "download" tabs. Now ignored. Kept for backwards
+compatibility; emits a deprecation warning when non-NULL.}
 
 \item{...}{Forwarded to \code{\link[blockr.core:new_transform_block]{blockr.core::new_transform_block()}}}
 }
@@ -55,11 +55,22 @@ warning when non-NULL.}
 A blockr transform block that writes dataframes to files
 }
 \description{
-A variadic block for writing dataframes to files in various formats.
-Accepts multiple input dataframes and handles single files, multi-sheet
+A variadic block for writing data frames to files in various formats.
+Accepts multiple input data frames and handles single files, multi-sheet
 Excel, or ZIP archives depending on format and number of inputs.
 }
 \details{
+\subsection{The block}{
+
+At rest the block shows one button, "Download CSV" (named after the
+chosen format). Everything else is in the gear: the format, the
+filename and the format's options, and a section switched on by "Save to
+the server" with the folder and when to save ("On click" or "On
+change"). With server saving on and "On click", the block shows "Save
+to server" beside the download, and a status line under the buttons
+says where the file goes and when it was last written.
+}
+
 \subsection{Variadic Inputs}{
 
 This block accepts multiple dataframe inputs (1 or more) similar to \code{bind_rows_block}.
@@ -94,40 +105,28 @@ Input names are used for sheet names (Excel) or filenames (multi-file ZIP).
 \itemize{
 \item Reproducible path: always writes to \verb{\{directory\}/output.\{ext\}}
 \item Overwrites the file on every save (every data change with auto-write)
-\item Ideal for automated pipelines
 }
 
 \strong{Empty filename} (\code{filename = ""}):
 \itemize{
 \item Manual saves and downloads: unique files
-\verb{\{directory\}/data_YYYYMMDD_HHMMSS.\{ext\}} -- preserves history,
-prevents accidental overwrites
+\verb{\{directory\}/data_YYYYMMDD_HHMMSS.\{ext\}}
 \item Auto-write: fixed \verb{\{directory\}/data.\{ext\}}, overwritten on each
-change -- a timestamp would create one file per upstream change
+change; a timestamp would create one file per upstream change
 }
 }
 
-\subsection{Download vs Server Save}{
-
-Both options are always available in a flat layout (no tabs):
-
-\strong{Download to Browser:}
+\subsection{Server saving}{
 \itemize{
-\item Always available via the download button
-\item Triggers a download to your browser's download folder
-}
-
-\strong{Save to Server:}
-\itemize{
-\item Active when a server directory path is set (non-empty)
-\item User types a directory path (committed with Enter, blur, or a
-dropdown selection -- an "Enter" chip shows while the typed path is
-not yet applied) in the path input
-\item The target directory is created at write time if missing
-\item In manual mode each "Save to Server" click writes exactly once;
-later data changes never rewrite the file
-\item Files persist on server; when running locally, this is your
+\item The folder field commits on Enter, blur or a pick from its
+suggestions
+\item The target folder is created at write time if missing
+\item "On click": each click writes exactly once; later data changes never
+rewrite the file
+\item Files persist on the server; when running locally, this is your
 computer's file system
+\item The deployment's file-access policy (\link{file_policy}) is checked before
+anything is written
 }
 }
 
