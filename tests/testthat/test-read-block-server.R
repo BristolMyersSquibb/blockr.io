@@ -492,3 +492,27 @@ test_that("no options, no gear: the gate is the registry's declaration", {
   expect_named(source_options("x.opt1"), "mode")
   expect_length(source_options("x.opt0"), 0)
 })
+
+test_that("the read block's gear: options or several files, else none", {
+  ns <- function(x) paste0("r-", x)
+
+  expect_null(blockr.io:::read_gear_tray(ns, list(), multi = FALSE))
+
+  one <- as.character(blockr.io:::read_gear_tray(
+    ns, format_options("a.csv"), multi = FALSE
+  ))
+  expect_match(one, "blockr-ui-gear")
+  # one section, no title
+  expect_false(grepl("Format options", one, fixed = TRUE))
+
+  two <- as.character(blockr.io:::read_gear_tray(
+    ns, format_options("a.csv"), multi = TRUE
+  ))
+  expect_match(two, "Format options", fixed = TRUE)
+  expect_match(two, 'id="r-combine"')
+
+  multi_only <- as.character(blockr.io:::read_gear_tray(
+    ns, list(), multi = TRUE
+  ))
+  expect_match(multi_only, 'id="r-combine"')
+})
