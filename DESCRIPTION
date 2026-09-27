@@ -1,6 +1,6 @@
 Package: blockr.io
 Title: Interactive File Import and Export Blocks
-Version: 0.1.0.9015
+Version: 0.1.0.9016
 Authors@R:
     c(person(given = "Christoph",
              family = "Sax",
@@ -41,7 +41,7 @@ Remotes:
     BristolMyersSquibb/blockr.ui@feat/buttons-and-shiny-inputs
 Imports:
     blockr.core (>= 0.1.4),
-    blockr.ui (>= 0.0.1.9032),
+    blockr.ui (>= 0.0.1.9036),
     htmltools,
     jsonlite,
     readxl,
