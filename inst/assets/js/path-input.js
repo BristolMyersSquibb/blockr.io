@@ -109,7 +109,7 @@
   }
 
   // --------------------------------------------------------------------
-  // The Enter button (blockr.ui's .blockr-expr-confirm)
+  // The ↵ button (blockr.ui's .blockr-expr-confirm)
   // --------------------------------------------------------------------
   function ensureChip(inputId) {
     var input = document.getElementById(inputId);
@@ -119,7 +119,7 @@
     if (!chip) {
       chip = document.createElement("button");
       chip.type = "button";
-      chip.className = "blockr-expr-confirm";
+      chip.className = "blockr-expr-confirm blockr-expr-confirm--key";
       chip.setAttribute("aria-label", "Apply (Enter)");
       chip.style.display = "none";
       var upload = field.querySelector(".io-path-upload");
@@ -144,7 +144,7 @@
     if (input.value !== st.committed) {
       chip.style.display = "";
       chip.classList.remove("confirmed");
-      chip.innerHTML = 'Enter <span class="blockr-kbd">↵</span>';
+      chip.textContent = "↵";
     } else if (st.everCommitted) {
       chip.style.display = "";
       chip.classList.add("confirmed");

@@ -77,7 +77,7 @@ Typing never commits: keystrokes only drive the autocomplete dropdown.
 The reactive value returned by \code{path_input_server()} updates when the user
 \emph{commits} — by pressing Enter, leaving the field (blur), or selecting a
 dropdown entry. While the typed text differs from the committed value, the
-field shows the "Enter ↵" button, and Escape reverts the edit. This is the
+field shows the ↵ button, and Escape reverts the edit. This is the
 design system's commit model for text fields, and it keeps half-typed
 paths from reaching the pipeline. Suggestions open on the menu surface
 of a field dropdown, from blockr.ui.
