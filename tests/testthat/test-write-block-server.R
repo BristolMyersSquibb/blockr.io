@@ -1091,7 +1091,10 @@ test_that("write_block honors blockr.verify_write_path policy", {
   blocked_dir <- file.path(base, "nope")
 
   old <- options(blockr.verify_write_path = within_dirs(allowed))
-  on.exit({ options(old); unlink(base, recursive = TRUE) })
+  on.exit({
+    options(old)
+    unlink(base, recursive = TRUE)
+  })
 
   # Allowed target: auto-write generates a write expression.
   blk_ok <- new_write_block(

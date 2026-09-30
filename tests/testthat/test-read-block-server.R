@@ -384,7 +384,10 @@ test_that("read_block honors blockr.verify_read_path policy via framework", {
   write.csv(data.frame(x = 1:3), temp_csv, row.names = FALSE)
 
   old <- options(blockr.verify_read_path = within_dirs(dir_ok))
-  on.exit({ options(old); unlink(base, recursive = TRUE) })
+  on.exit({
+    options(old)
+    unlink(base, recursive = TRUE)
+  })
 
   # Allowed: path inside the permitted root reads normally.
   block <- new_read_block(path = temp_csv)
