@@ -263,7 +263,9 @@ file_category <- function(path) {
 # link name for named slots, `.arg1`, `.arg2`, ... for unnamed ones), keyed by
 # display name; `dot_arg_values()` pairs those reference names with the realized
 # slot values and works on both the live-board `reactives` and the
-# `reactiveValues` used in tests. Keep in sync with blockr.core
+# `reactiveValues` used in tests. It calls each slot that comes back as a
+# reactive, since `as.list()` on the reactives package's collection returns the
+# slots' reactives rather than their values. Keep in sync with blockr.core
 # R/utils-misc.R (dot_sym/arg_refs/dot_arg_refs/dot_arg_values).
 dot_sym <- function(i) {
   paste0(".arg", i)
@@ -304,6 +306,8 @@ dot_arg_values <- function(x) {
   } else {
     as.list(x)
   }
+
+  vals <- lapply(vals, function(val) if (is.reactive(val)) val() else val)
 
   set_names(vals, unname(dot_arg_refs(x)))
 }

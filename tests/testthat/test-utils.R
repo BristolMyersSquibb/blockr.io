@@ -54,3 +54,11 @@ test_that("cleanup_uploads handles empty directory", {
 
   unlink(upload_dir, recursive = TRUE)
 })
+
+test_that("dot_arg_values returns the values of slots held as reactives", {
+  # A list of reactives stands in for the reactives package's collection,
+  # whose `as.list()` returns the slots' reactives rather than their values.
+  slots <- list(a = reactive(1), reactive(2))
+
+  expect_identical(isolate(dot_arg_values(slots)), list(a = 1, .arg1 = 2))
+})

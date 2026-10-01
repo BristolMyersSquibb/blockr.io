@@ -163,6 +163,40 @@ test_that("write_block handles an unnamed (DAG-UI) variadic slot", {
   unlink(temp_dir, recursive = TRUE)
 })
 
+test_that("write_block auto-write status follows slots held as reactives", {
+  # A list of reactives stands in for the reactives package's collection,
+  # whose `as.list()` returns the slots' reactives rather than their values.
+  temp_dir <- tempfile("write_test_")
+  dir.create(temp_dir)
+
+  blk <- new_write_block(
+    directory = temp_dir,
+    filename = "status",
+    format = "csv",
+    auto_write = TRUE
+  )
+
+  upstream <- reactiveVal(mtcars[1:3, 1:2])
+
+  shiny::testServer(
+    blockr.core:::block_expr_server(blk),
+    args = list(...args = list(data = reactive(upstream()))),
+    {
+      session$flushReact()
+      expect_match(r_write_status(), "Saved to")
+
+      # The status observer only writes the status, so clearing it shows
+      # whether a data change re-runs the observer.
+      r_write_status("")
+      upstream(mtcars[4:6, 1:2])
+      session$flushReact()
+      expect_match(r_write_status(), "Saved to")
+    }
+  )
+
+  unlink(temp_dir, recursive = TRUE)
+})
+
 test_that("write_block expr_server handles multiple inputs for Excel", {
   skip_if_not_installed("writexl")
 
