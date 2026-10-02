@@ -120,11 +120,7 @@ test_that("write_block handles an unnamed (DAG-UI) variadic slot", {
   # `req(length(arg_names()) > 0)` failed silently -> an empty red error
   # banner. Reproduce that exact slot shape (not the reactiveValues() used
   # elsewhere, which can only hold *named* slots).
-  args_obj <- shiny::isolate({
-    ra <- blockr.core:::reactives()
-    blockr.core:::append_reactive(ra, function() mtcars[1:5, 1:3])
-    ra
-  })
+  args_obj <- reactives::reactive_exprs(shiny::reactive(mtcars[1:5, 1:3]))
 
   shiny::isolate({
     expect_null(names(args_obj))

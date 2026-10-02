@@ -37,7 +37,8 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 VignetteBuilder: knitr
 Remotes:
-    BristolMyersSquibb/blockr.core
+    BristolMyersSquibb/blockr.core,
+    nbenn/reactives
 Imports:
     blockr.core (>= 0.1.4),
     htmltools,
@@ -53,6 +54,7 @@ Suggests:
     arrow,
     knitr,
     nanoparquet,
+    reactives,
     rmarkdown,
     testthat (>= 3.0.0),
     withr
