@@ -314,6 +314,28 @@ test_that("gear_band_ui wires the button to the band", {
   expect_match(html, 'aria-label="Opts"')
 })
 
+test_that("every gear carries blockr's tooltip, \"Settings\" (#47)", {
+  uis <- list(
+    gear_band_ui("g1", "b1", htmltools::div("field")),
+    blockr.core::expr_ui("read", new_read_block()),
+    blockr.core::expr_ui("write", new_write_block()),
+    blockr.core::expr_ui("download", new_download_block())
+  )
+
+  for (ui in uis) {
+    gear <- htmltools::tagQuery(ui)$find(".blockr-gear-btn")$selectedTags()
+    expect_length(gear, 1L)
+    expect_null(gear[[1L]]$attribs[["title"]])
+    expect_identical(gear[[1L]]$attribs[["aria-label"]], "Settings")
+    expect_identical(gear[[1L]]$attribs[["data-blockr-tooltip"]], "Settings")
+    # The light card is drawn by blockr.ui's script
+    expect_contains(
+      chr_xtr(htmltools::findDependencies(ui), "name"),
+      "blockr-ui-js"
+    )
+  }
+})
+
 test_that("an entry declares what it accepts, and blocks can ask", {
   specs <- format_options("study.csv")
   expect_named(

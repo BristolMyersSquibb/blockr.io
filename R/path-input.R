@@ -44,7 +44,7 @@ path_input_ui <- function(id, prefix = NULL, upload_id = NULL,
     tags$button(
       class = "blockr-path-upload-btn",
       type = "button",
-      title = "Upload file",
+      `data-blockr-tooltip` = "Upload file",
       `aria-label` = "Upload file from computer",
       HTML(paste0(
         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" ',
@@ -69,6 +69,9 @@ path_input_ui <- function(id, prefix = NULL, upload_id = NULL,
   }
 
   tagList(
+    # The upload button's tooltip needs blockr.ui's script, which a page
+    # without a blockr.io block does not otherwise load.
+    if (!is.null(upload_id)) blockr.ui::controls_dep(),
     path_input_dep(),
     div(
       class = "blockr-path-input",
@@ -393,7 +396,7 @@ list_dir_response <- function(path_val, dir_root = "", mode = "file",
 #' the number in two places.
 #'
 #' @keywords internal
-path_input_asset_version <- function() "0.6.1"
+path_input_asset_version <- function() "0.6.2"
 
 #' Send a value to a path field
 #'

@@ -126,7 +126,8 @@
       chip = document.createElement("button");
       chip.type = "button";
       chip.className = "blockr-path-commit";
-      chip.title = "Apply (Enter)";
+      // The chip shows its key, so it has no tooltip; screen readers get
+      // its name.
       chip.setAttribute("aria-label", "Apply (Enter)");
       chip.style.display = "none";
       var upload = field.querySelector(".blockr-path-upload-btn");

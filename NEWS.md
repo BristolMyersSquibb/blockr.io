@@ -136,6 +136,11 @@
 - In-block `h4` titles are gone: the block name is the title; section
   headings render as micro-labels (`.io-section-label` /
   `.blockr-settings__title`).
+- The gears and the path input's upload button show their tooltips as
+  blockr's light card rather than the browser's native box; the card
+  comes from blockr.ui, which the package now imports. A gear's tooltip
+  and accessible name are "Settings", and the path input's Enter chip,
+  which shows its key, has no tooltip.
 
 ## Path input: commit on Enter
 
