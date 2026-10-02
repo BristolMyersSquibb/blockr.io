@@ -353,7 +353,8 @@
 .io-block input[type="checkbox"]:checked {
   background-color: var(--blockr-color-primary, #2563eb);
   border-color: var(--blockr-color-primary, #2563eb);
-  /* check path = CHECK_SVG from settings-band.js */
+  /* The check is the path in blockr.ui's icons/confirm.svg, which its
+     checkbox draws. */
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3E%3Cpath d='M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0'/%3E%3C/svg%3E");
 }
 
@@ -457,17 +458,31 @@
   color: var(--blockr-grey-400, #9ca3af);
 }
 
-/* Caret: selectize's solid triangle -> the Blockr.icons.chevron glyph,
-   rotating 180deg while the dropdown is open (as Blockr.Select does). */
+/* The chevron of both carets is blockr.ui's (design system, "Chevrons"): a
+   1.4px stroke, drawn as a mask, as blockr.dock draws its tab's x, so it
+   takes the text colour, text-muted at rest and text-default on hover, in
+   dark mode too. A data URI can take no icon from blockr.ui, so this copies
+   the path in its icons/chevron.svg. */
+.io-block {
+  --io-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+}
+
+/* Caret: selectize's solid triangle -> the chevron, rotating 180deg while
+   the dropdown is open (as Blockr.Select does). */
 .io-block .selectize-control.single .selectize-input:after {
   content: '';
   width: 12px;
   height: 12px;
   margin-top: -6px;
   border: none !important;
-  background: no-repeat center / 12px 12px
-    url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+  background-color: var(--blockr-color-text-muted, #6b7280);
+  -webkit-mask: var(--io-chevron) center / 12px 12px no-repeat;
+  mask: var(--io-chevron) center / 12px 12px no-repeat;
   transition: transform var(--blockr-transition, 0.15s ease);
+}
+
+.io-block .selectize-control.single:hover .selectize-input:after {
+  background-color: var(--blockr-color-text-default, #111827);
 }
 
 .io-block .selectize-control.single .selectize-input.dropdown-active:after {
@@ -513,10 +528,8 @@
   font-size: var(--blockr-font-size-base, 0.875rem);
   color: var(--blockr-color-text-primary, #111827);
   background-color: var(--blockr-color-bg-input, #f9fafb);
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  background-size: 12px 12px;
+  /* No Bootstrap arrow: the wrapper draws the chevron, below. */
+  background-image: none;
   border: 1px solid var(--blockr-color-border, #e5e7eb);
   border-radius: var(--blockr-radius-lg, 8px);
   cursor: pointer;
@@ -531,4 +544,28 @@
   outline: none;
   border-color: var(--blockr-color-primary, #2563eb);
   box-shadow: var(--blockr-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.12));
+}
+
+/* A <select> cannot carry a pseudo-element, so the div shiny wraps it in
+   draws its chevron. */
+.io-block .shiny-input-container > div:has(> select.form-select, > select.form-control) {
+  position: relative;
+}
+
+.io-block .shiny-input-container > div:has(> select.form-select, > select.form-control)::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  background-color: var(--blockr-color-text-muted, #6b7280);
+  -webkit-mask: var(--io-chevron) center / 12px 12px no-repeat;
+  mask: var(--io-chevron) center / 12px 12px no-repeat;
+  pointer-events: none;
+}
+
+.io-block .shiny-input-container > div:has(> select.form-select:hover, > select.form-control:hover)::after {
+  background-color: var(--blockr-color-text-default, #111827);
 }
