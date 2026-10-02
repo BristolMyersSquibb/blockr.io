@@ -6,7 +6,7 @@ name: pkgdown
 
 jobs:
   pkgdown:
-    uses: BristolMyersSquibb/blockr.ci/.github/workflows/pkgdown.yaml@main
+    uses: BristolMyersSquibb/blockr.ci/.github/workflows/pkgdown.yaml@v0.1.1
     secrets: inherit
     permissions:
       contents: write
