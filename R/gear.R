@@ -35,7 +35,7 @@ gear_band_ui <- function(gear_id, band_id, ..., band_label = "Settings") {
           "window.blockrIoGearToggle && window.blockrIoGearToggle('%s','%s');",
           gear_id, band_id
         ),
-        htmltools::HTML(gear_icon_svg())
+        blockr.ui::small_icon("gear")
       )
     ),
     htmltools::div(
