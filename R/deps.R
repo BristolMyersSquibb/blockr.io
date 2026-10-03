@@ -1,6 +1,6 @@
 #' HTML dependencies for blockr.io block UIs
 #'
-#' Two dependencies feed the block UIs:
+#' Two dependencies of blockr.io's own feed the block UIs:
 #'
 #' - `io_settings_band_dep()`: the settings-band CSS only (`inst/css/
 #'   settings-band.css`, vendored from blockr.viz; it moves to blockr.ui with
@@ -11,10 +11,13 @@
 #' - `io_blocks_dep()`: io-owned block styling (`io-blocks.css`) and the
 #'   gear-band toggle helper (`io-blocks.js`).
 #'
-#' `io_block_deps()` bundles both for inclusion in a block's `ui`.
+#' The bundle a block's `ui` includes, `io_block_deps()`, puts blockr.ui's
+#' shared controls, [blockr.ui::controls_dep()], ahead of both: their script
+#' shows a `data-blockr-tooltip` as blockr's light card. Loaded first, their
+#' stylesheets give way to io's own where both style the same selector.
 #'
-#' @return An [htmltools::htmlDependency()], or a `tagList` of both for
-#'   `io_block_deps()`.
+#' @return An [htmltools::htmlDependency()], or a `tagList` of all of them
+#'   for `io_block_deps()`.
 #' @noRd
 io_settings_band_dep <- memoise0(function() {
   htmltools::htmlDependency(
@@ -47,6 +50,7 @@ io_blocks_dep <- memoise0(function() {
 #' @noRd
 io_block_deps <- memoise0(function() {
   tagList(
+    blockr.ui::controls_dep(),
     io_settings_band_dep(),
     io_blocks_dep()
   )

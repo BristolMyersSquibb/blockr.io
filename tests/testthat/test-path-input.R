@@ -28,6 +28,19 @@ test_that("path_input_ui returns a tagList", {
   expect_true(inherits(ui, "shiny.tag.list"))
 })
 
+test_that("the upload button carries blockr's tooltip and its script (#47)", {
+  ui <- path_input_ui("test_id", upload_id = "upload")
+  btn <- htmltools::tagQuery(ui)$find(".blockr-path-upload-btn")$selectedTags()
+
+  expect_length(btn, 1L)
+  expect_null(btn[[1L]]$attribs[["title"]])
+  expect_identical(btn[[1L]]$attribs[["data-blockr-tooltip"]], "Upload file")
+  expect_contains(
+    chr_xtr(htmltools::findDependencies(ui), "name"),
+    "blockr-ui-js"
+  )
+})
+
 test_that("path_input_ui honors custom placeholder", {
   ui <- path_input_ui("test_id", placeholder = "Enter directory path...")
   html <- as.character(htmltools::tagList(ui))

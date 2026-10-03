@@ -608,8 +608,8 @@ new_read_block <- function(
                 type = "button",
                 id = gear_id,
                 class = "blockr-gear-btn",
-                title = "Advanced settings",
-                `aria-label` = "Advanced settings",
+                `aria-label` = "Settings",
+                `data-blockr-tooltip` = "Settings",
                 `aria-controls` = band_id,
                 `aria-expanded` = "false",
                 onclick = sprintf(
