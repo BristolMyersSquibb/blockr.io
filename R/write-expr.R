@@ -15,6 +15,34 @@ write_formats <- function() {
   )
 }
 
+# The delimiters offered for csv, reading and writing. Values first, as a
+# select shows them, with the name as meta text.
+csv_delimiters <- function() {
+  c(Comma = ",", Semicolon = ";", Tab = "\t", Pipe = "|")
+}
+
+#' Options of a write format
+#'
+#' What can be set when writing `format`, declared as [format_opt] specs in
+#' the same shape as a read format's options, so the write block builds its
+#' fields with the same generator. Formats that take nothing return an
+#' empty list, and the block shows no fields for them.
+#'
+#' @param format Character. One of the values in [write_formats()].
+#' @return Named list of [format_opt] specs, possibly empty.
+#' @keywords internal
+write_format_options <- function(format) {
+  switch(
+    format,
+    csv = list(
+      sep = opt_choice("Delimiter", csv_delimiters(), default = ","),
+      na = opt_text("NA as", default = "", placeholder = "empty"),
+      quote = opt_flag("Quote strings", default = TRUE)
+    ),
+    list()
+  )
+}
+
 #' File extension for a write format
 #'
 #' Single source of truth mapping a `write_formats()` value to its output file

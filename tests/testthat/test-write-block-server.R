@@ -1121,3 +1121,173 @@ test_that("write_block honors blockr.verify_write_path policy", {
     }
   )
 })
+
+# ============================================================================
+# The gear: server saving, when to save, format and its options
+# ============================================================================
+
+test_that("server saving follows the checkbox, and keeps the folder", {
+  temp_dir <- withr::local_tempdir()
+
+  blk <- new_write_block(directory = temp_dir, filename = "f",
+                         auto_write = TRUE)
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(x = blk, data = list(...args = reactiveValues(data = iris))),
+    {
+      session$flushReact()
+      expect_equal(session$returned$state$directory(), temp_dir)
+      expect_match(deparse1(session$returned$expr()), "write_csv")
+
+      # off: no folder in the state, and the expression stops writing
+      session$setInputs(`expr-server` = FALSE)
+      expect_equal(session$returned$state$directory(), "")
+      expect_passthrough(session$returned$expr(), "data")
+
+      # on again: the folder comes back
+      session$setInputs(`expr-server` = TRUE)
+      expect_equal(session$returned$state$directory(), temp_dir)
+    }
+  )
+})
+
+test_that("'On click' and 'On change' are auto_write", {
+  blk <- new_write_block(directory = withr::local_tempdir())
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(x = blk, data = list(...args = reactiveValues(data = iris))),
+    {
+      session$flushReact()
+      expect_false(session$returned$state$auto_write())
+
+      session$setInputs(`expr-save_mode` = "change")
+      expect_true(session$returned$state$auto_write())
+
+      session$setInputs(`expr-save_mode` = "click")
+      expect_false(session$returned$state$auto_write())
+    }
+  )
+})
+
+test_that("the format select reports names, the state keeps identifiers", {
+  blk <- new_write_block()
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(x = blk, data = list(...args = reactiveValues(data = iris))),
+    {
+      session$setInputs(`expr-format` = "Parquet")
+      expect_equal(session$returned$state$format(), "parquet")
+    }
+  )
+})
+
+test_that("the csv option fields write the block's args", {
+  blk <- new_write_block(args = list(sep = ",", quote = TRUE, na = ""))
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(x = blk, data = list(...args = reactiveValues(data = iris))),
+    {
+      session$setInputs(`expr-opt_sep` = ";", `expr-opt_quote` = FALSE)
+      expect_identical(
+        session$returned$state$args(),
+        list(sep = ";", quote = FALSE, na = "")
+      )
+    }
+  )
+})
+
+test_that("the csv options are declared for writing, the others have none", {
+  specs <- blockr.io:::write_format_options("csv")
+  expect_named(specs, c("sep", "na", "quote"))
+  expect_length(blockr.io:::write_format_options("parquet"), 0)
+  expect_length(blockr.io:::write_format_options("excel"), 0)
+})
+
+test_that("a save sets the status, a failure says why", {
+  temp_dir <- withr::local_tempdir()
+  blk <- new_write_block(directory = temp_dir, filename = "out")
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(x = blk, data = list(...args = reactiveValues(data = iris))),
+    {
+      session$flushReact()
+      expect_match(output[["expr-status"]]$html, "Not saved yet")
+      expect_match(output[["expr-status"]]$html, "out.csv", fixed = TRUE)
+
+      session$setInputs(`expr-submit_write` = 1)
+      expect_true(file.exists(file.path(temp_dir, "out.csv")))
+      expect_match(output[["expr-status"]]$html, "Saved ")
+
+      session$setInputs(`expr-save_mode` = "change")
+      expect_match(output[["expr-status"]]$html, "on every change")
+    }
+  )
+})
+
+# ============================================================================
+# The download block is the write block with server saving off
+# ============================================================================
+
+test_that("new_download_block() is the write block without a folder", {
+  blk <- new_download_block(
+    args = list(sep = ",", quote = TRUE, na = ""), block_name = "Download"
+  )
+  expect_s3_class(blk, "download_block")
+  expect_identical(blockr.core::block_name(blk), "Download")
+
+  shiny::testServer(
+    blockr.core:::get_s3_method("block_server", blk),
+    args = list(x = blk, data = list(...args = reactiveValues(data = iris))),
+    {
+      session$flushReact()
+      expect_equal(session$returned$state$directory(), "")
+      expect_identical(
+        session$returned$state$args(),
+        list(sep = ",", quote = TRUE, na = "")
+      )
+      expect_passthrough(session$returned$expr(), "data")
+    }
+  )
+})
+
+test_that("a board saved with the old download block restores", {
+  # the payload as the earlier download block wrote it
+  old <- list(
+    object = c("download_block", "rbind_block", "transform_block", "block",
+               "vctrs_vctr", "list"),
+    payload = list(
+      filename = "export", format = "parquet",
+      args = list(sep = ";", quote = TRUE, na = ""),
+      block_name = "Download"
+    ),
+    constructor = list(
+      object = "blockr_ctor", constructor = "new_download_block",
+      package = "blockr.io", version = "0.1.0.9011"
+    )
+  )
+
+  blk <- blockr.core::blockr_deser(old)
+  expect_s3_class(blk, "download_block")
+  expect_identical(blockr.core::block_name(blk), "Download")
+
+  state <- blockr.core:::initial_block_state(blk)
+  expect_identical(state$filename, "export")
+  expect_identical(state$format, "parquet")
+  expect_identical(state$args, list(sep = ";", quote = TRUE, na = ""))
+
+  # and it saves and restores again, now with the write block's state
+  ser <- blockr.core::blockr_ser(blk, state = list(
+    directory = "", filename = "export", format = "parquet",
+    auto_write = FALSE, args = list(sep = ";"), mode = NULL
+  ))
+  again <- blockr.core::blockr_deser(ser)
+  expect_s3_class(again, "download_block")
+  expect_identical(
+    blockr.core:::initial_block_state(again)$format, "parquet"
+  )
+})

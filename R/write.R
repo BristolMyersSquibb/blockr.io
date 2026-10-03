@@ -1,13 +1,13 @@
 #' Unified file writing block
 #'
-#' A variadic block for writing dataframes to files in various formats.
-#' Accepts multiple input dataframes and handles single files, multi-sheet
+#' A variadic block for writing data frames to files in various formats.
+#' Accepts multiple input data frames and handles single files, multi-sheet
 #' Excel, or ZIP archives depending on format and number of inputs.
 #'
-#' @param directory Character. Default directory for file output. When non-empty,
-#'   enables server-side writing. Can be configured via
-#'   `options(blockr.write_dir = "/path")` or environment variable
-#'   `BLOCKR_WRITE_DIR`. Default: `""` (empty -- download-only until user sets a path).
+#' @param directory Character. Folder on the server to save to. Non-empty
+#'   turns server saving on; empty (the default) means the block only
+#'   downloads. Relative paths are resolved against the board's data
+#'   directory.
 #' @param filename Character. Optional fixed filename (without extension).
 #'   - **If provided**: Writes to the same file path on every save (overwrite)
 #'   - **If empty** (default): Manual saves and downloads generate a
@@ -16,21 +16,31 @@
 #'     of littering the directory
 #' @param format Character. Output format: "csv", "excel", "parquet", or "feather".
 #'   Default: "csv"
-#' @param auto_write Logical. When TRUE, automatically writes files when data changes
-#'   (requires a non-empty directory). When FALSE (default), the user must click
-#'   "Save to Server", and each click writes exactly once.
+#' @param auto_write Logical. When TRUE, saves to the server whenever the
+#'   data changes ("On change"; requires a non-empty directory). When FALSE
+#'   (default), the user clicks "Save to server" ("On click"), and each
+#'   click writes exactly once.
 #' @param args Named list of format-specific writing parameters. Only specify values
 #'   that differ from defaults. Available parameters:
 #'   - **For CSV files:** `sep` (default: ","), `quote` (default: TRUE),
 #'     `na` (default: "")
 #'   - **For Excel/Arrow:** Minimal options needed (handled by underlying packages)
 #' @param mode `r lifecycle::badge("deprecated")` Previously selected between
-#'   "browse" and "download" tabs. Now ignored -- both download and server-save
-#'   are always available. Kept for backwards compatibility; emits a deprecation
-#'   warning when non-NULL.
+#'   "browse" and "download" tabs. Now ignored. Kept for backwards
+#'   compatibility; emits a deprecation warning when non-NULL.
 #' @param ... Forwarded to [blockr.core::new_transform_block()]
 #'
 #' @details
+#' ## The block
+#'
+#' At rest the block shows one button, "Download CSV" (named after the
+#' chosen format). Everything else is in the gear: the format, the
+#' filename and the format's options, and a section switched on by "Save to
+#' the server" with the folder and when to save ("On click" or "On
+#' change"). With server saving on and "On click", the block shows "Save
+#' to server" beside the download, and a status line under the buttons
+#' says where the file goes and when it was last written.
+#'
 #' ## Variadic Inputs
 #'
 #' This block accepts multiple dataframe inputs (1 or more) similar to `bind_rows_block`.
@@ -56,33 +66,24 @@
 #' **Fixed filename** (`filename = "output"`):
 #' - Reproducible path: always writes to `{directory}/output.{ext}`
 #' - Overwrites the file on every save (every data change with auto-write)
-#' - Ideal for automated pipelines
 #'
 #' **Empty filename** (`filename = ""`):
 #' - Manual saves and downloads: unique files
-#'   `{directory}/data_YYYYMMDD_HHMMSS.{ext}` -- preserves history,
-#'   prevents accidental overwrites
+#'   `{directory}/data_YYYYMMDD_HHMMSS.{ext}`
 #' - Auto-write: fixed `{directory}/data.{ext}`, overwritten on each
-#'   change -- a timestamp would create one file per upstream change
+#'   change; a timestamp would create one file per upstream change
 #'
-#' ## Download vs Server Save
+#' ## Server saving
 #'
-#' Both options are always available in a flat layout (no tabs):
-#'
-#' **Download to Browser:**
-#' - Always available via the download button
-#' - Triggers a download to your browser's download folder
-#'
-#' **Save to Server:**
-#' - Active when a server directory path is set (non-empty)
-#' - User types a directory path (committed with Enter, blur, or a
-#'   dropdown selection -- an "Enter" chip shows while the typed path is
-#'   not yet applied) in the path input
-#' - The target directory is created at write time if missing
-#' - In manual mode each "Save to Server" click writes exactly once;
-#'   later data changes never rewrite the file
-#' - Files persist on server; when running locally, this is your
+#' - The folder field commits on Enter, blur or a pick from its
+#'   suggestions
+#' - The target folder is created at write time if missing
+#' - "On click": each click writes exactly once; later data changes never
+#'   rewrite the file
+#' - Files persist on the server; when running locally, this is your
 #'   computer's file system
+#' - The deployment's file-access policy ([file_policy]) is checked before
+#'   anything is written
 #'
 #' ## Pipeline Behavior
 #'
@@ -125,7 +126,37 @@ new_write_block <- function(
   mode = NULL,
   ...
 ) {
-  if (!is.null(mode)) {
+  write_block_impl(
+    directory = directory,
+    filename = filename,
+    format = format,
+    auto_write = auto_write,
+    args = args,
+    mode = mode,
+    class = "write_block",
+    default_ctor = "new_write_block",
+    ...
+  )
+}
+
+# The write block, for new_write_block() and new_download_block(). The
+# two differ in their class and constructor only: a saved board names both,
+# and restores a block only when they come back the same. The arguments up
+# to `mode` are the block's state and keep their names, because the state a
+# board saves is read off this frame.
+write_block_impl <- function(
+  directory = "",
+  filename = "",
+  format = "csv",
+  auto_write = FALSE,
+  args = list(),
+  mode = NULL,
+  class,
+  default_ctor,
+  ...
+) {
+  # A restored board carries `mode` as an empty value.
+  if (length(mode)) {
     .Deprecated(
       msg = paste(
         "The 'mode' parameter of new_write_block() is deprecated.",
@@ -134,6 +165,7 @@ new_write_block <- function(
       )
     )
   }
+  mode <- NULL
 
   # Validate parameters
   format <- match.arg(format, unname(write_formats()))
@@ -144,13 +176,19 @@ new_write_block <- function(
     directory <- sub("/+$", "", directory)
   }
 
-  new_transform_block(
+  # The constructor the board records: the public one that was called,
+  # unless the caller (a restore, the block registry) names one.
+  dots <- list(...)
+  if (is.null(dots[["ctor"]])) {
+    dots[["ctor"]] <- default_ctor
+    dots[["ctor_pkg"]] <- "blockr.io"
+  }
+
+  do.call(new_transform_block, c(list(
     server = function(id, ...args) {
       moduleServer(
         id,
         function(input, output, session) {
-          # directory, auto_write available here via closure
-
           # Eval-env reference names for the connected inputs: the link name
           # for named slots, ".arg1", ".arg2", ... for unnamed ones (added via
           # the DAG UI). Values are the symbols the block expression and the
@@ -160,102 +198,129 @@ new_write_block <- function(
             dot_arg_refs(...args)
           })
 
-          # Reactive values for state
-          r_directory <- reactiveVal(directory)
           r_filename <- reactiveVal(filename)
           r_format <- reactiveVal(format)
           r_auto_write <- reactiveVal(auto_write)
           r_args <- reactiveVal(args)
-          r_write_status <- reactiveVal("") # Status message
-          r_dir_ok <- reactiveVal(TRUE) # Deployment file-access policy gate
+
+          # Server saving is on while the block has a folder, so the state
+          # needs no switch of its own: `directory` is the folder while the
+          # "Save to the server" box is checked and "" while it is not. The
+          # folder itself is kept for the session, so unchecking and checking
+          # again brings it back.
+          r_server <- reactiveVal(nzchar(directory))
+          r_folder <- reactiveVal(directory)
+          r_directory <- reactive({
+            if (r_server()) r_folder() else ""
+          })
+
+          # The last manual save, the last auto-write and the last failure,
+          # for the status line.
+          r_saved <- reactiveVal(NULL)
+          r_auto_time <- reactiveVal(NULL)
+          r_error <- reactiveVal("")
 
           # Data directory from board options
           data_dir_reactive <- reactive({
             coal(get_board_option_or_null("data_dir", session), "")
           })
 
-          # Path input module for directory selection. `value` hands the
-          # module the job of keeping the field in step, which it can do
-          # after a dock panel mounts and a block cannot: the push this used
-          # to make itself went out once, before the widget's script was
-          # loaded, and was dropped. It also strips the data-directory
-          # prefix for display, so the block does not have to.
+          # Path input for the folder. `value` hands the module the job of
+          # keeping the field in step, which it can do after a dock panel
+          # mounts and a block cannot. It also strips the data-directory
+          # prefix for display.
           dir_path <- path_input_server(
             "dir_path",
             data_dir = data_dir_reactive,
             mode = "directory",
-            value = r_directory
+            value = r_folder
           )
 
-          # Handle directory path changes -- store relative path in state
           observeEvent(dir_path(), {
             path_val <- dir_path()
             req(nzchar(path_val))
-            r_directory(path_val)
+            r_folder(path_val)
           }, ignoreInit = TRUE)
 
-          # Resolve r_directory() against data_dir for I/O operations
+          observeEvent(input$server, {
+            r_server(isTRUE(input$server))
+          }, ignoreInit = TRUE)
+
+          # Resolve the folder against data_dir for I/O operations
           resolved_directory <- reactive({
             dir_val <- r_directory()
             if (!nzchar(dir_val)) return("")
             resolve_data_dir(dir_val, data_dir_reactive())
           })
 
-          # Deployment file-access policy: reject write targets outside the
-          # allowed roots before anything is written. Gates the submit
-          # handler and the auto-write expression below.
-          observeEvent(resolved_directory(), {
+          # Deployment file-access policy: a folder outside the allowed
+          # roots is rejected before anything is written. Non-empty is the
+          # reason. Gates the save handler and the auto-write expression.
+          r_policy <- reactive({
             dir_val <- resolved_directory()
-            if (!nzchar(dir_val)) {
-              r_dir_ok(TRUE)
-              return()
-            }
+            if (!nzchar(dir_val)) return("")
             tryCatch(
               {
                 resolve_and_check(dir_val, "write")
-                r_dir_ok(TRUE)
+                ""
               },
-              error = function(e) {
-                r_dir_ok(FALSE)
-                r_write_status(sprintf("\u2717 %s", conditionMessage(e)))
-              }
+              error = function(e) conditionMessage(e)
             )
-          }, ignoreNULL = FALSE)
+          })
 
-          # Update state from inputs
-          observeEvent(input$write_mode, {
-            r_auto_write(identical(input$write_mode, "auto"))
+          r_dir_ok <- reactive(!nzchar(r_policy()))
+
+          observeEvent(input$save_mode, {
+            r_auto_write(identical(input$save_mode, "change"))
           })
 
           observeEvent(input$filename, r_filename(input$filename))
-          observeEvent(input$format, r_format(input$format))
 
-          # CSV parameter updates
-          observeEvent(input$csv_sep, {
-            current <- r_args()
-            current$sep <- input$csv_sep
-            r_args(current)
+          # The select shows the formats' names ("CSV"); the state keeps
+          # the identifier ("csv").
+          observeEvent(input$format, {
+            r_format(write_format_value(input$format))
           })
-          observeEvent(input$csv_quote, {
-            current <- r_args()
-            current$quote <- input$csv_quote
-            r_args(current)
+
+          # The chosen format's options, as declared for writing. The fields
+          # report at bind, so a block starts with its options filled in, as
+          # it always did.
+          write_opts <- reactive(write_format_options(r_format()))
+          opt_id <- function(nm) paste0("opt_", nm)
+
+          output$format_opts <- renderUI({
+            format_option_fields(
+              write_opts(),
+              function(nm) session$ns(opt_id(nm)),
+              isolate(r_args())
+            )
           })
-          observeEvent(input$csv_na, {
-            current <- r_args()
-            current$na <- input$csv_na
-            r_args(current)
+          outputOptions(output, "format_opts", suspendWhenHidden = FALSE)
+
+          observe({
+            specs <- write_opts()
+            cur <- isolate(r_args())
+            nxt <- cur
+            for (nm in names(specs)) {
+              raw <- input[[opt_id(nm)]]
+              if (!is.null(raw)) {
+                nxt[[nm]] <- write_opt_value(specs[[nm]], raw)
+              }
+            }
+            if (!identical(nxt, cur)) {
+              r_args(nxt)
+            }
           })
 
           # Auto-write filename: empty means a FIXED "data" file, overwritten
-          # on each change \u2014 a timestamp here would litter the directory with
+          # on each change; a timestamp here would litter the directory with
           # one file per upstream invalidation.
           auto_filename <- function() {
             if (nzchar(r_filename())) r_filename() else "data"
           }
 
           # Full output path for a given base filename (single source for the
-          # write expression and the status message \u2014 one computation, no
+          # write expression and the status line: one computation, no
           # timestamp drift between the reported and the written file).
           output_path <- function(base_filename) {
             needs_zip <- length(arg_names()) > 1 && r_format() != "excel"
@@ -263,17 +328,17 @@ new_write_block <- function(
             file.path(resolved_directory(), paste0(base_filename, ext))
           }
 
-          # Submit button for server save (only when auto_write is FALSE).
-          # The write happens HERE, imperatively \u2014 exactly once per click.
-          # Keeping it out of the block expression means later upstream
-          # changes can never silently rewrite the file in manual mode.
+          # "Save to server" (On click). The write happens HERE,
+          # imperatively, exactly once per click. Keeping it out of the
+          # block expression means later upstream changes can never silently
+          # rewrite the file.
           observeEvent(input$submit_write, {
             req(length(arg_names()) > 0)
             req(nzchar(r_directory()))
-            req(!r_auto_write()) # Only trigger when auto_write is disabled
-            req(r_dir_ok()) # Deployment file-access policy
+            req(!r_auto_write())
+            req(r_dir_ok())
 
-            # Compute the filename once; write_expr() and the status message
+            # Compute the filename once; write_expr() and the status line
             # both use it, so the reported path is the written path.
             base_filename <- generate_filename(r_filename())
 
@@ -288,8 +353,7 @@ new_write_block <- function(
             # Bind each input under the same reference symbol the write
             # expression uses (.arg1 for an unnamed/DAG-UI slot, else the link
             # name). dot_arg_values() reads slots positionally, so it is robust
-            # to the unnamed positional keys a live board assigns -- a per-name
-            # ...args[[nm]] lookup would miss those and bind NULL.
+            # to the unnamed positional keys a live board assigns.
             eval_env <- new.env(parent = baseenv())
             arg_vals <- dot_arg_values(...args)
             for (nm in names(arg_vals)) {
@@ -300,15 +364,13 @@ new_write_block <- function(
             tryCatch(
               {
                 eval(expr, envir = eval_env)
-                r_write_status(sprintf(
-                  "\u2713 Saved to %s at %s",
-                  output_path(base_filename), format(Sys.time(), "%H:%M:%S")
+                r_error("")
+                r_saved(list(
+                  path = output_path(base_filename), time = Sys.time()
                 ))
               },
               error = function(e) {
-                r_write_status(sprintf(
-                  "\u2717 Write failed: %s", conditionMessage(e)
-                ))
+                r_error(sprintf("\u2717 Write failed: %s", conditionMessage(e)))
               }
             )
           })
@@ -348,25 +410,18 @@ new_write_block <- function(
             }
           })
 
-          # Update status when auto-write generates a new expression
+          # The time of the last auto-write, for the status line. Depends on
+          # the data, which is what the auto-write expression reruns on.
           observe({
             req(nzchar(r_directory()))
             req(r_auto_write())
             req(r_dir_ok())
             req(length(arg_names()) > 0)
 
-            # Depend on all data values to trigger status update when data
-            # changes. dot_arg_values() realizes every slot (including unnamed
-            # positional ones), establishing the reactive dependency.
             dot_arg_values(...args)
 
-            # Deterministic path (fixed filename in auto mode) \u2014 matches the
-            # path baked into the auto-write expression.
-            full_path <- output_path(generate_filename(auto_filename()))
-            timestamp <- format(Sys.time(), "%H:%M:%S")
-            r_write_status(sprintf("\u2713 Saved to %s at %s", full_path, timestamp))
+            r_auto_time(Sys.time())
           })
-
 
           # Download handler -- always available
           output$download_data <- downloadHandler(
@@ -376,28 +431,24 @@ new_write_block <- function(
               paste0(base, format_extension(r_format(), needs_zip = needs_zip))
             },
             content = function(file) {
-              # Use a fixed timestamp for consistent filename generation
-              # This prevents mismatch between write_expr and file search
+              # One timestamp for the written file and the file search below.
               fixed_timestamp <- Sys.time()
               base_filename <- generate_filename(r_filename(), fixed_timestamp)
 
-              # Generate write expression for temp directory
               temp_dir <- dirname(file)
               expr <- write_expr(
                 data_names = arg_names(),
                 directory = temp_dir,
-                filename = base_filename, # Use pre-computed filename
+                filename = base_filename,
                 format = r_format(),
                 args = r_args()
               )
 
-              # Create environment with parent.frame() as parent
               eval_env <- new.env(parent = parent.frame())
 
               # Bind each input under its reference symbol (.arg1 for unnamed
-              # DAG-UI slots, else the link name) -- the same names write_expr()
-              # emits. dot_arg_values() handles both the live-board reactives
-              # and the reactiveValues used in tests.
+              # DAG-UI slots, else the link name) -- the same names
+              # write_expr() emits.
               arg_vals <- dot_arg_values(...args)
               for (nm in names(arg_vals)) {
                 data_val <- arg_vals[[nm]]
@@ -408,11 +459,8 @@ new_write_block <- function(
                 )
               }
 
-              # Evaluate write expression - this writes the file(s)
               eval(expr, envir = eval_env)
 
-              # Find generated file and copy to download location
-              # Use same base_filename as we used for write_expr
               generated_file <- list.files(
                 temp_dir,
                 pattern = paste0(
@@ -424,55 +472,100 @@ new_write_block <- function(
               )[1]
 
               if (!is.na(generated_file) && file.exists(generated_file)) {
-                # Only copy if source and dest are different (can be same in tests)
-                if (normalizePath(generated_file) != normalizePath(file, mustWork = FALSE)) {
+                # Source and destination can be the same file (tests).
+                if (normalizePath(generated_file) !=
+                      normalizePath(file, mustWork = FALSE)) {
                   file.copy(generated_file, file, overwrite = TRUE)
                 }
               }
             }
           )
 
-
-          # Status badge for directory validation. Runs on committed path
-          # changes only (Enter/blur/selection), so the dir.exists() check
-          # is cheap. "New directory" signals it will be created on save.
-          # Re-sent when the widget reports it is on screen, for the same
-          # reason the value is.
+          # Badge under the folder field: an existing folder, or one that
+          # will be created on the first save. Re-sent when the widget says
+          # it is on screen, for the same reason the value is.
           observe({
             input[["dir_path-path_text_ready"]]
-            dir <- r_directory()
-            if (nzchar(dir) && dir.exists(resolved_directory())) {
+            dir <- r_folder()
+            id <- session$ns("dir_path-path_text")
+            full <- if (nzchar(dir)) resolve_data_dir(dir, data_dir_reactive())
+            if (nzchar(dir) && dir.exists(full)) {
               session$sendCustomMessage("blockr-path-status", list(
-                id = session$ns("dir_path-path_text"),
-                text = "Directory",
-                state = "success"
+                id = id, text = "Directory", state = "success"
               ))
             } else if (nzchar(dir)) {
               session$sendCustomMessage("blockr-path-status", list(
-                id = session$ns("dir_path-path_text"),
-                text = "New directory (created on save)",
+                id = id, text = "New directory (created on save)",
                 state = "info"
               ))
             } else {
               session$sendCustomMessage("blockr-path-status", list(
-                id = session$ns("dir_path-path_text"),
-                text = "",
-                state = "none"
+                id = id, text = "", state = "none"
               ))
             }
           })
 
-          # Output: Write status display
-          output$write_status <- renderText({
-            r_write_status()
+          # The face: "Download <FORMAT>", and "Save to server" as the main
+          # button beside it while server saving is on and saves on click.
+          output$face <- renderUI({
+            save_on_click <- r_server() && !r_auto_write()
+            div(
+              class = "io-write-face",
+              if (save_on_click) {
+                blockr.ui::blockr_button(
+                  session$ns("submit_write"),
+                  "Save to server",
+                  kind = "main",
+                  disabled = !nzchar(r_folder()) || !r_dir_ok()
+                )
+              },
+              blockr.ui::blockr_download_button(
+                session$ns("download_data"),
+                paste("Download", write_format_label(r_format())),
+                kind = if (save_on_click) "secondary" else "main"
+              )
+            )
           })
 
-          # Output: Show/hide format-specific options
-          output$show_csv_options <- reactive({
-            identical(r_format(), "csv")
-          })
+          # The status line under the buttons, while server saving is on.
+          output$status <- renderUI({
+            req(r_server())
 
-          outputOptions(output, "show_csv_options", suspendWhenHidden = FALSE)
+            err <- if (nzchar(r_policy())) {
+              sprintf("\u2717 %s", r_policy())
+            } else {
+              r_error()
+            }
+
+            if (nzchar(err)) {
+              return(div(class = "io-write-status io-write-status--error", err))
+            }
+
+            text <- if (!nzchar(r_folder())) {
+              "Not saved yet \u00b7 no folder chosen"
+            } else if (r_auto_write()) {
+              last <- r_auto_time()
+              paste0(
+                "Overwrites ", output_path(generate_filename(auto_filename())),
+                " on every change",
+                if (!is.null(last)) paste0(" \u00b7 last ", format(last, "%H:%M"))
+              )
+            } else if (is.null(r_saved())) {
+              base <- if (nzchar(r_filename())) {
+                generate_filename(r_filename())
+              } else {
+                "data_<timestamp>"
+              }
+              paste0("Not saved yet \u00b7 ", output_path(base))
+            } else {
+              saved <- r_saved()
+              paste0(
+                "Saved ", saved$path, " \u00b7 ", format(saved$time, "%H:%M")
+              )
+            }
+
+            div(class = "io-write-status", text)
+          })
 
           list(
             expr = r_write_expression,
@@ -489,244 +582,61 @@ new_write_block <- function(
       )
     },
     ui = function(id) {
-      gear_id <- NS(id, "gear_btn")
-      band_id <- NS(id, "gear_band")
+      ns <- NS(id)
       tagList(
         io_block_deps(),
         div(
-          class = "block-container io-block write-block-container",
-
-          # Hidden input to track mode
-          div(
-            style = "display:none;",
-            textInput(
-              NS(id, "write_mode"),
-              label = NULL,
-              value = if (auto_write) "auto" else "manual"
-            )
-          ),
-
-          # --- File Configuration (shared) ---
-          div(
-            class = "block-form-grid",
-            style = "padding-bottom: 0; margin-bottom: 0;",
-            div(
-              class = "block-section",
-              div(
-                class = "blockr-gear-row",
-                tags$button(
-                  type = "button",
-                  id = gear_id,
-                  class = "blockr-gear-btn",
-                  title = "Advanced settings",
-                  `aria-label` = "Advanced settings",
-                  `aria-controls` = band_id,
-                  `aria-expanded` = "false",
-                  onclick = sprintf(
-                    "window.blockrIoGearToggle && window.blockrIoGearToggle('%s','%s');",
-                    gear_id, band_id
-                  ),
-                  HTML(gear_icon_svg())
-                )
+          class = "io-block io-write-block",
+          blockr.ui::gear_tray(
+            ns("gear"),
+            blockr.ui::tray_section(
+              "File",
+              blockr.ui::select_input(
+                ns("format"),
+                "Format",
+                choices = names(write_formats()),
+                selected = write_format_label(format)
               ),
-
-              # Settings band: in-flow panel spanning the form grid (see the
-              # .block-form-grid .blockr-settings rule in io-blocks.css).
-              # Visibility is class-driven; blockrIoGearToggle() flips it.
-              div(
-                id = band_id,
-                class = "blockr-settings blockr-settings--beak",
-                role = "region",
-                `aria-label` = "Write settings",
-
-                div(class = "blockr-settings__title", "Format options"),
-
-                conditionalPanel(
-                  condition = "output['show_csv_options']",
-                  ns = NS(id),
-                  class = "blockr-settings__grid",
-                  div(
-                    class = "blockr-settings__field",
-                    tags$label(
-                      class = "blockr-label",
-                      `for` = NS(id, "csv_sep"),
-                      "Delimiter"
-                    ),
-                    selectizeInput(
-                      inputId = NS(id, "csv_sep"),
-                      label = NULL,
-                      choices = c(
-                        "Comma (,)" = ",",
-                        "Semicolon (;)" = ";",
-                        "Tab (\\t)" = "\t",
-                        "Pipe (|)" = "|"
-                      ),
-                      selected = if (!is.null(args$sep)) args$sep else ",",
-                      options = list(create = TRUE),
-                      width = "100%"
-                    )
-                  ),
-                  div(
-                    class = "blockr-settings__field",
-                    checkboxInput(
-                      inputId = NS(id, "csv_quote"),
-                      label = "Quote strings",
-                      value = if (!is.null(args$quote)) args$quote else TRUE
-                    )
-                  ),
-                  div(
-                    class = "blockr-settings__field",
-                    tags$label(
-                      class = "blockr-label",
-                      `for` = NS(id, "csv_na"),
-                      "NA representation"
-                    ),
-                    textInput(
-                      inputId = NS(id, "csv_na"),
-                      label = NULL,
-                      value = if (!is.null(args$na)) args$na else "",
-                      placeholder = "default: empty string",
-                      width = "100%"
-                    )
-                  )
-                )
+              blockr.ui::text_input(
+                ns("filename"),
+                "Filename",
+                value = filename,
+                placeholder = "timestamped"
               ),
+              # The chosen format's options, drawn by the server. Its
+              # children are fields of this grid (io-blocks.css).
+              uiOutput(
+                ns("format_opts"),
+                class = "blockr-settings__field io-tray-fields"
+              )
+            ),
+            blockr.ui::tray_section(
+              "Save to the server",
               div(
-                class = "block-section-grid",
-                div(
-                  class = "block-input-wrapper",
-                  textInput(
-                    inputId = NS(id, "filename"),
-                    label = "Filename (optional)",
-                    value = filename,
-                    placeholder = "Leave empty for auto-timestamp"
-                  ),
-                  # The placeholder covers "empty means timestamped". These two
-                  # consequences it cannot: a fixed name loses every prior
-                  # save, and an empty name under auto-save yields "data"
-                  # rather than the timestamp the placeholder promises.
-                  div(
-                    class = "block-help-text",
-                    style = "font-size: 0.75rem;",
-                    "A fixed name is overwritten on every save.",
-                    "Left empty, auto-save writes \"data\" instead of a",
-                    "timestamped file."
-                  )
+                class = "blockr-settings__field blockr-settings__field--full",
+                tags$label(
+                  class = "blockr-label",
+                  `for` = ns("dir_path-path_text"),
+                  "Folder"
                 ),
-                div(
-                  class = "block-input-wrapper",
-                  selectInput(
-                    inputId = NS(id, "format"),
-                    label = "Format",
-                    choices = write_formats(),
-                    selected = format
-                  )
-                )
-              )
-            )
-          ),
-
-          # --- Separator ---
-          tags$hr(style = paste(
-            "border-top: 1px solid var(--blockr-color-border, #e5e7eb);",
-            "margin: 16px 0;"
-          )),
-
-          # --- Download to Browser ---
-          div(
-            class = "block-section",
-            # No hint: the sibling section is labelled "Save to Server", so the
-            # two labels already draw the contrast a line here would spell out.
-            div(class = "io-section-label", "Download to Browser"),
-            downloadButton(
-              NS(id, "download_data"),
-              "Download",
-              class = "btn-outline-secondary btn-sm"
-            )
-          ),
-
-          # --- OR divider ---
-          div(
-            class = "io-or-divider",
-            tags$span("or")
-          ),
-
-          # --- Save to Server ---
-          div(
-            class = "block-section io-file-location",
-            div(class = "io-section-label", "Save to Server"),
-            # The placeholder says to type a path and the Enter chip says how
-            # to commit it. Only the suggestion list is invisible until you
-            # start typing.
-            tags$p(
-              class = "blockr-path-hint",
-              "Typing suggests matching directories."
-            ),
-            path_input_ui(
-              NS(id, "dir_path"),
-              placeholder = "Enter directory path..."
-            ),
-            # Mode toggle + save button row
-            div(
-              class = "mt-2",
-              style = "display: flex; align-items: center; gap: 8px;",
-              div(
-                class = "io-exec-toggle",
-                tags$button(
-                  "Manual",
-                  class = if (!auto_write) "active" else "",
-                  onclick = sprintf(
-                    "
-                    document.getElementById('%s').value = 'manual';
-                    document.getElementById('%s').dispatchEvent(new Event('change'));
-                    this.classList.add('active');
-                    this.nextElementSibling.classList.remove('active');
-                    ",
-                    NS(id, "write_mode"), NS(id, "write_mode")
-                  )
-                ),
-                tags$button(
-                  "Auto",
-                  class = if (auto_write) "active" else "",
-                  onclick = sprintf(
-                    "
-                    document.getElementById('%s').value = 'auto';
-                    document.getElementById('%s').dispatchEvent(new Event('change'));
-                    this.classList.add('active');
-                    this.previousElementSibling.classList.remove('active');
-                    ",
-                    NS(id, "write_mode"), NS(id, "write_mode")
-                  )
+                path_input_ui(
+                  ns("dir_path"),
+                  placeholder = "Folder on the server"
                 )
               ),
-              conditionalPanel(
-                condition = "input.write_mode === 'manual'",
-                ns = NS(id),
-                actionButton(
-                  NS(id, "submit_write"),
-                  "Save to Server",
-                  class = "btn-primary btn-sm"
-                )
-              )
+              blockr.ui::segmented_input(
+                ns("save_mode"),
+                "Save",
+                choices = c("On click" = "click", "On change" = "change"),
+                selected = if (isTRUE(auto_write)) "change" else "click"
+              ),
+              toggle = ns("server"),
+              value = nzchar(directory)
             ),
-            # Auto-save info box
-            conditionalPanel(
-              condition = "input.write_mode === 'auto'",
-              ns = NS(id),
-              # "Auto-save enabled" restates the toggle the user just pressed.
-              # The overwrite-per-change consequence is the reason to show it.
-              div(
-                class = "io-exec-auto-hint mt-2",
-                "Writes to a fixed file, overwritten on every data change."
-              )
-            ),
-            # Status message
-            div(
-              class = "io-exec-status mt-2",
-              textOutput(NS(id, "write_status"))
-            )
+            label = "Write settings"
           ),
-
+          uiOutput(ns("face")),
+          uiOutput(ns("status"))
         )
       )
     },
@@ -734,8 +644,32 @@ new_write_block <- function(
       stopifnot(length(...args) >= 1L)
     },
     allow_empty_state = TRUE,
-    class = c("write_block", "rbind_block"),
-    expr_type = "bquoted",
-    ...
+    class = c(class, "rbind_block"),
+    expr_type = "bquoted"
+  ), dots))
+}
+
+# A write format's name ("CSV") for its identifier ("csv").
+write_format_label <- function(format) {
+  fmts <- write_formats()
+  names(fmts)[match(format, fmts)] %||% format
+}
+
+# A write format's identifier for what its select reports: the name the
+# select shows, or the identifier itself.
+write_format_value <- function(x) {
+  fmts <- write_formats()
+  if (x %in% names(fmts)) unname(fmts[[x]]) else x
+}
+
+# A write option's value as the writer takes it. Unlike a read option, a
+# value at its default is kept: the block has always carried its csv
+# options in full.
+write_opt_value <- function(spec, raw) {
+  switch(
+    spec$type,
+    flag = isTRUE(raw),
+    number = suppressWarnings(as.numeric(raw)),
+    as.character(raw)
   )
 }

@@ -260,10 +260,7 @@ register_io_formats <- function() {
     options = list(
       sep = opt_choice(
         "Delimiter",
-        choices = c(
-          "Comma (,)" = ",", "Semicolon (;)" = ";",
-          "Tab (\\t)" = "\t", "Pipe (|)" = "|"
-        ),
+        choices = csv_delimiters(),
         default = ",",
         create = TRUE
       ),
@@ -276,7 +273,7 @@ register_io_formats <- function() {
       skip = opt_number("Skip rows", default = 0),
       n_max = opt_number(
         "Max rows to read", default = Inf,
-        placeholder = "default: all rows"
+        placeholder = "all"
       ),
       col_names = opt_flag("First row is header", default = TRUE)
     ),
@@ -300,7 +297,7 @@ register_io_formats <- function() {
       skip = opt_number("Skip rows", default = 0),
       n_max = opt_number(
         "Max rows to read", default = Inf,
-        placeholder = "default: all rows"
+        placeholder = "all"
       ),
       col_names = opt_flag("First row is header", default = TRUE)
     )

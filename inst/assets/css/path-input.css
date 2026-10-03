@@ -1,359 +1,181 @@
-/* blockr path-input widget styles
+/* blockr.io path input: a text field with an optional data-directory
+   prefix, an Enter button, an upload button, and suggestions on the menu
+   surface of a field dropdown (blockr.ui's .blockr-select__dropdown).
+   Meaning tokens only; every rule is scoped to an io- class. */
 
-   Tokenized against the blockr design system: every color/geometry literal
-   is written as var(--blockr-*, <canonical fallback>). blockr.io renders
-   standalone, so the fallback value IS the contract and must equal the
-   design-system canon. */
-
-.blockr-path-hint {
-  font-size: var(--blockr-font-size-xs, 0.75rem);
-  color: var(--blockr-color-text-muted, #6b7280);
-  margin: 0 0 6px 0;
-}
-
-.blockr-path-input {
+.io-path-input {
+  --blockr-io-badge-font-size: 11px;
+  --blockr-io-badge-h: 18px;
   width: 100%;
 }
 
-.blockr-path-input-field {
+/* The field: a design-system text field (42px, bg-field, border-default,
+   radius 8) holding the prefix, the input and its buttons. */
+.io-path-field {
   position: relative;
   display: flex;
   align-items: center;
-  border: 1px solid var(--blockr-color-border, #e5e7eb);
-  border-radius: var(--blockr-radius-lg, 8px);
-  background: var(--blockr-color-bg-input, #f9fafb);
-  overflow: visible;
-  transition: border-color var(--blockr-transition, 0.15s ease),
-    box-shadow var(--blockr-transition, 0.15s ease),
-    background-color var(--blockr-transition, 0.15s ease);
+  box-sizing: border-box;
+  min-height: var(--blockr-control-h);
+  border: 1px solid var(--blockr-color-border-default);
+  border-radius: var(--blockr-radius-lg);
+  background: var(--blockr-color-bg-field);
+  transition: border-color var(--blockr-transition),
+    box-shadow var(--blockr-transition),
+    background-color var(--blockr-transition);
 }
 
-/* Required-but-empty field: soft amber "needs a value" cue, mirroring
-   blockr.viz's .dd-role-required-empty (design-system warning tokens). An
-   affordance, not a hard error; the :focus-within rule below overrides it
-   while the user is actively typing.
-   .blockr-path-required-empty is a legacy alias, remove next release. */
-.blockr-path-input-field.blockr-field--required-empty,
-.blockr-path-input-field.blockr-path-required-empty {
-  border-color: var(--blockr-color-warning, #f59e0b);
-  background: var(--blockr-color-warning-bg, #fffbeb);
+.blockr-settings .io-path-field {
+  background: var(--blockr-color-bg-surface);
 }
 
-/* Required-but-empty field: soft amber "needs a value" cue, mirroring
-   blockr.viz's .dd-role-required-empty (design-system warning tokens). An
-   affordance, not a hard error; the :focus-within rule below overrides it
-   while the user is actively typing. */
-.blockr-path-input-field.blockr-path-required-empty {
-  border-color: var(--blockr-color-warning, #f59e0b);
-  background: var(--blockr-color-warning-bg, #fffbeb);
+.io-path-field.blockr-field--required-empty {
+  border-color: var(--blockr-color-border-warning);
+  background: var(--blockr-color-bg-warning);
 }
 
-.blockr-path-input-field:focus-within {
-  background-color: #fff;
-  border-color: var(--blockr-color-primary, #2563eb);
-  box-shadow: var(--blockr-focus-ring, 0 0 0 3px rgba(37, 99, 235, 0.12));
+.io-path-field:focus-within {
+  background: var(--blockr-color-bg-surface);
+  border-color: var(--blockr-color-border-accent);
+  box-shadow: var(--blockr-focus-ring);
 }
 
-.blockr-path-prefix {
-  padding: 0.375rem 0 0.375rem 0;
-  color: var(--blockr-color-text-muted, #6b7280);
-  font-size: 0.875rem;
+.io-path-prefix {
+  color: var(--blockr-color-text-muted);
+  font-size: var(--blockr-font-size-base);
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
   flex-shrink: 0;
 }
 
-.blockr-path-text {
+.io-path-prefix--active {
+  padding-left: 12px;
+  padding-right: 2px;
+}
+
+.io-path-text {
   flex-grow: 1;
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-  padding: 10px 14px;
-  font-size: 0.875rem;
   min-width: 0;
+  padding: 0 12px;
+  border: none;
+  outline: none;
+  box-shadow: none;
   background: transparent;
+  color: var(--blockr-color-text-default);
+  font-size: var(--blockr-font-size-base);
   text-overflow: ellipsis;
   text-align: left;
 }
 
-/* When prefix is visible: give it left padding + a small gap, and reduce input left padding */
-.blockr-path-prefix-active {
-  padding-left: 0.75rem;
-  padding-right: 0.25rem;
+.io-path-text::placeholder {
+  color: var(--blockr-color-text-muted);
 }
 
-.blockr-path-prefix-active + .blockr-path-text {
-  padding-left: 2px;
+.io-path-prefix--active + .io-path-text {
+  padding-left: 0;
 }
 
-.blockr-path-text:focus {
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
+.io-path-field > .blockr-expr-confirm {
+  margin-right: 8px;
 }
 
-.blockr-path-dropdown {
-  display: none;
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 99999;
-  background: #fff;
-  border: 1px solid var(--blockr-color-border, #e5e7eb);
-  border-top: none;
-  border-radius: 0 0 var(--blockr-radius-lg, 8px) var(--blockr-radius-lg, 8px);
-  box-shadow: var(--blockr-shadow-dropdown, 0 4px 12px rgba(0, 0, 0, 0.1));
-  max-height: 240px;
-  overflow-y: auto;
+/* Upload: an icon tool at the field's right end. */
+.io-path-upload {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--blockr-control-h-xs);
+  height: var(--blockr-control-h-xs);
+  margin-right: 8px;
+  padding: 0;
+  border: none;
+  border-radius: var(--blockr-radius-sm);
+  background: transparent;
+  color: var(--blockr-color-text-muted);
+  cursor: pointer;
+  transition: color var(--blockr-transition),
+    background-color var(--blockr-transition);
 }
 
-.blockr-path-dropdown-item {
+.io-path-upload:hover {
+  color: var(--blockr-color-text-default);
+  background: var(--blockr-color-bg-hover);
+}
+
+.io-path-upload:focus-visible {
+  outline: var(--blockr-focus-outline);
+  outline-offset: var(--blockr-focus-offset);
+}
+
+/* A file dragged over the field. */
+.io-path-field.io-path-field--dragover {
+  border-style: dashed;
+  border-color: var(--blockr-color-border-accent);
+  background: var(--blockr-color-bg-accent-subtle);
+}
+
+/* Suggestions: rows of the field dropdown, with an icon before the name
+   and the size as meta text. */
+.io-path-option {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
-  cursor: pointer;
-  font-size: 0.85rem;
 }
 
-.blockr-path-dropdown-item:hover,
-.blockr-path-dropdown-item.active {
-  background-color: var(--blockr-color-bg-hover, #f3f4f6);
-}
-
-.blockr-path-icon {
+.io-path-option__icon {
   flex-shrink: 0;
-  color: var(--blockr-color-text-muted, #6b7280);
-  display: flex;
-  align-items: center;
+  display: inline-flex;
+  color: var(--blockr-color-text-muted);
 }
 
-.blockr-path-name {
-  flex-grow: 1;
+.io-path-option:hover .io-path-option__icon,
+.io-path-option.blockr-select__option--highlighted .io-path-option__icon {
+  color: var(--blockr-color-text-default);
+}
+
+.io-path-option__name {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.blockr-path-size {
+.io-path-option .blockr-select__opt-label {
   flex-shrink: 0;
-  font-size: var(--blockr-font-size-xs, 0.75rem);
-  color: var(--blockr-grey-400, #9ca3af);
 }
 
-/* Commit chip — design-system confirm cycle (§5.5): armed "Enter ↵" while
-   the typed value is not committed, faded ✓ once applied. Height stays a
-   literal 24px for visual parity with blockr.dplyr's .blockr-expr-confirm. */
-.blockr-path-commit {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 8px;
-  height: 24px;
-  margin-right: 8px;
-  background: rgba(37, 99, 235, 0.08);
-  border: 1px solid rgba(37, 99, 235, 0.3);
-  border-radius: var(--blockr-radius-sm, 4px);
-  color: var(--blockr-color-primary, #2563eb);
-  cursor: pointer;
-  flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  transition: background var(--blockr-transition, 0.15s ease),
-    border-color var(--blockr-transition, 0.15s ease),
-    opacity var(--blockr-transition, 0.15s ease);
-}
-
-.blockr-path-commit:hover {
-  background: rgba(37, 99, 235, 0.15);
-  border-color: rgba(37, 99, 235, 0.5);
-}
-
-.blockr-path-commit.confirmed {
-  background: none;
-  border-color: transparent;
-  color: var(--blockr-color-text-subtle, #9ca3af);
-  opacity: 0.5;
-  cursor: default;
-}
-
-.blockr-path-commit .blockr-kbd {
-  opacity: 0.55;
-  font-size: 0.95em;
-}
-
-/* Truncation footer in the dropdown */
-.blockr-path-dropdown-footer {
-  padding: 5px 12px;
-  font-size: 0.7rem;
-  color: var(--blockr-color-text-subtle, #9ca3af);
-  border-top: 1px solid var(--blockr-color-bg-hover, #f3f4f6);
-  text-align: center;
-}
-
-/* Commit chip — design-system confirm cycle (§5.5): armed "Enter ↵" while
-   the typed value is not committed, faded ✓ once applied */
-.blockr-path-commit {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 8px;
-  height: 24px;
-  margin-right: 8px;
-  background: rgba(37, 99, 235, 0.08);
-  border: 1px solid rgba(37, 99, 235, 0.3);
-  border-radius: 4px;
-  color: #2563eb;
-  cursor: pointer;
-  flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
-}
-
-.blockr-path-commit:hover {
-  background: rgba(37, 99, 235, 0.15);
-  border-color: rgba(37, 99, 235, 0.5);
-}
-
-.blockr-path-commit.confirmed {
-  background: none;
-  border-color: transparent;
-  color: #9ca3af;
-  opacity: 0.5;
-  cursor: default;
-}
-
-.blockr-path-commit .blockr-kbd {
-  opacity: 0.55;
-  font-size: 0.95em;
-}
-
-/* Truncation footer in the dropdown */
-.blockr-path-dropdown-footer {
-  padding: 5px 12px;
-  font-size: 0.7rem;
-  color: #9ca3af;
-  border-top: 1px solid #f3f4f6;
-  text-align: center;
-}
-
-/* Upload icon button inside path input */
-.blockr-path-upload-btn {
-  flex-shrink: 0;
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  border: none;
-  border-left: 1px solid var(--blockr-color-border, #e5e7eb);
-  border-radius: 0 var(--blockr-radius-lg, 8px) var(--blockr-radius-lg, 8px) 0;
-  background: var(--blockr-color-bg-input, #f9fafb);
-  color: var(--blockr-color-text-muted, #6b7280);
-  cursor: pointer;
-  padding: 0;
-  transition: color var(--blockr-transition, 0.15s ease),
-    background-color var(--blockr-transition, 0.15s ease);
-}
-
-.blockr-path-upload-btn:hover {
-  color: var(--blockr-color-primary, #2563eb);
-  background: var(--blockr-color-bg-hover, #f3f4f6);
-}
-
-/* Drag-over state */
-.blockr-path-input-field.blockr-path-dragover {
-  border: 2px dashed var(--blockr-color-primary, #2563eb);
-  background: var(--blockr-color-primary-bg, #eff6ff);
-}
-
-.blockr-path-input-field.blockr-path-dragover .blockr-path-upload-btn {
-  color: var(--blockr-color-primary, #2563eb);
-  border-left-color: var(--blockr-color-primary, #2563eb);
-}
-
-.blockr-path-status {
-  font-size: 0.8rem;
-  color: var(--blockr-color-text-muted, #6b7280);
+/* The status badge under the field. */
+.io-path-status:not(:empty) {
   margin-top: 6px;
-  min-height: 1.2em;
 }
 
-/* Data directory set button — three states: disabled, enabled, success */
-.blockr-datadir-btn {
-  background-color: var(--blockr-color-text-muted, #6b7280);
-  border-color: var(--blockr-color-text-muted, #6b7280);
-  color: #fff;
-  opacity: 0.65;
-  cursor: default;
-  transition: background-color var(--blockr-transition, 0.15s ease),
-    border-color var(--blockr-transition, 0.15s ease),
-    opacity var(--blockr-transition, 0.15s ease);
-}
-
-.blockr-datadir-btn:not(:disabled) {
-  background-color: var(--blockr-color-primary, #2563eb);
-  border-color: var(--blockr-color-primary, #2563eb);
-  color: #fff;
-  opacity: 1;
-  cursor: pointer;
-}
-
-.blockr-datadir-btn:not(:disabled):hover {
-  background-color: var(--blockr-color-primary-hover, #1d4ed8);
-  border-color: var(--blockr-color-primary-hover, #1d4ed8);
-}
-
-.blockr-datadir-btn.blockr-datadir-btn-success {
-  background-color: var(--blockr-color-success, #16a34a);
-  border-color: var(--blockr-color-success, #16a34a);
-  color: #fff;
-  opacity: 1;
-}
-
-/* Checkmark animation */
-@keyframes blockr-fadeInScale {
-  0% { opacity: 0; transform: scale(0.8); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-.blockr-path-check {
-  display: inline-block;
-  animation: blockr-fadeInScale 0.4s ease-out;
-}
-
-/* File-type status badge — matches .badge-two-tone from blockr.dock.
-   Color triples stay literal: no badge tokens yet. */
-.blockr-path-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  font-size: 0.625rem;
-  border-radius: var(--blockr-radius-sm, 4px);
+.io-path-badge {
+  display: inline-flex;
+  align-items: center;
+  height: var(--blockr-io-badge-h);
+  padding: 0 7px;
+  box-sizing: border-box;
+  border: 1px solid var(--blockr-color-border-default);
+  border-radius: var(--blockr-radius-pill);
+  background: var(--blockr-color-bg-subtle);
+  color: var(--blockr-color-text-muted);
+  font-size: var(--blockr-io-badge-font-size);
+  font-weight: var(--blockr-font-weight-medium);
   white-space: nowrap;
-  line-height: 1.4;
 }
 
-.blockr-path-badge-success {
-  background-color: #ecfdf5;
-  color: #047857;
-  border: 1px solid #a7f3d0;
+.io-path-badge--danger {
+  border-color: var(--blockr-color-border-danger-subtle);
+  background: var(--blockr-color-bg-danger);
+  color: var(--blockr-color-text-danger);
 }
 
-.blockr-path-badge-error {
-  background-color: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fca5a5;
-}
-
-.blockr-path-badge-info {
-  background-color: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
+/* A hint above or under a path field. */
+.io-path-hint {
+  margin: 0 0 6px;
+  color: var(--blockr-color-text-muted);
+  font-size: var(--blockr-font-size-xs);
 }

@@ -179,7 +179,9 @@ member_options <- function(paths) {
 }
 
 # Display value for a field: what the widget should show for this option
-# given the block's current (deviations-only) option list.
+# given the block's current (deviations-only) option list. Typed as the
+# control reports it: logical for a flag, numeric (NA for empty) for a
+# number, character otherwise.
 opt_display_value <- function(spec, value) {
   if (is.null(value)) {
     value <- spec$default
@@ -187,6 +189,14 @@ opt_display_value <- function(spec, value) {
 
   if (identical(spec$type, "flag")) {
     return(isTRUE(value))
+  }
+
+  if (identical(spec$type, "number")) {
+    num <- suppressWarnings(as.numeric(value))
+    if (!length(num) || is.na(num[[1L]]) || is.infinite(num[[1L]])) {
+      return(NA_real_)
+    }
+    return(num[[1L]])
   }
 
   if (is.null(value) || identical(value, Inf) || !length(value)) {
@@ -208,11 +218,63 @@ opt_placeholder <- function(spec) {
   paste0("default: ", spec$default)
 }
 
+# The choices of a select, with the current value added when it is not one
+# of them: a restored board can carry a value typed where typing was
+# allowed (a delimiter), and a select cannot show what it does not list.
+opt_choices <- function(spec, value) {
+  choices <- spec$choices
+
+  if (nzchar(value) && !value %in% as.character(unname(choices))) {
+    choices <- c(choices, set_names(value, value))
+  }
+
+  choices
+}
+
+# One control per spec, each a field of the tray's grid.
+format_option_fields <- function(specs, ns, values = list()) {
+  lapply(names(specs), function(nm) {
+    spec <- specs[[nm]]
+    val <- opt_display_value(spec, values[[nm]])
+
+    switch(
+      spec$type,
+      choice = blockr.ui::select_input(
+        ns(nm), spec$label, choices = opt_choices(spec, val), selected = val
+      ),
+      flag = wide_checkbox(
+        blockr.ui::checkbox_input(ns(nm), spec$label, value = val),
+        spec$label
+      ),
+      number = blockr.ui::number_input(
+        ns(nm), spec$label, value = val, placeholder = opt_placeholder(spec)
+      ),
+      blockr.ui::text_input(
+        ns(nm), spec$label, value = val, placeholder = opt_placeholder(spec)
+      )
+    )
+  })
+}
+
+# A checkbox takes one column of the grid, or two when its label does not
+# fit in one (about 15 characters at 14px in a 130px column).
+wide_checkbox <- function(field, label) {
+  if (nchar(label) <= 15L) {
+    return(field)
+  }
+
+  small <- names(field$attribs) == "class" &
+    vapply(field$attribs, identical, logical(1), "blockr-settings__field--small")
+  field$attribs <- field$attribs[!small]
+  field
+}
+
 #' Fields for a set of declared options
 #'
-#' Renders one field per spec, laid out as this package's settings bands
-#' are. Values come from a block's option list; anything absent shows its
-#' declared default.
+#' Renders one field per spec with the blockr.ui controls: a select for a
+#' choice, a checkbox for a flag, and text and number fields that commit on
+#' Enter or blur. The fields sit in the gear tray's grid. Values come from
+#' a block's option list; anything absent shows its declared default.
 #'
 #' @param specs Named list of [format_opt] specs, e.g. from
 #'   [source_options()].
@@ -226,42 +288,10 @@ format_options_ui <- function(specs, ns, values = list()) {
     return(NULL)
   }
 
-  fields <- lapply(names(specs), function(nm) {
-    spec <- specs[[nm]]
-    val <- opt_display_value(spec, values[[nm]])
-
-    widget <- switch(
-      spec$type,
-      choice = if (isTRUE(spec$create)) {
-        selectizeInput(
-          ns(nm), label = NULL, choices = spec$choices, selected = val,
-          options = list(create = TRUE), width = "100%"
-        )
-      } else {
-        selectInput(
-          ns(nm), label = NULL, choices = spec$choices, selected = val,
-          width = "100%"
-        )
-      },
-      flag = checkboxInput(ns(nm), label = spec$label, value = val),
-      textInput(
-        ns(nm), label = NULL, value = val,
-        placeholder = opt_placeholder(spec), width = "100%"
-      )
-    )
-
-    if (identical(spec$type, "flag")) {
-      return(div(class = "blockr-settings__field", widget))
-    }
-
-    div(
-      class = "blockr-settings__field",
-      tags$label(class = "blockr-label", `for` = ns(nm), spec$label),
-      widget
-    )
-  })
-
-  div(class = "blockr-settings__grid", fields)
+  div(
+    class = "blockr-settings__grid",
+    format_option_fields(specs, ns, values)
+  )
 }
 
 # A field's value, coerced to what the reader expects, or NULL when it is
@@ -277,7 +307,8 @@ opt_value_from_input <- function(spec, raw) {
   }
 
   if (identical(spec$type, "number")) {
-    if (!nzchar(trimws(as.character(raw)))) {
+    if (!length(raw) || is.na(raw[[1L]]) ||
+          !nzchar(trimws(as.character(raw[[1L]])))) {
       return(NULL)
     }
     val <- suppressWarnings(as.numeric(raw))
@@ -298,21 +329,58 @@ opt_value_from_input <- function(spec, raw) {
   as.character(raw)
 }
 
+# What the server last pushed into each field, per session. The blockr.ui
+# controls do not report a pushed value back as input, so after
+# format_options_update() a field's input still holds the value from
+# before the push. The record says which value the field shows until the
+# user changes it.
+pushed_values <- function(session) {
+  if (is.null(session) || is.null(session$userData)) {
+    return(NULL)
+  }
+
+  if (is.null(session$userData$blockr_io_pushed)) {
+    session$userData$blockr_io_pushed <- new.env(parent = emptyenv())
+  }
+
+  session$userData$blockr_io_pushed
+}
+
 #' Read declared option fields back off the inputs
 #'
 #' The inverse of [format_options_ui()]: collects the fields into the named
 #' list a block carries as its options, dropping every value still at its
-#' declared default so an untouched block stays empty.
+#' declared default so an untouched block stays empty. A field the server
+#' moved with [format_options_update()] counts with the value it was moved
+#' to until the user changes it.
 #'
 #' @param input The module's `input`.
 #' @param specs Named list of [format_opt] specs.
+#' @param session The module's `session`, where the pushed values are
+#'   recorded.
 #' @return Named list of option values; empty when nothing deviates.
 #' @export
-format_options_values <- function(input, specs) {
+format_options_values <- function(input, specs,
+                                  session = getDefaultReactiveDomain()) {
+  pushed <- pushed_values(session)
   out <- list()
 
   for (nm in names(specs)) {
-    val <- opt_value_from_input(specs[[nm]], input[[nm]])
+    raw <- input[[nm]]
+
+    if (!is.null(pushed)) {
+      key <- session$ns(nm)
+      rec <- pushed[[key]]
+      if (!is.null(rec)) {
+        if (identical(raw, rec$seen)) {
+          raw <- rec$value
+        } else {
+          rm(list = key, envir = pushed)
+        }
+      }
+    }
+
+    val <- opt_value_from_input(specs[[nm]], raw)
     if (!is.null(val)) {
       out[[nm]] <- val
     }
@@ -324,7 +392,8 @@ format_options_values <- function(input, specs) {
 #' Push option values back into declared option fields
 #'
 #' For an external write: moves the fields to match `values` without
-#' re-rendering them (which would drop focus mid-edit).
+#' re-rendering them (which would drop focus mid-edit). The fields do not
+#' report the move back as input; [format_options_values()] accounts for it.
 #'
 #' @param session The module's `session`.
 #' @param specs Named list of [format_opt] specs.
@@ -332,20 +401,30 @@ format_options_values <- function(input, specs) {
 #' @return Invisible `NULL`.
 #' @export
 format_options_update <- function(session, specs, values = list()) {
+  pushed <- pushed_values(session)
+
   for (nm in names(specs)) {
     spec <- specs[[nm]]
     val <- opt_display_value(spec, values[[nm]])
 
     switch(
       spec$type,
-      choice = if (isTRUE(spec$create)) {
-        updateSelectizeInput(session, nm, selected = val)
-      } else {
-        updateSelectInput(session, nm, selected = val)
-      },
-      flag = updateCheckboxInput(session, nm, value = isTRUE(val)),
-      updateTextInput(session, nm, value = val)
+      choice = blockr.ui::update_select_input(
+        nm, choices = opt_choices(spec, val), selected = val,
+        session = session
+      ),
+      flag = blockr.ui::update_checkbox_input(nm, value = val, session = session),
+      number = blockr.ui::update_number_input(nm, value = val, session = session),
+      blockr.ui::update_text_input(nm, value = val, session = session)
     )
+
+    if (!is.null(pushed)) {
+      assign(
+        session$ns(nm),
+        list(value = val, seen = isolate(session$input[[nm]])),
+        envir = pushed
+      )
+    }
   }
 
   invisible(NULL)

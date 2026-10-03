@@ -303,15 +303,18 @@ test_that("rdata containers honor the table selection", {
   expect_identical(names(val), "ae")
 })
 
-test_that("gear_band_ui wires the button to the band", {
+test_that("gear_band_ui is blockr.ui's gear tray", {
   html <- as.character(htmltools::tagList(
     gear_band_ui("g1", "b1", htmltools::div("field"), band_label = "Opts")
   ))
-  expect_match(html, "blockr-gear-btn")
-  expect_match(html, 'aria-controls="b1"')
-  expect_match(html, "blockrIoGearToggle\\(&#39;g1&#39;,&#39;b1&#39;\\)")
+  expect_match(html, "blockr-gear-btn blockr-ui-gear")
+  expect_match(html, 'aria-controls="g1_tray"')
+  expect_match(html, 'data-blockr-tooltip="Settings"')
   expect_match(html, "blockr-settings--beak")
   expect_match(html, 'aria-label="Opts"')
+  # content takes a whole row of the tray's grid
+  expect_match(html, "blockr-settings__field blockr-settings__field--full")
+  expect_false(grepl("onclick", html, fixed = TRUE))
 })
 
 test_that("an entry declares what it accepts, and blocks can ask", {
@@ -408,6 +411,44 @@ test_that("declared fields render, read back, and drop their defaults", {
 
   # an unmounted band reads NULL everywhere and says nothing
   expect_identical(format_options_values(list(), specs), list())
+})
+
+test_that("the fields are blockr.ui controls", {
+  specs <- format_options("a.csv")
+  html <- as.character(format_options_ui(specs, function(x) paste0("b-", x)))
+
+  expect_match(html, 'class="blockr-ui-select"')
+  expect_match(html, "blockr-ui-number")
+  expect_match(html, "blockr-ui-text")
+  expect_match(html, "blockr-ui-checkbox")
+  expect_false(grepl("selectize", html, fixed = TRUE))
+})
+
+test_that("a pushed value counts until the user changes the field", {
+  specs <- format_options("a.csv")
+
+  shiny::testServer(
+    function(id) shiny::moduleServer(id, function(input, output, session) {}),
+    args = list(id = "blk"),
+    {
+      session$setInputs(sep = ",", skip = 0, col_names = TRUE)
+
+      # the server moves skip to 3; the control does not report it back
+      format_options_update(session, specs, list(skip = 3))
+      expect_identical(format_options_values(input, specs, session),
+                       list(skip = 3))
+
+      # the user then changes another field: the pushed skip stays
+      session$setInputs(sep = ";")
+      expect_identical(format_options_values(input, specs, session),
+                       list(sep = ";", skip = 3))
+
+      # and a change to the pushed field itself wins
+      session$setInputs(skip = 5)
+      expect_identical(format_options_values(input, specs, session),
+                       list(sep = ";", skip = 5))
+    }
+  )
 })
 
 test_that("no fields for a format that declares nothing", {

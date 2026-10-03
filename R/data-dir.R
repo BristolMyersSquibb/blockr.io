@@ -21,28 +21,38 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
       ns <- NS(id)
       tagList(
         path_input_dep(),
-        tags$label("Data directory"),
+        io_blocks_dep(),
         div(
-          style = "margin-bottom: 6px;",
-          actionButton(ns("data_dir_set"), "Set data directory",
-            class = "btn-sm blockr-datadir-btn"
-          )
-        ),
-        div(
-          class = "blockr-path-input",
+          class = "io-data-dir",
+          tags$label(
+            class = "blockr-label",
+            `for` = ns("data_dir_browse"),
+            "Data directory"
+          ),
           div(
-            class = "blockr-path-input-field",
-            tags$input(
-              id = ns("data_dir_browse"),
-              type = "text",
-              class = "blockr-path-text",
-              placeholder = "e.g. /data/project",
-              autocomplete = "off"
-            ),
+            class = "io-path-input",
             div(
-              id = ns("data_dir_browse_dropdown"),
-              class = "blockr-path-dropdown"
+              class = "io-path-field",
+              tags$input(
+                id = ns("data_dir_browse"),
+                type = "text",
+                class = "io-path-text",
+                placeholder = "e.g. /data/project",
+                autocomplete = "off"
+              ),
+              div(
+                id = ns("data_dir_browse_dropdown"),
+                class = "blockr-select__dropdown io-path-menu",
+                role = "listbox"
+              )
             )
+          ),
+          blockr.ui::blockr_button(
+            ns("data_dir_set"),
+            "Set data directory",
+            kind = "secondary",
+            size = "s",
+            disabled = TRUE
           )
         )
       )
@@ -61,15 +71,11 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
         }
       )
 
-      # Send endpoint URL to JS + disable button on init
+      # Send the endpoint URL to the field. The button starts disabled.
       observe({
         session$sendCustomMessage("blockr-path-list-url", list(
           id = ns("data_dir_browse"),
           url = list_url
-        ))
-        session$sendCustomMessage("blockr-path-toggle-btn", list(
-          id = ns("data_dir_set"),
-          enabled = FALSE
         ))
       })
 
@@ -117,7 +123,7 @@ new_data_dir_option <- function(value = blockr_option("data_dir", ""),
               id = ns("data_dir_browse"),
               value = val
             ))
-            # Trigger success animation on button
+            # The button says it is done, for a moment
             session$sendCustomMessage("blockr-path-btn-success", list(
               id = ns("data_dir_set")
             ))
@@ -140,6 +146,14 @@ board_options.read_block <- function(x, ...) {
 
 #' @export
 board_options.write_block <- function(x, ...) {
+  combine_board_options(
+    new_data_dir_option(...),
+    NextMethod()
+  )
+}
+
+#' @export
+board_options.download_block <- function(x, ...) {
   combine_board_options(
     new_data_dir_option(...),
     NextMethod()

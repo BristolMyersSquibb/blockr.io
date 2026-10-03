@@ -4,12 +4,15 @@
 \alias{format_options_values}
 \title{Read declared option fields back off the inputs}
 \usage{
-format_options_values(input, specs)
+format_options_values(input, specs, session = getDefaultReactiveDomain())
 }
 \arguments{
 \item{input}{The module's \code{input}.}
 
 \item{specs}{Named list of \link{format_opt} specs.}
+
+\item{session}{The module's \code{session}, where the pushed values are
+recorded.}
 }
 \value{
 Named list of option values; empty when nothing deviates.
@@ -17,5 +20,7 @@ Named list of option values; empty when nothing deviates.
 \description{
 The inverse of \code{\link[=format_options_ui]{format_options_ui()}}: collects the fields into the named
 list a block carries as its options, dropping every value still at its
-declared default so an untouched block stays empty.
+declared default so an untouched block stays empty. A field the server
+moved with \code{\link[=format_options_update]{format_options_update()}} counts with the value it was moved
+to until the user changes it.
 }

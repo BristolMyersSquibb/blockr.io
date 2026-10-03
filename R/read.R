@@ -379,7 +379,7 @@ new_read_block <- function(
               self_write$combine <- FALSE
               return()
             }
-            updateSelectInput(session, "combine", selected = r_combine())
+            blockr.ui::update_select_input("combine", selected = r_combine())
           }, ignoreInit = TRUE)
 
           # State -> fields, for an external write. Moved rather than
@@ -391,22 +391,6 @@ new_read_block <- function(
             }
             format_options_update(session, opt_specs(), r_args())
           }, ignoreInit = TRUE, ignoreNULL = FALSE)
-
-          # Combination strategy info
-          output$combine_info <- renderText({
-            current_file_paths <- file_paths()
-            if (length(current_file_paths) <= 1) {
-              return("")
-            }
-
-            strategy <- r_combine()
-            switch(strategy,
-              "auto" = "Will attempt to row-bind files, fallback to first file",
-              "rbind" = "Will row-bind files (requires same columns)",
-              "cbind" = "Will column-bind files (requires same row count)",
-              "first" = "Will use only the first file"
-            )
-          })
 
           # Does the block's path resolve to an existing file? Read off the
           # state, not the input, so the badge follows an externally set path
@@ -469,40 +453,37 @@ new_read_block <- function(
             }
           })
 
-          # The format's declared fields, generated. Depends on the spec set
-          # only, with the values isolated: re-rendering on every keystroke
-          # would fight the user for the cursor. It also means a dock panel
-          # that mounts late renders its fields already carrying the block's
-          # options, rather than waiting for a push it may have missed.
-          output$format_options <- renderUI({
-            format_options_ui(opt_specs(), session$ns, isolate(r_args()))
-          })
-          outputOptions(output, "format_options", suspendWhenHidden = FALSE)
+          # What the gear offers: the format's declared options and, for
+          # several files, how to combine them. No options, no gear. Kept
+          # in a value that changes only when the answer does, so the tray
+          # is not drawn again on every path change that leaves it alike.
+          r_tray <- reactiveVal(list(specs = list(), multi = FALSE))
 
-          output$show_format_options <- reactive({
-            length(opt_specs()) > 0
+          observe({
+            next_tray <- list(
+              specs = opt_specs(),
+              multi = length(file_paths()) > 1
+            )
+            if (!identical(next_tray, isolate(r_tray()))) {
+              r_tray(next_tray)
+            }
           })
-          outputOptions(
-            output, "show_format_options", suspendWhenHidden = FALSE
-          )
 
-          output$show_multi_file_options <- reactive({
-            length(file_paths()) > 1
+          # The gear and its tray. Drawn from the tray's contents with the
+          # values isolated: a redraw on every edit would fight the user for
+          # the cursor. A dock panel that mounts late therefore draws fields
+          # that already carry the block's options.
+          output$gear_ui <- renderUI({
+            tray <- r_tray()
+            read_gear_tray(
+              session$ns,
+              specs = tray$specs,
+              multi = tray$multi,
+              values = isolate(r_args()),
+              combine = isolate(r_combine())
+            )
           })
-          outputOptions(
-            output,
-            "show_multi_file_options",
-            suspendWhenHidden = FALSE
-          )
-
-          # No options, no gear. Both halves are now the registry's answer:
-          # a format that declares nothing -- a parquet, a registered rtf,
-          # rio's long tail -- opens no band, and the multi-file combine
-          # section is the block's own option rather than a format's.
-          output$show_gear <- reactive({
-            length(opt_specs()) > 0 || length(file_paths()) > 1
-          })
-          outputOptions(output, "show_gear", suspendWhenHidden = FALSE)
+          outputOptions(output, "gear_ui", suspendWhenHidden = FALSE)
 
           list(
             expr = reactive({
@@ -590,117 +571,38 @@ new_read_block <- function(
       )
     },
     ui = function(id) {
-      gear_id <- NS(id, "gear_btn")
-      band_id <- NS(id, "gear_band")
       tagList(
         shinyjs::useShinyjs(),
         io_block_deps(),
         div(
-          class = "block-container io-block read-block-container",
+          class = "io-block io-read-block",
+          uiOutput(NS(id, "gear_ui")),
+
+          # The placeholder covers browsing and uploading, and the Enter
+          # button covers committing. A URL and a dropped file are the two
+          # things the field accepts that nothing on screen reveals.
+          tags$p(
+            "Also accepts a pasted URL, or a file dropped here.",
+            class = "io-path-hint"
+          ),
+
+          # Hidden fileInput (Shiny handles upload mechanics)
           div(
-            class = "block-section io-file-location",
-            conditionalPanel(
-            condition = "output['show_gear']",
-            ns = NS(id),
-            div(
-              class = "blockr-gear-row",
-              tags$button(
-                type = "button",
-                id = gear_id,
-                class = "blockr-gear-btn",
-                title = "Advanced settings",
-                `aria-label` = "Advanced settings",
-                `aria-controls` = band_id,
-                `aria-expanded` = "false",
-                onclick = sprintf(
-                  "window.blockrIoGearToggle && window.blockrIoGearToggle('%s','%s');",
-                  gear_id, band_id
-                ),
-                HTML(gear_icon_svg())
-              )
-            ),
-
-            # Settings band: persistent in-flow panel between the gear row
-            # and the path input. Visibility is class-driven (closed = no
-            # blockr-settings--open); blockrIoGearToggle() flips it.
-            div(
-              id = band_id,
-              class = "blockr-settings blockr-settings--beak",
-              role = "region",
-              `aria-label` = "Read settings",
-
-              tags$p(
-                "Change the global data directory in the sidebar",
-                class = "blockr-path-hint blockr-settings__field--full"
-              ),
-
-              conditionalPanel(
-                condition = "output['show_format_options']",
-                ns = NS(id),
-                div(class = "blockr-settings__title", "Format options"),
-                uiOutput(NS(id, "format_options"))
-              ),
-
-              conditionalPanel(
-                condition = "output['show_multi_file_options']",
-                ns = NS(id),
-                class = "blockr-settings__grid",
-                div(class = "blockr-settings__title", "Multi-file options"),
-                div(
-                  class = "blockr-settings__field",
-                  tags$label(
-                    class = "blockr-label",
-                    `for` = NS(id, "combine"),
-                    "Combination strategy"
-                  ),
-                  selectInput(
-                    inputId = NS(id, "combine"),
-                    label = NULL,
-                    choices = c(
-                      "Auto (rbind with fallback)" = "auto",
-                      "Row bind (rbind)" = "rbind",
-                      "Column bind (cbind)" = "cbind",
-                      "First file only" = "first"
-                    ),
-                    selected = combine,
-                    width = "100%"
-                  ),
-                  div(
-                    class = "block-help-text",
-                    textOutput(NS(id, "combine_info"))
-                  )
-                )
-              )
+            class = "io-file-input",
+            fileInput(
+              inputId = NS(id, "file_upload"),
+              label = NULL,
+              multiple = TRUE,
+              # file_extensions(), not the rio list: a registered format
+              # must be uploadable, or it is dead on arrival in upload mode
+              accept = paste0(".", file_extensions())
             )
-            ),
+          ),
 
-            # The placeholder already covers browsing and uploading, and the
-            # Enter chip covers committing. A URL and a dropped file are the
-            # two things it accepts that nothing on screen reveals.
-            tags$p(
-              "Also accepts a pasted URL, or a file dropped here.",
-              class = "blockr-path-hint"
-            ),
-
-            # Hidden fileInput (Shiny handles upload mechanics)
-            div(
-              class = "blockr-file-input",
-              fileInput(
-                inputId = NS(id, "file_upload"),
-                label = NULL,
-                multiple = TRUE,
-                # file_extensions(), not the rio list: a registered format
-                # must be uploadable, or it is dead on arrival in upload mode
-                accept = paste0(".", file_extensions())
-              )
-            ),
-
-            # Unified path input with upload icon
-            path_input_ui(
-              NS(id, "file_path"),
-              upload_id = NS(id, "file_upload"),
-              required = TRUE
-            )
+          path_input_ui(
+            NS(id, "file_path"),
+            upload_id = NS(id, "file_upload"),
+            required = TRUE
           )
         )
       )
@@ -709,5 +611,45 @@ new_read_block <- function(
     allow_empty_state = TRUE,
     external_ctrl = c("path", "source", "combine", "args"),
     ...
+  )
+}
+
+# The read block's gear and tray: the format's options, and how to combine
+# several files. NULL when there is neither, so the block has no gear.
+read_gear_tray <- function(ns, specs, multi, values = list(),
+                           combine = "auto") {
+  sections <- list()
+
+  if (length(specs)) {
+    sections <- c(sections, list(do.call(
+      blockr.ui::tray_section,
+      c(list("Format options"), format_option_fields(specs, ns, values))
+    )))
+  }
+
+  if (multi) {
+    sections <- c(sections, list(blockr.ui::tray_section(
+      "Several files",
+      blockr.ui::select_input(
+        ns("combine"),
+        "Combine files",
+        choices = c(
+          "Row bind, else the first file" = "auto",
+          "Row bind" = "rbind",
+          "Column bind" = "cbind",
+          "First file only" = "first"
+        ),
+        selected = combine
+      )
+    )))
+  }
+
+  if (!length(sections)) {
+    return(NULL)
+  }
+
+  do.call(
+    blockr.ui::gear_tray,
+    c(list(ns("gear")), sections, list(label = "Read settings"))
   )
 }

@@ -1,11 +1,28 @@
 # Tests for path input widget
 
-test_that("path_input_dep returns htmlDependency object", {
-  dep <- blockr.io:::path_input_dep()
+test_that("path_input_dep brings blockr.ui's controls and the widget", {
+  deps <- htmltools::findDependencies(blockr.io:::path_input_dep())
+  nms <- vapply(deps, `[[`, character(1), "name")
 
-  expect_s3_class(dep, "html_dependency")
-  expect_equal(dep$name, "blockr-path-input")
+  # blockr.ui first: the widget places its list with Blockr.place
+  expect_true(all(c("blockr-ui-js", "blockr-path-input") %in% nms))
+  expect_lt(match("blockr-ui-js", nms), match("blockr-path-input", nms))
+
+  dep <- deps[[match("blockr-path-input", nms)]]
   expect_equal(dep$version, blockr.io:::path_input_asset_version())
+})
+
+test_that("path_input_ui draws io's own classes and no native tooltip", {
+  html <- as.character(htmltools::tagList(
+    path_input_ui("p", upload_id = "up")
+  ))
+  expect_match(html, "io-path-field")
+  expect_match(html, 'class="io-path-text"')
+  # the suggestions float on blockr.ui's field dropdown surface
+  expect_match(html, "blockr-select__dropdown io-path-menu")
+  expect_match(html, 'data-blockr-tooltip="Upload file"')
+  expect_false(grepl("title=", html, fixed = TRUE))
+  expect_false(grepl("blockr-path-", html, fixed = TRUE))
 })
 
 test_that("required path_input_ui carries the amber required-empty affordance", {
