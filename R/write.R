@@ -330,16 +330,15 @@ new_write_block <- function(
                 as_sym = as_dot_sym
               )
 
-              bquote({
-                .(expr)
-                .(first_data)
-              })
+              # Built with call() rather than bquote({ ... }): covr
+              # instruments every literal { } in the package source,
+              # quoted ones included, which would put its counters into
+              # the generated code.
+              call("{", expr, first_data)
             } else {
               # Wrapped in { } because blockr.core requires a language
               # object (a bare symbol is not one)
-              bquote({
-                .(first_data)
-              })
+              call("{", first_data)
             }
           })
 
