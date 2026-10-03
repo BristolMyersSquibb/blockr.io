@@ -31,6 +31,6 @@ is open.
 \details{
 Each item in \code{...} takes a whole row of the tray's field grid. An item
 that is itself a field of the grid (a \code{.blockr-settings__field}, such as
-the controls of \code{\link[blockr.ui:select_input]{blockr.ui::select_input()}} and its siblings) is placed
+the controls of \code{\link[blockr.ui:inputs]{blockr.ui::select_input()}} and its siblings) is placed
 as it is.
 }
