@@ -513,7 +513,7 @@ new_write_block <- function(
                     "window.blockrIoGearToggle && window.blockrIoGearToggle('%s','%s');",
                     gear_id, band_id
                   ),
-                  HTML(gear_icon_svg())
+                  blockr.ui::small_icon("gear")
                 )
               ),
 
