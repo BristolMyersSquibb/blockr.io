@@ -100,17 +100,10 @@ new_download_block <- function(
               # DAG-UI slots, else the link name) — the same names write_expr()
               # emits. dot_arg_values() handles both the live-board reactives
               # and the reactiveValues used in tests.
-              eval_env <- new.env(parent = parent.frame())
-              arg_vals <- dot_arg_values(...args)
-
-              for (nm in names(arg_vals)) {
-                data_val <- arg_vals[[nm]]
-                assign(
-                  nm,
-                  if (is.reactive(data_val)) data_val() else data_val,
-                  envir = eval_env
-                )
-              }
+              eval_env <- list2env(
+                dot_arg_values(...args),
+                parent = parent.frame()
+              )
 
               eval(expr, envir = eval_env)
 

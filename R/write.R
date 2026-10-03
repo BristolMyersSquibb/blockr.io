@@ -290,12 +290,7 @@ new_write_block <- function(
             # name). dot_arg_values() reads slots positionally, so it is robust
             # to the unnamed positional keys a live board assigns -- a per-name
             # ...args[[nm]] lookup would miss those and bind NULL.
-            eval_env <- new.env(parent = baseenv())
-            arg_vals <- dot_arg_values(...args)
-            for (nm in names(arg_vals)) {
-              val <- arg_vals[[nm]]
-              assign(nm, if (is.reactive(val)) val() else val, envir = eval_env)
-            }
+            eval_env <- list2env(dot_arg_values(...args), parent = baseenv())
 
             tryCatch(
               {
@@ -391,22 +386,14 @@ new_write_block <- function(
                 args = r_args()
               )
 
-              # Create environment with parent.frame() as parent
-              eval_env <- new.env(parent = parent.frame())
-
               # Bind each input under its reference symbol (.arg1 for unnamed
               # DAG-UI slots, else the link name) -- the same names write_expr()
               # emits. dot_arg_values() handles both the live-board reactives
               # and the reactiveValues used in tests.
-              arg_vals <- dot_arg_values(...args)
-              for (nm in names(arg_vals)) {
-                data_val <- arg_vals[[nm]]
-                assign(
-                  nm,
-                  if (is.reactive(data_val)) data_val() else data_val,
-                  envir = eval_env
-                )
-              }
+              eval_env <- list2env(
+                dot_arg_values(...args),
+                parent = parent.frame()
+              )
 
               # Evaluate write expression - this writes the file(s)
               eval(expr, envir = eval_env)
